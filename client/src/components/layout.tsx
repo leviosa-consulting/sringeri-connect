@@ -27,8 +27,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <DesktopNav />
       ) : (
         /* Mobile Top Bar (Logo Only) - since Nav is at bottom */
-        <div className="md:hidden h-16 bg-background/80 backdrop-blur border-b sticky top-0 z-40 flex items-center justify-center px-4">
-          <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-10 object-contain" />
+        <div className="md:hidden h-20 bg-background/80 backdrop-blur border-b sticky top-0 z-40 flex items-center justify-center px-4">
+          <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
         </div>
       )}
 
