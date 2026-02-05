@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import ServiceCard from "@/components/service-card";
+import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES, NEWS_EVENTS } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -222,16 +222,16 @@ export default function Home() {
         <div className="md:col-span-8 space-y-8">
           
           {/* Online Services */}
-          <section className="space-y-4">
+          <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif font-bold text-xl flex items-center gap-2">
-                <span className="w-1 h-6 bg-primary rounded-full block"></span>
+              <h2 className="font-serif font-bold text-lg flex items-center gap-2">
+                <span className="w-1 h-5 bg-primary rounded-full block"></span>
                 Online Services
               </h2>
             </div>
-            <div className="flex flex-col md:grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-4 gap-1 bg-card rounded-xl border border-border/50 py-2">
               {ONLINE_SERVICES.map((service) => (
-                <ServiceCard 
+                <ServiceIcon 
                   key={service.id}
                   {...service}
                   onClick={() => console.log(`Clicked ${service.id}`)}
@@ -241,16 +241,16 @@ export default function Home() {
           </section>
 
           {/* Resources Section */}
-          <section className="space-y-4">
+          <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif font-bold text-xl flex items-center gap-2">
-                <span className="w-1 h-6 bg-secondary rounded-full block"></span>
+              <h2 className="font-serif font-bold text-lg flex items-center gap-2">
+                <span className="w-1 h-5 bg-secondary rounded-full block"></span>
                 Resources
               </h2>
             </div>
-            <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 md:grid-cols-3 gap-1 bg-card rounded-xl border border-border/50 py-2">
               {RESOURCES.map((resource) => (
-                <ServiceCard 
+                <ServiceIcon 
                   key={resource.id}
                   {...resource}
                 />
