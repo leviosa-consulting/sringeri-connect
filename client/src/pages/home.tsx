@@ -135,7 +135,7 @@ export default function Home() {
           )}
           
           {/* Panchanga Details Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
+          <div className="flex flex-col gap-2 text-left">
             {/* Samvatsara */}
             <div className="space-y-0.5" data-testid="card-samvatsara">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Samvatsara</div>
@@ -175,7 +175,7 @@ export default function Home() {
               className="text-xs text-primary hover:underline font-medium"
               data-testid="link-detailed-panchanga"
             >
-              Detailed Panchanga →
+              Sandhya Kala Details →
             </a>
           </div>
         </div>
