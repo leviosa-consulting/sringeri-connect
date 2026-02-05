@@ -54,7 +54,7 @@ export default function Home() {
          <div className="absolute right-0 top-0 h-full w-2/3 bg-[url('/assets/temple-hero.jpg')] bg-cover bg-center mask-linear-fade opacity-80" style={{maskImage: 'linear-gradient(to right, transparent, black)'}} />
       </div>
 
-      <div className="grid md:grid-cols-12 gap-8 px-4 md:px-0">
+      <div className="flex flex-col md:grid md:grid-cols-12 gap-8 px-4 md:px-0">
         
         {/* Main Content Column */}
         <div className="md:col-span-8 space-y-8">
