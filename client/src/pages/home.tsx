@@ -248,7 +248,7 @@ export default function Home() {
                 Resources
               </h2>
             </div>
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-1 bg-card rounded-xl border border-border/50 py-2">
+            <div className="grid grid-cols-4 gap-1 bg-card rounded-xl border border-border/50 py-2">
               {RESOURCES.map((resource) => (
                 <ServiceIcon 
                   key={resource.id}

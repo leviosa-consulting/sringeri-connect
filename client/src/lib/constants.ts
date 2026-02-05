@@ -1,4 +1,4 @@
-import { Home, Calendar, User, Newspaper, Music, BookOpen, Heart, Hotel, ExternalLink, MessageCircle, Trophy, Sparkles, BookCheck, ShoppingCart, HandHeart, LibraryBig, BookCopy } from "lucide-react";
+import { Home, Calendar, User, Newspaper, Music, BookOpen, Heart, Hotel, ExternalLink, MessageCircle, Trophy, Sparkles, BookCheck, ShoppingCart, HandHeart, LibraryBig, BookCopy, Sun } from "lucide-react";
 
 export const ONLINE_SERVICES = [
   {
@@ -58,6 +58,15 @@ export const RESOURCES = [
     color: "bg-indigo-100 text-indigo-600",
     isExternal: true,
     url: "https://www.sringeri.net/stotras",
+  },
+  {
+    id: "sandhyakala",
+    title: "Sandhya Mayukha",
+    description: "Sandhya Kala timings and details",
+    icon: Sun,
+    color: "bg-amber-100 text-amber-600",
+    isExternal: true,
+    url: "https://sandhyakala.vercel.app/",
   },
 ];
 
