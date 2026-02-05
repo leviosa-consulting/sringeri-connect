@@ -1,18 +1,18 @@
-import { Home, Calendar, User, Newspaper, Music, BookOpen, Heart, Hotel, ExternalLink, MessageCircle, Trophy, Sparkles, BookCheck, ShoppingCart, HandHeart, LibraryBig, BookCopy, Flame, Coins, Flower2 } from "lucide-react";
+import { Home, Calendar, User, Newspaper, Music, BookOpen, Heart, Hotel, ExternalLink, MessageCircle, Trophy, Sparkles, BookCheck, ShoppingCart, HandHeart, LibraryBig, BookCopy } from "lucide-react";
 
 export const ONLINE_SERVICES = [
   {
     id: "seva",
     title: "Seva Booking",
     description: "Perform poojas and sevas remotely or in-person",
-    icon: Flame,
+    icon: BookCopy,
     color: "bg-orange-100 text-orange-600",
   },
   {
     id: "donate",
     title: "Donation (Kanike)",
     description: "Contribute to the Math's charitable activities",
-    icon: Flower2,
+    icon: HandHeart,
     color: "bg-red-100 text-red-600",
   },
   {
