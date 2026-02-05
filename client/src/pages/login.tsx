@@ -24,12 +24,11 @@ export default function Login() {
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       
       <Card className="w-full max-w-sm relative z-10 border-none shadow-2xl bg-white/95 backdrop-blur">
-        <CardHeader className="text-center space-y-2 pb-2">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 border-2 border-primary/20">
-             <img src="/assets/lamp-icon.jpg" alt="Logo" className="w-10 h-10 object-contain mix-blend-multiply" />
+        <CardHeader className="text-center space-y-4 pb-4">
+          <div className="mx-auto flex items-center justify-center pt-4">
+             <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-16 w-auto object-contain" />
           </div>
-          <CardTitle className="text-2xl font-serif text-primary">Sri Sringeri</CardTitle>
-          <CardDescription>Sign in to access Seva & Services</CardDescription>
+          <CardDescription className="text-base font-medium text-primary/80">Sign in to access Seva & Services</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
