@@ -54,26 +54,24 @@ export default function Home() {
          <div className="absolute right-0 top-0 h-full w-2/3 bg-[url('/assets/temple-hero.jpg')] bg-cover bg-center mask-linear-fade opacity-80" style={{maskImage: 'linear-gradient(to right, transparent, black)'}} />
       </div>
 
-      <div className="grid md:grid-cols-12 gap-8 md:px-0">
+      <div className="grid md:grid-cols-12 gap-8 px-6 md:px-0">
         
         {/* Main Content Column */}
         <div className="md:col-span-8 space-y-8">
           
           {/* Online Services */}
-          <section className="space-y-4 px-4 md:px-0">
+          <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-serif font-bold text-xl flex items-center gap-2">
                 <span className="w-1 h-6 bg-primary rounded-full block"></span>
                 Online Services
               </h2>
             </div>
-            {/* Mobile: 3-column Grid Icons, Desktop: Cards */}
-            <div className={`grid ${!isDesktop ? 'grid-cols-3' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {ONLINE_SERVICES.map((service) => (
                 <ServiceCard 
                   key={service.id}
                   {...service}
-                  compact={!isDesktop} // Use minimal icons on mobile
                   onClick={() => console.log(`Clicked ${service.id}`)}
                 />
               ))}
@@ -81,20 +79,18 @@ export default function Home() {
           </section>
 
           {/* Resources Section */}
-          <section className="space-y-4 px-4 md:px-0">
+          <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-serif font-bold text-xl flex items-center gap-2">
                 <span className="w-1 h-6 bg-secondary rounded-full block"></span>
                 Resources
               </h2>
             </div>
-            {/* Mobile: 3-column Grid Icons, Desktop: Cards */}
-            <div className={`grid ${!isDesktop ? 'grid-cols-3' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'}`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {RESOURCES.map((resource) => (
                 <ServiceCard 
                   key={resource.id}
                   {...resource}
-                  compact={!isDesktop} // Use minimal icons on mobile
                 />
               ))}
             </div>
