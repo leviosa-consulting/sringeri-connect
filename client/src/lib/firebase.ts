@@ -4,6 +4,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut, 
   onAuthStateChanged, 
@@ -21,6 +23,34 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
+function isWebView(): boolean {
+  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+  
+  const isAndroidWebView = 
+    userAgent.includes('wv') ||
+    (userAgent.includes('Android') && userAgent.includes('Version/'));
+  
+  const isIOSWebView = 
+    (userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod')) && 
+    !userAgent.includes('Safari');
+  
+  const hasWebViewGlobals = 
+    (window as any).ReactNativeWebView !== undefined ||
+    (window as any).flutter_inappwebview !== undefined;
+  
+  const hasCustomWebViewIndicator = userAgent.includes('SevaConnect');
+  
+  return isAndroidWebView || isIOSWebView || hasWebViewGlobals || hasCustomWebViewIndicator;
+}
+
+getRedirectResult(auth).then((result) => {
+  if (result) {
+    console.log("Signed in via redirect:", result.user);
+  }
+}).catch((error) => {
+  console.error("Auth redirect error:", error);
+});
+
 export async function loginWithEmail(email: string, password: string) {
   return signInWithEmailAndPassword(auth, email, password);
 }
@@ -34,6 +64,9 @@ export async function signUpWithEmail(email: string, password: string, displayNa
 }
 
 export async function loginWithGoogle() {
+  if (isWebView()) {
+    return signInWithRedirect(auth, googleProvider);
+  }
   return signInWithPopup(auth, googleProvider);
 }
 
@@ -50,3 +83,5 @@ export async function getIdToken(): Promise<string | null> {
   if (!user) return null;
   return user.getIdToken();
 }
+
+export { isWebView };
