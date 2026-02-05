@@ -61,7 +61,7 @@ export const RESOURCES = [
   },
   {
     id: "sandhyakala",
-    title: "Sandhya Mayukha",
+    title: "Sandhya Kala Mayukha",
     description: "Sandhya Kala timings and details",
     icon: Sun,
     color: "bg-amber-100 text-amber-600",
