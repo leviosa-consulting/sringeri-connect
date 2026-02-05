@@ -67,11 +67,13 @@ export default function Home() {
                 Online Services
               </h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Mobile: 2-column Grid Tiles, Desktop: Cards */}
+            <div className={`grid ${!isDesktop ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-2'} gap-4`}>
               {ONLINE_SERVICES.map((service) => (
                 <ServiceCard 
                   key={service.id}
                   {...service}
+                  compact={!isDesktop} // Use compact tiles on mobile
                   onClick={() => console.log(`Clicked ${service.id}`)}
                 />
               ))}
@@ -86,11 +88,13 @@ export default function Home() {
                 Resources
               </h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Mobile: 2-column Grid Tiles, Desktop: Cards */}
+            <div className={`grid ${!isDesktop ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'} gap-4`}>
               {RESOURCES.map((resource) => (
                 <ServiceCard 
                   key={resource.id}
                   {...resource}
+                  compact={!isDesktop} // Use compact tiles on mobile
                 />
               ))}
             </div>

@@ -8,9 +8,30 @@ interface ServiceCardProps {
   color: string;
   isExternal?: boolean;
   onClick?: () => void;
+  compact?: boolean;
 }
 
-export default function ServiceCard({ title, description, icon: Icon, color, isExternal, onClick }: ServiceCardProps) {
+export default function ServiceCard({ title, description, icon: Icon, color, isExternal, onClick, compact }: ServiceCardProps) {
+  if (compact) {
+    return (
+      <div 
+        onClick={onClick}
+        className="group relative overflow-hidden bg-card rounded-2xl p-4 border border-border/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer active:scale-95 flex flex-col items-center justify-center gap-3 text-center aspect-square"
+      >
+        <div className={cn("p-4 rounded-xl shrink-0 transition-transform group-hover:scale-110 duration-500", color)}>
+          <Icon className="h-8 w-8" />
+        </div>
+        <div className="flex flex-col items-center gap-1 w-full">
+          <h3 className="font-serif font-bold text-sm text-foreground leading-tight">{title}</h3>
+          {isExternal && <ExternalLink className="h-3 w-3 text-muted-foreground opacity-50 absolute top-3 right-3" />}
+        </div>
+        
+        {/* Decorative accent */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+      </div>
+    );
+  }
+
   return (
     <div 
       onClick={onClick}
