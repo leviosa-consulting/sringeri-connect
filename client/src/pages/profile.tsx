@@ -1,14 +1,20 @@
-import { USER_MOCK } from "@/lib/constants";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, Settings, History, User as UserIcon } from "lucide-react";
+import { LogOut, Settings, History } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function Profile() {
   const [_, setLocation] = useLocation();
+  const { profile, user, logout } = useAuth();
 
-  const handleLogout = () => {
+  const displayName = profile?.name || user?.displayName || "Devotee";
+  const email = profile?.email || user?.email || "";
+  const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+
+  const handleLogout = async () => {
+    await logout();
     setLocation("/");
   };
 
@@ -19,12 +25,12 @@ export default function Profile() {
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10 flex items-center gap-4">
           <Avatar className="h-20 w-20 border-4 border-white/20 shadow-xl">
-            <AvatarImage src="https://github.com/shadcn.png" />
-            <AvatarFallback>AS</AvatarFallback>
+            <AvatarImage src={user?.photoURL || undefined} />
+            <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-2xl font-serif font-bold">{USER_MOCK.name}</h1>
-            <p className="opacity-90 text-sm">{USER_MOCK.email}</p>
+            <h1 className="text-2xl font-serif font-bold">{displayName}</h1>
+            <p className="opacity-90 text-sm">{email}</p>
           </div>
         </div>
       </div>
@@ -38,15 +44,15 @@ export default function Profile() {
           <CardContent className="grid gap-4 text-sm">
             <div className="grid grid-cols-3 border-b pb-2">
               <span className="text-muted-foreground">Phone</span>
-              <span className="col-span-2 font-medium text-right">{USER_MOCK.phone}</span>
+              <span className="col-span-2 font-medium text-right">{profile?.phone || "Not provided"}</span>
             </div>
             <div className="grid grid-cols-3 border-b pb-2">
               <span className="text-muted-foreground">Nakshatra</span>
-              <span className="col-span-2 font-medium text-right">{USER_MOCK.nakshatra}</span>
+              <span className="col-span-2 font-medium text-right">{profile?.nakshatra || "Not provided"}</span>
             </div>
             <div className="grid grid-cols-3 border-b pb-2">
               <span className="text-muted-foreground">Gothra</span>
-              <span className="col-span-2 font-medium text-right">{USER_MOCK.gothra}</span>
+              <span className="col-span-2 font-medium text-right">{profile?.gothra || "Not provided"}</span>
             </div>
           </CardContent>
         </Card>

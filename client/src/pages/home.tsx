@@ -5,9 +5,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Bell, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useMedia } from "react-use";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function Home() {
   const isDesktop = useMedia('(min-width: 768px)', false);
+  const { profile, user } = useAuth();
+
+  const displayName = profile?.name || user?.displayName || "Devotee";
+  const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <div className="flex flex-col gap-8 pb-24 md:pb-8 w-full overflow-hidden">
@@ -16,15 +21,15 @@ export default function Home() {
           <div className="flex justify-between items-center">
             <div className="space-y-1">
               <h2 className="text-sm font-medium text-muted-foreground">Namaste,</h2>
-              <h1 className="text-2xl font-serif font-bold text-foreground">Aditya Sharma</h1>
+              <h1 className="text-2xl font-serif font-bold text-foreground">{displayName}</h1>
             </div>
             <div className="flex gap-3">
               <button className="p-2 rounded-full bg-white/80 border border-primary/10 shadow-sm hover:bg-white transition-colors">
                 <Bell className="h-5 w-5 text-primary" />
               </button>
               <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                <AvatarImage src="https://github.com/shadcn.png" />
-                <AvatarFallback>AS</AvatarFallback>
+                <AvatarImage src={user?.photoURL || undefined} />
+                <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
             </div>
           </div>

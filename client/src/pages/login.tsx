@@ -1,22 +1,43 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useState } from "react";
+import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
   const [_, setLocation] = useLocation();
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const { login, user } = useAuth();
+  const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (user) {
+      setLocation("/home");
+    }
+  }, [user, setLocation]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    
+    try {
+      await login(email, password);
       setLocation("/home");
-    }, 1500);
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid email or password. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,7 +58,9 @@ export default function Login() {
                 type="email" 
                 placeholder="Email Address" 
                 className="bg-white/50 border-primary/20 focus:border-primary focus:ring-primary/20"
-                defaultValue="devotee@sringeri.net"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
@@ -45,7 +68,9 @@ export default function Login() {
                 type="password" 
                 placeholder="Password" 
                 className="bg-white/50 border-primary/20 focus:border-primary focus:ring-primary/20"
-                defaultValue="password123"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
             
