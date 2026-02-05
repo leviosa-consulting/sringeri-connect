@@ -6,6 +6,7 @@ import { Bell, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
+import guruBanner from "@/assets/guru-banner.png";
 
 export default function Home() {
   const isDesktop = useMedia('(min-width: 768px)', false);
@@ -16,8 +17,18 @@ export default function Home() {
 
   return (
     <div className="flex flex-col gap-8 pb-24 md:pb-8 w-full overflow-hidden">
+      {/* Guru Banner - Mobile */}
+      <div className="md:hidden px-4 pt-4">
+        <img 
+          src={guruBanner} 
+          alt="Sri Sharada Devi and Jagadgurus" 
+          className="w-full h-auto"
+          data-testid="img-guru-banner"
+        />
+      </div>
+
       {/* Header Section */}
-      <div className="md:hidden px-4 pt-4 space-y-4">
+      <div className="md:hidden px-4 space-y-4">
           <div className="flex justify-between items-center">
             <div className="space-y-1">
               <h2 className="text-sm font-medium text-muted-foreground">Namaste,</h2>
