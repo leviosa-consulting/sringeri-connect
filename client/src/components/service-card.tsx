@@ -22,10 +22,10 @@ export default function ServiceCard({ title, description, icon: Icon, color, isE
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-serif font-bold text-base text-foreground truncate">{title}</h3>
-            {isExternal && <ExternalLink className="h-3 w-3 text-muted-foreground opacity-50" />}
+            <h3 className="font-serif font-bold text-base text-foreground leading-tight">{title}</h3>
+            {isExternal && <ExternalLink className="h-3 w-3 text-muted-foreground opacity-50 shrink-0" />}
           </div>
-          <p className="text-sm text-muted-foreground line-clamp-2 mt-1 leading-relaxed">
+          <p className="text-sm text-muted-foreground mt-1 leading-relaxed break-words">
             {description}
           </p>
         </div>
