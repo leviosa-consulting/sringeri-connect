@@ -67,8 +67,8 @@ export default function Home() {
                 Online Services
               </h2>
             </div>
-            {/* Mobile: 4-column Grid Icons, Desktop: Cards */}
-            <div className={`grid ${!isDesktop ? 'grid-cols-4 gap-x-2 gap-y-6' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
+            {/* Mobile: 3-column Grid Icons, Desktop: Cards */}
+            <div className={`grid ${!isDesktop ? 'grid-cols-3 gap-x-4 gap-y-6' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
               {ONLINE_SERVICES.map((service) => (
                 <ServiceCard 
                   key={service.id}
@@ -88,8 +88,8 @@ export default function Home() {
                 Resources
               </h2>
             </div>
-            {/* Mobile: 4-column Grid Icons, Desktop: Cards */}
-            <div className={`grid ${!isDesktop ? 'grid-cols-4 gap-x-2 gap-y-6' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'}`}>
+            {/* Mobile: 3-column Grid Icons, Desktop: Cards */}
+            <div className={`grid ${!isDesktop ? 'grid-cols-3 gap-x-4 gap-y-6' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'}`}>
               {RESOURCES.map((resource) => (
                 <ServiceCard 
                   key={resource.id}
