@@ -10,10 +10,18 @@ interface ServiceCardProps {
   onClick?: () => void;
 }
 
-export default function ServiceCard({ title, description, icon: Icon, color, isExternal, onClick }: ServiceCardProps) {
+export default function ServiceCard({ title, description, icon: Icon, color, isExternal, onClick, url }: ServiceCardProps & { url?: string }) {
+  const handleClick = () => {
+    if (url) {
+      window.open(url, "_blank");
+    } else if (onClick) {
+      onClick();
+    }
+  };
+
   return (
     <div 
-      onClick={onClick}
+      onClick={handleClick}
       className="group relative w-full overflow-hidden bg-card rounded-xl p-4 border border-border/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer active:scale-98 min-w-0"
     >
       <div className="flex items-start gap-4">

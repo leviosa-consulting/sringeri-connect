@@ -39,6 +39,7 @@ export const RESOURCES = [
     icon: Music,
     color: "bg-purple-100 text-purple-600",
     isExternal: true,
+    url: "https://bhajan.sringeri.net",
   },
   {
     id: "magazines",
@@ -47,6 +48,7 @@ export const RESOURCES = [
     icon: BookOpen,
     color: "bg-yellow-100 text-yellow-600",
     isExternal: true,
+    url: "https://magazines.sringeri.net",
   },
   {
     id: "stotras",
@@ -55,6 +57,7 @@ export const RESOURCES = [
     icon: BookCheck,
     color: "bg-indigo-100 text-indigo-600",
     isExternal: true,
+    url: "https://www.sringeri.net/stotras",
   },
 ];
 
