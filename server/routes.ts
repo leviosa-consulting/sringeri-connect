@@ -37,20 +37,15 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/onlineDevotee", async (req, res) => {
+  app.get("/api/onlineDevotee/:uid", async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const token = authHeader.split(" ")[1];
+      const { uid } = req.params;
       
-      if (!token) {
-        return res.status(400).json({ error: "Token is required" });
+      if (!uid) {
+        return res.status(400).json({ error: "User ID is required" });
       }
 
-      const response = await fetch(`${SRINGERI_API_URL}/api/onlineDevotee/${token}`, {
+      const response = await fetch(`${SRINGERI_API_URL}/api/onlineDevotee/${uid}`, {
         headers: {
           "Content-Type": "application/json",
           ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),

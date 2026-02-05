@@ -95,12 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchDevoteeData = async (firebaseUser: User) => {
     setDevoteeLoading(true);
     try {
-      const token = await firebaseUser.getIdToken();
-      const response = await fetch(`/api/onlineDevotee`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // Use Firebase user UID for the API call
+      const uid = firebaseUser.uid;
+      const response = await fetch(`/api/onlineDevotee/${uid}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -128,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: firebaseUser.email || "",
         });
         
-        // Fetch devotee data from external API
+        // Fetch devotee data from external API using user UID
         await fetchDevoteeData(firebaseUser);
       } else {
         setProfile(null);
