@@ -3,8 +3,7 @@ import {
   getAuth, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider,
   signOut, 
   onAuthStateChanged, 
@@ -22,51 +21,8 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-const DEEP_LINK_URL = "sevaconnect://auth";
-
-function isMobileWebView(): boolean {
-  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
-  
-  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(userAgent);
-  
-  if (!isMobile) {
-    return false;
-  }
-  
-  const isWebView = 
-    /(wv|webview)/i.test(userAgent) ||
-    /\bwv\b/.test(userAgent) ||
-    (userAgent.includes('Android') && userAgent.includes('Version/')) ||
-    (window as any).ReactNativeWebView !== undefined ||
-    (window as any).flutter_inappwebview !== undefined ||
-    userAgent.includes('SevaConnect') ||
-    (userAgent.includes('iPhone') || userAgent.includes('iPad')) && !userAgent.includes('Safari') ||
-    document.referrer.includes('android-app://');
-  
-  const isStandalonePWA = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-    (window.navigator as any).standalone === true;
-  
-  return isWebView || isStandalonePWA;
-}
-
-function redirectToMobileApp(): void {
-  if (isMobileWebView()) {
-    window.location.href = DEEP_LINK_URL;
-  }
-}
-
-getRedirectResult(auth).then((result) => {
-  if (result?.user) {
-    redirectToMobileApp();
-  }
-}).catch((error) => {
-  console.error("Error handling redirect result:", error);
-});
-
 export async function loginWithEmail(email: string, password: string) {
-  const result = await signInWithEmailAndPassword(auth, email, password);
-  redirectToMobileApp();
-  return result;
+  return signInWithEmailAndPassword(auth, email, password);
 }
 
 export async function signUpWithEmail(email: string, password: string, displayName?: string) {
@@ -74,12 +30,11 @@ export async function signUpWithEmail(email: string, password: string, displayNa
   if (displayName && userCredential.user) {
     await updateProfile(userCredential.user, { displayName });
   }
-  redirectToMobileApp();
   return userCredential;
 }
 
 export async function loginWithGoogle() {
-  return signInWithRedirect(auth, googleProvider);
+  return signInWithPopup(auth, googleProvider);
 }
 
 export async function logout() {
@@ -95,5 +50,3 @@ export async function getIdToken(): Promise<string | null> {
   if (!user) return null;
   return user.getIdToken();
 }
-
-export { isMobileWebView };
