@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import ServiceCard from "@/components/service-card";
 import { ONLINE_SERVICES, RESOURCES, NEWS_EVENTS } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -8,12 +9,52 @@ import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
 import guruBanner from "@/assets/guru-banner.png";
 
+interface TodayDetails {
+  todayWebsiteKannada?: string;
+  todayWebsiteEnglish?: string;
+  occasion?: string;
+  occasionK?: string;
+}
+
 export default function Home() {
   const isDesktop = useMedia('(min-width: 768px)', false);
   const { profile, user } = useAuth();
+  const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
 
   const displayName = profile?.name || user?.displayName || "Devotee";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+
+  useEffect(() => {
+    const fetchTodayDetails = async () => {
+      try {
+        // Get today's date in IST (yyyy-mm-dd format)
+        const now = new Date();
+        const istOffset = 5.5 * 60 * 60 * 1000;
+        const istDate = new Date(now.getTime() + istOffset);
+        const dateStr = istDate.toISOString().split('T')[0];
+        
+        const response = await fetch(`/api/todayDetails/${dateStr}`);
+        if (response.ok) {
+          const data = await response.json();
+          setTodayDetails(data);
+        }
+      } catch (error) {
+        console.error("Error fetching today details:", error);
+      }
+    };
+    
+    fetchTodayDetails();
+  }, []);
+
+  const formatTodayDate = () => {
+    const now = new Date();
+    return now.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    }).toUpperCase();
+  };
 
   return (
     <div className="flex flex-col gap-8 pb-24 md:pb-8 w-full overflow-hidden">
@@ -69,6 +110,25 @@ export default function Home() {
          </div>
          <div className="absolute right-0 top-0 h-full w-2/3 bg-[url('/assets/temple-hero.jpg')] bg-cover bg-center mask-linear-fade opacity-80" style={{maskImage: 'linear-gradient(to right, transparent, black)'}} />
       </div>
+
+      {/* Hindu Calendar Strip */}
+      {todayDetails && (
+        <div className="mx-4 md:mx-0 py-4 px-6 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-primary/10 rounded-xl text-center space-y-1" data-testid="card-today-calendar">
+          {todayDetails.occasionK && (
+            <div className="text-sm font-medium text-primary" data-testid="text-occasion-kannada">{todayDetails.occasionK}</div>
+          )}
+          {todayDetails.occasion && (
+            <div className="text-xs text-muted-foreground" data-testid="text-occasion-english">{todayDetails.occasion}</div>
+          )}
+          {todayDetails.todayWebsiteKannada && (
+            <div className="text-base font-serif text-foreground" data-testid="text-calendar-kannada">{todayDetails.todayWebsiteKannada}</div>
+          )}
+          {todayDetails.todayWebsiteEnglish && (
+            <div className="text-sm text-muted-foreground" data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
+          )}
+          <div className="text-xs font-semibold text-primary pt-1" data-testid="text-today-date">{formatTodayDate()}</div>
+        </div>
+      )}
 
       <div className="flex flex-col md:grid md:grid-cols-12 gap-8 px-4 md:px-0">
         
