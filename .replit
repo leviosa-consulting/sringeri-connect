@@ -46,3 +46,11 @@ waitForPort = 5000
 [agent]
 stack = "MOCKUP_JS"
 mockupState = "FULLSTACK"
+
+[userenv]
+
+[userenv.shared]
+VITE_FIREBASE_API_KEY = "AIzaSyCxUkrW_OBa7Pjy5dEoMJ1EgOOOvtwcK8I"
+VITE_FIREBASE_AUTH_DOMAIN = "dssp-online.firebaseapp.com"
+VITE_FIREBASE_PROJECT_ID = "dssp-online"
+VITE_SRINGERI_API_URL = "https://api.sringeri.net"
