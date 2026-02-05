@@ -54,10 +54,10 @@ export default function Home() {
          <div className="absolute right-0 top-0 h-full w-2/3 bg-[url('/assets/temple-hero.jpg')] bg-cover bg-center mask-linear-fade opacity-80" style={{maskImage: 'linear-gradient(to right, transparent, black)'}} />
       </div>
 
-      <div className="grid md:grid-cols-12 gap-8 px-6 md:px-0">
+      <div className="grid md:grid-cols-12 gap-8 md:px-0">
         
         {/* Main Content Column */}
-        <div className="md:col-span-8 space-y-8">
+        <div className="md:col-span-8 space-y-8 px-6 md:px-0">
           
           {/* Online Services */}
           <section className="space-y-4">
