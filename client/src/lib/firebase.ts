@@ -3,7 +3,8 @@ import {
   getAuth, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut, 
   onAuthStateChanged, 
@@ -54,6 +55,14 @@ function redirectToMobileApp(): void {
   }
 }
 
+getRedirectResult(auth).then((result) => {
+  if (result?.user) {
+    redirectToMobileApp();
+  }
+}).catch((error) => {
+  console.error("Error handling redirect result:", error);
+});
+
 export async function loginWithEmail(email: string, password: string) {
   const result = await signInWithEmailAndPassword(auth, email, password);
   redirectToMobileApp();
@@ -70,9 +79,7 @@ export async function signUpWithEmail(email: string, password: string, displayNa
 }
 
 export async function loginWithGoogle() {
-  const result = await signInWithPopup(auth, googleProvider);
-  redirectToMobileApp();
-  return result;
+  return signInWithRedirect(auth, googleProvider);
 }
 
 export async function logout() {
