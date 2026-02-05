@@ -35,7 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <main className={cn(
         "flex-1 w-full mx-auto",
-        isDesktop ? "max-w-7xl px-6 py-8" : "max-w-md pb-20"
+        isDesktop ? "max-w-7xl px-6 py-8" : "max-w-lg pb-20"
       )}>
         {children}
       </main>

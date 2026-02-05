@@ -67,7 +67,7 @@ export default function Home() {
                 Online Services
               </h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col md:grid md:grid-cols-2 gap-4">
               {ONLINE_SERVICES.map((service) => (
                 <ServiceCard 
                   key={service.id}
@@ -86,7 +86,7 @@ export default function Home() {
                 Resources
               </h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {RESOURCES.map((resource) => (
                 <ServiceCard 
                   key={resource.id}
