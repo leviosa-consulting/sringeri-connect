@@ -21,8 +21,43 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
+const DEEP_LINK_URL = "sevaconnect://auth";
+
+function isMobileWebView(): boolean {
+  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+  
+  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(userAgent);
+  
+  if (!isMobile) {
+    return false;
+  }
+  
+  const isWebView = 
+    /(wv|webview)/i.test(userAgent) ||
+    /\bwv\b/.test(userAgent) ||
+    (userAgent.includes('Android') && userAgent.includes('Version/')) ||
+    (window as any).ReactNativeWebView !== undefined ||
+    (window as any).flutter_inappwebview !== undefined ||
+    userAgent.includes('SevaConnect') ||
+    (userAgent.includes('iPhone') || userAgent.includes('iPad')) && !userAgent.includes('Safari') ||
+    document.referrer.includes('android-app://');
+  
+  const isStandalonePWA = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+    (window.navigator as any).standalone === true;
+  
+  return isWebView || isStandalonePWA;
+}
+
+function redirectToMobileApp(): void {
+  if (isMobileWebView()) {
+    window.location.href = DEEP_LINK_URL;
+  }
+}
+
 export async function loginWithEmail(email: string, password: string) {
-  return signInWithEmailAndPassword(auth, email, password);
+  const result = await signInWithEmailAndPassword(auth, email, password);
+  redirectToMobileApp();
+  return result;
 }
 
 export async function signUpWithEmail(email: string, password: string, displayName?: string) {
@@ -30,11 +65,14 @@ export async function signUpWithEmail(email: string, password: string, displayNa
   if (displayName && userCredential.user) {
     await updateProfile(userCredential.user, { displayName });
   }
+  redirectToMobileApp();
   return userCredential;
 }
 
 export async function loginWithGoogle() {
-  return signInWithPopup(auth, googleProvider);
+  const result = await signInWithPopup(auth, googleProvider);
+  redirectToMobileApp();
+  return result;
 }
 
 export async function logout() {
@@ -50,3 +88,5 @@ export async function getIdToken(): Promise<string | null> {
   if (!user) return null;
   return user.getIdToken();
 }
+
+export { isMobileWebView };
