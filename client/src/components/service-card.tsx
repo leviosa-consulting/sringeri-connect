@@ -16,18 +16,14 @@ export default function ServiceCard({ title, description, icon: Icon, color, isE
     return (
       <div 
         onClick={onClick}
-        className="group relative overflow-hidden bg-card rounded-2xl p-4 border border-border/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer active:scale-95 flex flex-col items-center justify-center gap-3 text-center aspect-square"
+        className="group flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform"
       >
-        <div className={cn("p-4 rounded-xl shrink-0 transition-transform group-hover:scale-110 duration-500", color)}>
-          <Icon className="h-8 w-8" />
+        <div className={cn("h-14 w-14 rounded-full flex items-center justify-center shadow-sm transition-transform group-hover:scale-110 duration-300", color)}>
+          <Icon className="h-6 w-6" />
         </div>
-        <div className="flex flex-col items-center gap-1 w-full">
-          <h3 className="font-serif font-bold text-sm text-foreground leading-tight line-clamp-2">{title}</h3>
-          {isExternal && <ExternalLink className="h-3 w-3 text-muted-foreground opacity-50 absolute top-3 right-3" />}
+        <div className="flex flex-col items-center gap-1 w-full px-1">
+          <h3 className="font-sans font-medium text-[11px] text-foreground text-center leading-tight line-clamp-2">{title}</h3>
         </div>
-        
-        {/* Decorative accent */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
       </div>
     );
   }
