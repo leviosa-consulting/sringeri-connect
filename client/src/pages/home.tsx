@@ -29,6 +29,7 @@ export default function Home() {
   const isDesktop = useMedia('(min-width: 768px)', false);
   const { profile, user } = useAuth();
   const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
+  const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
 
   const displayName = profile?.name || user?.displayName || "Devotee";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
@@ -155,23 +156,43 @@ export default function Home() {
               </PopoverTrigger>
               <PopoverContent className="w-72 p-4" align="end">
                 <div className="space-y-3">
-                  <h4 className="font-serif font-bold text-sm text-primary">Panchanga Details</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-serif font-bold text-sm text-primary">
+                      {panchangaLang === 'en' ? 'Panchanga Details' : 'ಪಂಚಾಂಗ ವಿವರಗಳು'}
+                    </h4>
+                    <div className="flex gap-1 text-xs">
+                      <button 
+                        onClick={() => setPanchangaLang('en')}
+                        className={`px-2 py-0.5 rounded ${panchangaLang === 'en' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}
+                        data-testid="button-lang-en"
+                      >
+                        EN
+                      </button>
+                      <button 
+                        onClick={() => setPanchangaLang('kn')}
+                        className={`px-2 py-0.5 rounded ${panchangaLang === 'kn' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}
+                        data-testid="button-lang-kn"
+                      >
+                        ಕನ್ನಡ
+                      </button>
+                    </div>
+                  </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Samvatsara:</span>
-                      <span className="font-medium text-right">{todayDetails.samvatsara}</span>
+                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Samvatsara:' : 'ಸಂವತ್ಸರ:'}</span>
+                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.samvatsara : todayDetails.samvatsaraK}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Chandra Masa:</span>
-                      <span className="font-medium text-right">{todayDetails.chandraMasa}</span>
+                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Chandra Masa:' : 'ಚಂದ್ರ ಮಾಸ:'}</span>
+                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.chandraMasa : todayDetails.chandraMasaK}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tithi:</span>
-                      <span className="font-medium text-right">{todayDetails.tithi}</span>
+                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Tithi:' : 'ತಿಥಿ:'}</span>
+                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.tithi : todayDetails.tithiK}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Nakshatra:</span>
-                      <span className="font-medium text-right">{todayDetails.nakshatra}</span>
+                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Nakshatra:' : 'ನಕ್ಷತ್ರ:'}</span>
+                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.nakshatra : todayDetails.nakshatraK}</span>
                     </div>
                   </div>
                 </div>
