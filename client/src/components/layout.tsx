@@ -20,7 +20,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   if (location === "/") return <>{children}</>;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col relative">
+    <div className="min-h-screen bg-background flex flex-col relative w-full overflow-x-hidden">
       
       {/* Conditionally Render Navigation */}
       {isDesktop ? (

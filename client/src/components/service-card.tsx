@@ -14,7 +14,7 @@ export default function ServiceCard({ title, description, icon: Icon, color, isE
   return (
     <div 
       onClick={onClick}
-      className="group relative overflow-hidden bg-card rounded-xl p-4 border border-border/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer active:scale-98"
+      className="group relative w-full max-w-full overflow-hidden bg-card rounded-xl p-4 border border-border/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer active:scale-98"
     >
       <div className="flex items-start gap-4">
         <div className={cn("p-3 rounded-lg shrink-0 transition-transform group-hover:scale-110 duration-500", color)}>
@@ -25,7 +25,7 @@ export default function ServiceCard({ title, description, icon: Icon, color, isE
             <h3 className="font-serif font-bold text-base text-foreground leading-tight">{title}</h3>
             {isExternal && <ExternalLink className="h-3 w-3 text-muted-foreground opacity-50 shrink-0" />}
           </div>
-          <p className="text-sm text-muted-foreground mt-1 leading-relaxed break-words">
+          <p className="text-sm text-muted-foreground mt-1 leading-relaxed whitespace-normal break-words">
             {description}
           </p>
         </div>
