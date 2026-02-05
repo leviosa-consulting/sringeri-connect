@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User } from "firebase/auth";
-import { auth, subscribeToAuthState, loginWithEmail, logout as firebaseLogout, getIdToken } from "@/lib/firebase";
+import { auth, subscribeToAuthState, loginWithEmail, signUpWithEmail, loginWithGoogle, logout as firebaseLogout, getIdToken } from "@/lib/firebase";
 
 interface UserProfile {
   uid: string;
@@ -16,6 +16,8 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, displayName?: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   getToken: () => Promise<string | null>;
 }
@@ -72,6 +74,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loginWithEmail(email, password);
   };
 
+  const signUp = async (email: string, password: string, displayName?: string) => {
+    await signUpWithEmail(email, password, displayName);
+  };
+
+  const signInWithGoogle = async () => {
+    await loginWithGoogle();
+  };
+
   const logout = async () => {
     await firebaseLogout();
     setProfile(null);
@@ -82,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, login, logout, getToken }}>
+    <AuthContext.Provider value={{ user, profile, loading, login, signUp, signInWithGoogle, logout, getToken }}>
       {children}
     </AuthContext.Provider>
   );
