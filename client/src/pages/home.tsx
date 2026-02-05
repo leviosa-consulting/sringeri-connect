@@ -3,8 +3,9 @@ import ServiceCard from "@/components/service-card";
 import { ONLINE_SERVICES, RESOURCES, NEWS_EVENTS } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
 import guruBanner from "@/assets/guru-banner.png";
@@ -121,7 +122,7 @@ export default function Home() {
 
       {/* Hindu Calendar Strip */}
       {todayDetails && (
-        <div className="mx-4 md:mx-0 py-4 px-6 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-primary/10 rounded-xl text-center space-y-3" data-testid="card-today-calendar">
+        <div className="mx-4 md:mx-0 py-4 px-6 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-primary/10 rounded-xl text-center space-y-2" data-testid="card-today-calendar">
           {/* Occasion if any */}
           {(todayDetails.occasionK || todayDetails.occasion) && (
             <div className="pb-2 border-b border-primary/10">
@@ -134,35 +135,48 @@ export default function Home() {
             </div>
           )}
           
-          {/* Panchanga Details Grid */}
-          <div className="flex flex-col gap-2 text-left">
-            {/* Samvatsara */}
-            <div className="space-y-0.5" data-testid="card-samvatsara">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Samvatsara</div>
-              {todayDetails.samvatsaraK && <div className="text-sm font-serif text-foreground">{todayDetails.samvatsaraK}</div>}
-              {todayDetails.samvatsara && <div className="text-xs text-muted-foreground">{todayDetails.samvatsara}</div>}
+          {/* Combined Panchanga Text with Info Icon */}
+          <div className="flex items-center justify-center gap-2">
+            <div className="flex-1">
+              {todayDetails.todayWebsiteKannada && (
+                <div className="text-base font-serif text-foreground" data-testid="text-calendar-kannada">{todayDetails.todayWebsiteKannada}</div>
+              )}
+              {todayDetails.todayWebsiteEnglish && (
+                <div className="text-sm text-muted-foreground" data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
+              )}
             </div>
             
-            {/* Chandra Masa */}
-            <div className="space-y-0.5" data-testid="card-chandramasa">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Chandra Masa</div>
-              {todayDetails.chandraMasaK && <div className="text-sm font-serif text-foreground">{todayDetails.chandraMasaK}</div>}
-              {todayDetails.chandraMasa && <div className="text-xs text-muted-foreground">{todayDetails.chandraMasa}</div>}
-            </div>
-            
-            {/* Tithi */}
-            <div className="space-y-0.5" data-testid="card-tithi">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tithi</div>
-              {todayDetails.tithiK && <div className="text-sm font-serif text-foreground">{todayDetails.tithiK}</div>}
-              {todayDetails.tithi && <div className="text-xs text-muted-foreground">{todayDetails.tithi}</div>}
-            </div>
-            
-            {/* Nakshatra */}
-            <div className="space-y-0.5" data-testid="card-nakshatra">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Nakshatra</div>
-              {todayDetails.nakshatraK && <div className="text-sm font-serif text-foreground">{todayDetails.nakshatraK}</div>}
-              {todayDetails.nakshatra && <div className="text-xs text-muted-foreground">{todayDetails.nakshatra}</div>}
-            </div>
+            {/* Info Icon with Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="p-1 rounded-full hover:bg-primary/10 transition-colors" data-testid="button-panchanga-info">
+                  <Info className="h-4 w-4 text-primary" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-4" align="end">
+                <div className="space-y-3">
+                  <h4 className="font-serif font-bold text-sm text-primary">Panchanga Details</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Samvatsara:</span>
+                      <span className="font-medium text-right">{todayDetails.samvatsara}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Chandra Masa:</span>
+                      <span className="font-medium text-right">{todayDetails.chandraMasa}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Tithi:</span>
+                      <span className="font-medium text-right">{todayDetails.tithi}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Nakshatra:</span>
+                      <span className="font-medium text-right">{todayDetails.nakshatra}</span>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           
           {/* Date and Link */}
