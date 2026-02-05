@@ -37,6 +37,53 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/onlineDevotee", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const token = authHeader.split(" ")[1];
+      
+      if (!token) {
+        return res.status(400).json({ error: "Token is required" });
+      }
+
+      const response = await fetch(`${SRINGERI_API_URL}/api/onlineDevotee/${token}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch devotee data" });
+      }
+
+      const text = await response.text();
+      
+      // Parse JSON, stripping any PHP warnings
+      let data;
+      try {
+        const jsonStart = text.indexOf('{');
+        if (jsonStart !== -1) {
+          data = JSON.parse(text.substring(jsonStart));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        console.error("Error parsing API response:", text);
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching devotee data:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
