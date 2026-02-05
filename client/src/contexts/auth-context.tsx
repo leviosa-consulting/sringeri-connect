@@ -12,40 +12,64 @@ interface UserProfile {
 }
 
 interface Address {
-  id?: string;
-  name?: string;
-  address?: string;
+  id?: number;
+  addresseeName?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  landmark?: string;
   city?: string;
   state?: string;
+  country?: string;
   pincode?: string;
-  phone?: string;
+  alternatePhone?: string;
 }
 
 interface SevaKarta {
-  id?: string;
+  id?: number;
   name?: string;
-  nakshatra?: string;
-  gothra?: string;
+  nameK?: string;
+  gotra?: string;
+  gotraK?: string;
+  nakshatraId?: number;
+  rashiId?: number;
+  nakshatraDisp?: string;
+  rashiDisp?: string;
 }
 
 interface PastSeva {
-  id?: string;
+  id?: number;
+  sevaRefId?: number;
   sevaName?: string;
-  date?: string;
-  amount?: number;
-  status?: string;
+  deityName?: string;
+  devoteeName?: string;
+  sevaDate?: string;
+  performedStatus?: string;
+  amount?: string;
+  performedAs?: string;
+  ref?: string;
+}
+
+interface DonationDetail {
+  id?: number;
+  categoryName?: string;
+  causeName?: string;
+  donationAmount?: number;
+  donationInTheNameOf?: string;
+  dispText?: string;
 }
 
 interface PastDonation {
-  id?: string;
-  donationType?: string;
-  date?: string;
-  amount?: number;
-  status?: string;
+  id?: number;
+  payeeName?: string;
+  totalAmount?: number;
+  donationDate?: string;
+  requireTaxReceipt?: string;
+  ref?: string;
+  details?: DonationDetail[];
 }
 
 interface PastAccommodation {
-  id?: string;
+  id?: number;
   roomType?: string;
   checkIn?: string;
   checkOut?: string;
@@ -54,6 +78,11 @@ interface PastAccommodation {
 }
 
 interface DevoteeData {
+  id?: number;
+  devoteeId?: string;
+  name?: string;
+  mobile?: string;
+  email?: string;
   addresses: Address[];
   kartas: SevaKarta[];
   pastSevas: PastSeva[];
@@ -61,11 +90,11 @@ interface DevoteeData {
   pastAccommodations: PastAccommodation[];
   sevaBookingSummary: {
     totalSeva: number;
-    totalSevaAmount: number | null;
+    totalSevaAmount: string | number | null;
   };
   donationBookingSummary: {
     totalDonation: number;
-    totalDonationAmount: number | null;
+    totalDonationAmount: string | number | null;
   };
 }
 
@@ -102,6 +131,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const data = await response.json();
         setDevoteeData(data);
+        
+        // Update profile with devotee data if available
+        if (data.name) {
+          setProfile({
+            uid: firebaseUser.uid,
+            name: data.name || firebaseUser.displayName || "Devotee",
+            email: data.email || firebaseUser.email || "",
+            phone: data.mobile,
+          });
+        }
       } else {
         console.error("Failed to fetch devotee data");
         setDevoteeData(null);

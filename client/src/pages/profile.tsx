@@ -10,8 +10,9 @@ export default function Profile() {
   const [_, setLocation] = useLocation();
   const { profile, user, logout, devoteeData, devoteeLoading, refreshDevoteeData } = useAuth();
 
-  const displayName = profile?.name || user?.displayName || "Devotee";
-  const email = profile?.email || user?.email || "";
+  const displayName = devoteeData?.name || profile?.name || user?.displayName || "Devotee";
+  const email = devoteeData?.email || profile?.email || user?.email || "";
+  const phone = devoteeData?.mobile || profile?.phone || "";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
   const handleLogout = async () => {
@@ -19,9 +20,10 @@ export default function Profile() {
     setLocation("/");
   };
 
-  const formatCurrency = (amount: number | null) => {
+  const formatCurrency = (amount: string | number | null) => {
     if (amount === null || amount === undefined) return "₹0";
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(numAmount);
   };
 
   return (
@@ -37,6 +39,7 @@ export default function Profile() {
           <div className="flex-1">
             <h1 className="text-2xl font-serif font-bold" data-testid="text-username">{displayName}</h1>
             <p className="opacity-90 text-sm" data-testid="text-email">{email}</p>
+            {phone && <p className="opacity-80 text-xs mt-1" data-testid="text-phone">{phone}</p>}
           </div>
           <Button 
             variant="ghost" 
@@ -95,21 +98,24 @@ export default function Profile() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-serif flex items-center gap-2">
                       <History className="h-4 w-4 text-primary" />
-                      Past Sevas
+                      Past Sevas ({devoteeData?.pastSevas?.length || 0})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {devoteeData?.pastSevas && devoteeData.pastSevas.length > 0 ? (
-                      <div className="space-y-3">
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
                         {devoteeData.pastSevas.map((seva, index) => (
-                          <div key={seva.id || index} className="flex justify-between items-center py-2 border-b last:border-0" data-testid={`row-seva-${seva.id || index}`}>
-                            <div>
-                              <div className="font-medium text-sm">{seva.sevaName || "Seva"}</div>
-                              <div className="text-xs text-muted-foreground">{seva.date || "N/A"}</div>
+                          <div key={seva.id || index} className="flex justify-between items-start py-2 border-b last:border-0" data-testid={`row-seva-${seva.id || index}`}>
+                            <div className="flex-1 min-w-0 pr-2">
+                              <div className="font-medium text-sm truncate">{seva.sevaName || "Seva"}</div>
+                              <div className="text-xs text-muted-foreground">{seva.deityName}</div>
+                              <div className="text-xs text-muted-foreground">For: {seva.devoteeName}</div>
+                              <div className="text-xs text-muted-foreground">{seva.sevaDate}</div>
                             </div>
-                            <div className="text-right">
-                              <div className="font-medium text-sm text-primary">{formatCurrency(seva.amount || 0)}</div>
-                              <div className="text-xs text-muted-foreground">{seva.status || "Completed"}</div>
+                            <div className="text-right shrink-0">
+                              <div className="font-medium text-sm text-primary">{formatCurrency(seva.amount || "0")}</div>
+                              <div className="text-xs text-muted-foreground">{seva.performedAs}</div>
+                              <div className="text-[10px] text-green-600">{seva.performedStatus}</div>
                             </div>
                           </div>
                         ))}
@@ -125,22 +131,40 @@ export default function Profile() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-serif flex items-center gap-2">
                       <Heart className="h-4 w-4 text-secondary" />
-                      Past Donations
+                      Past Donations ({devoteeData?.pastDonations?.length || 0})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {devoteeData?.pastDonations && devoteeData.pastDonations.length > 0 ? (
-                      <div className="space-y-3">
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
                         {devoteeData.pastDonations.map((donation, index) => (
-                          <div key={donation.id || index} className="flex justify-between items-center py-2 border-b last:border-0" data-testid={`row-donation-${donation.id || index}`}>
-                            <div>
-                              <div className="font-medium text-sm">{donation.donationType || "Donation"}</div>
-                              <div className="text-xs text-muted-foreground">{donation.date || "N/A"}</div>
+                          <div key={donation.id || index} className="py-2 border-b last:border-0" data-testid={`row-donation-${donation.id || index}`}>
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1 min-w-0 pr-2">
+                                <div className="font-medium text-sm">{donation.payeeName}</div>
+                                <div className="text-xs text-muted-foreground">{donation.donationDate}</div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="font-medium text-sm text-secondary">{formatCurrency(donation.totalAmount || 0)}</div>
+                                {donation.requireTaxReceipt === "Yes" && (
+                                  <div className="text-[10px] text-blue-600">Tax Receipt</div>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <div className="font-medium text-sm text-secondary">{formatCurrency(donation.amount || 0)}</div>
-                              <div className="text-xs text-muted-foreground">{donation.status || "Completed"}</div>
-                            </div>
+                            {donation.details && donation.details.length > 0 && (
+                              <div className="mt-2 pl-2 border-l-2 border-secondary/20 space-y-1">
+                                {donation.details.map((detail, dIdx) => (
+                                  <div key={detail.id || dIdx} className="text-xs text-muted-foreground">
+                                    <span className="font-medium text-foreground">{detail.causeName}</span>
+                                    <span className="text-secondary ml-1">({detail.categoryName})</span>
+                                    <span className="ml-1">- {formatCurrency(detail.donationAmount || 0)}</span>
+                                    {detail.donationInTheNameOf && (
+                                      <span className="block text-[10px]">In name of: {detail.donationInTheNameOf}</span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -155,7 +179,7 @@ export default function Profile() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-serif flex items-center gap-2">
                       <Home className="h-4 w-4 text-blue-600" />
-                      Past Accommodations
+                      Past Accommodations ({devoteeData?.pastAccommodations?.length || 0})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -197,7 +221,7 @@ export default function Profile() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-serif flex items-center gap-2">
                       <Users className="h-4 w-4 text-primary" />
-                      Seva Kartas
+                      Seva Kartas ({devoteeData?.kartas?.length || 0})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -205,11 +229,16 @@ export default function Profile() {
                       <div className="space-y-3">
                         {devoteeData.kartas.map((karta, index) => (
                           <div key={karta.id || index} className="py-2 border-b last:border-0" data-testid={`row-karta-${karta.id || index}`}>
-                            <div className="font-medium text-sm">{karta.name || "N/A"}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {karta.nakshatra && `Nakshatra: ${karta.nakshatra}`}
-                              {karta.nakshatra && karta.gothra && " | "}
-                              {karta.gothra && `Gothra: ${karta.gothra}`}
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <div className="font-medium text-sm">{karta.name}</div>
+                                {karta.nameK && <div className="text-xs text-muted-foreground">{karta.nameK}</div>}
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                              {karta.gotra && <div>Gothra: {karta.gotra} {karta.gotraK && `(${karta.gotraK})`}</div>}
+                              {karta.nakshatraDisp && <div>Nakshatra: {karta.nakshatraDisp}</div>}
+                              {karta.rashiDisp && <div>Rashi: {karta.rashiDisp}</div>}
                             </div>
                           </div>
                         ))}
@@ -225,7 +254,7 @@ export default function Profile() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-serif flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-green-600" />
-                      Saved Addresses
+                      Saved Addresses ({devoteeData?.addresses?.length || 0})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -233,14 +262,21 @@ export default function Profile() {
                       <div className="space-y-3">
                         {devoteeData.addresses.map((address, index) => (
                           <div key={address.id || index} className="py-2 border-b last:border-0" data-testid={`row-address-${address.id || index}`}>
-                            <div className="font-medium text-sm">{address.name || "Address"}</div>
+                            <div className="font-medium text-sm">{address.addresseeName || "Address"}</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {address.addressLine1}
+                              {address.addressLine2 && <>, {address.addressLine2}</>}
+                            </div>
+                            {address.landmark && (
+                              <div className="text-xs text-muted-foreground">Near: {address.landmark}</div>
+                            )}
                             <div className="text-xs text-muted-foreground">
-                              {[address.address, address.city, address.state, address.pincode]
+                              {[address.city, address.state, address.country, address.pincode]
                                 .filter(Boolean)
                                 .join(", ")}
                             </div>
-                            {address.phone && (
-                              <div className="text-xs text-muted-foreground mt-1">Phone: {address.phone}</div>
+                            {address.alternatePhone && (
+                              <div className="text-xs text-muted-foreground mt-1">Phone: {address.alternatePhone}</div>
                             )}
                           </div>
                         ))}
