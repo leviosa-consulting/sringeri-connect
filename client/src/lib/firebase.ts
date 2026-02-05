@@ -3,8 +3,7 @@ import {
   getAuth, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider,
   signOut, 
   onAuthStateChanged, 
@@ -22,14 +21,6 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-getRedirectResult(auth).then((result) => {
-  if (result) {
-    console.log("Signed in:", result.user);
-  }
-}).catch((error) => {
-  console.error("Auth error:", error);
-});
-
 export async function loginWithEmail(email: string, password: string) {
   return signInWithEmailAndPassword(auth, email, password);
 }
@@ -43,7 +34,7 @@ export async function signUpWithEmail(email: string, password: string, displayNa
 }
 
 export async function loginWithGoogle() {
-  return signInWithRedirect(auth, googleProvider);
+  return signInWithPopup(auth, googleProvider);
 }
 
 export async function logout() {
