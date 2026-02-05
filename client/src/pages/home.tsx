@@ -60,7 +60,7 @@ export default function Home() {
         <div className="md:col-span-8 space-y-8">
           
           {/* Online Services */}
-          <section className="space-y-4 px-6 md:px-0">
+          <section className="space-y-4 px-4 md:px-0">
             <div className="flex items-center justify-between">
               <h2 className="font-serif font-bold text-xl flex items-center gap-2">
                 <span className="w-1 h-6 bg-primary rounded-full block"></span>
@@ -68,7 +68,7 @@ export default function Home() {
               </h2>
             </div>
             {/* Mobile: 3-column Grid Icons, Desktop: Cards */}
-            <div className={`grid ${!isDesktop ? 'grid-cols-3 gap-x-4 gap-y-6' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
+            <div className={`grid ${!isDesktop ? 'grid-cols-3 gap-4' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
               {ONLINE_SERVICES.map((service) => (
                 <ServiceCard 
                   key={service.id}
@@ -81,7 +81,7 @@ export default function Home() {
           </section>
 
           {/* Resources Section */}
-          <section className="space-y-4 px-6 md:px-0">
+          <section className="space-y-4 px-4 md:px-0">
             <div className="flex items-center justify-between">
               <h2 className="font-serif font-bold text-xl flex items-center gap-2">
                 <span className="w-1 h-6 bg-secondary rounded-full block"></span>
@@ -89,7 +89,7 @@ export default function Home() {
               </h2>
             </div>
             {/* Mobile: 3-column Grid Icons, Desktop: Cards */}
-            <div className={`grid ${!isDesktop ? 'grid-cols-3 gap-x-4 gap-y-6' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'}`}>
+            <div className={`grid ${!isDesktop ? 'grid-cols-3 gap-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'}`}>
               {RESOURCES.map((resource) => (
                 <ServiceCard 
                   key={resource.id}
