@@ -4,8 +4,7 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithCredential,
   GoogleAuthProvider,
   signOut, 
   onAuthStateChanged, 
@@ -23,8 +22,16 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-function isWebView(): boolean {
+function isInReactNativeWebView(): boolean {
+  return (window as any).ReactNativeWebView !== undefined;
+}
+
+function isInWebView(): boolean {
   const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+  
+  if (isInReactNativeWebView()) {
+    return true;
+  }
   
   const isAndroidWebView = 
     userAgent.includes('wv') ||
@@ -34,21 +41,75 @@ function isWebView(): boolean {
     (userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod')) && 
     !userAgent.includes('Safari');
   
-  const hasWebViewGlobals = 
-    (window as any).ReactNativeWebView !== undefined ||
-    (window as any).flutter_inappwebview !== undefined;
+  const hasWebViewGlobals = (window as any).flutter_inappwebview !== undefined;
   
-  const hasCustomWebViewIndicator = userAgent.includes('SevaConnect');
+  const hasCustomWebViewIndicator = 
+    userAgent.includes('SevaConnect') || 
+    document.referrer.includes('sevaconnect');
   
   return isAndroidWebView || isIOSWebView || hasWebViewGlobals || hasCustomWebViewIndicator;
 }
 
-getRedirectResult(auth).then((result) => {
-  if (result) {
-    console.log("Signed in via redirect:", result.user);
+function requestNativeGoogleSignIn(): void {
+  if ((window as any).ReactNativeWebView) {
+    (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'GOOGLE_SIGNIN_REQUEST' }));
   }
-}).catch((error) => {
-  console.error("Auth redirect error:", error);
+}
+
+type NativeAuthCallback = {
+  onSuccess?: (user: User) => void;
+  onError?: (error: Error) => void;
+  onCancelled?: () => void;
+};
+
+let pendingNativeAuthCallback: NativeAuthCallback | null = null;
+
+async function handleGoogleAuthResponse(payload: { accessToken?: string; idToken: string; expiresIn?: number }) {
+  try {
+    const credential = GoogleAuthProvider.credential(payload.idToken, payload.accessToken);
+    const result = await signInWithCredential(auth, credential);
+    console.log("Signed in via native Google:", result.user);
+    if (pendingNativeAuthCallback?.onSuccess) {
+      pendingNativeAuthCallback.onSuccess(result.user);
+    }
+    pendingNativeAuthCallback = null;
+    return result;
+  } catch (error) {
+    console.error("Error signing in with native credential:", error);
+    if (pendingNativeAuthCallback?.onError) {
+      pendingNativeAuthCallback.onError(error as Error);
+    }
+    pendingNativeAuthCallback = null;
+    throw error;
+  }
+}
+
+window.addEventListener('message', (event) => {
+  let data = event.data;
+  
+  if (typeof data === 'string') {
+    try {
+      data = JSON.parse(data);
+    } catch {
+      return;
+    }
+  }
+  
+  if (data.type === 'GOOGLE_SIGNIN_SUCCESS') {
+    handleGoogleAuthResponse(data.payload);
+  } else if (data.type === 'GOOGLE_SIGNIN_ERROR') {
+    console.error("Native Google sign-in error:", data.payload?.error);
+    if (pendingNativeAuthCallback?.onError) {
+      pendingNativeAuthCallback.onError(new Error(data.payload?.error || 'Native sign-in failed'));
+    }
+    pendingNativeAuthCallback = null;
+  } else if (data.type === 'GOOGLE_SIGNIN_CANCELLED') {
+    console.log("Native Google sign-in cancelled");
+    if (pendingNativeAuthCallback?.onCancelled) {
+      pendingNativeAuthCallback.onCancelled();
+    }
+    pendingNativeAuthCallback = null;
+  }
 });
 
 export async function loginWithEmail(email: string, password: string) {
@@ -63,10 +124,13 @@ export async function signUpWithEmail(email: string, password: string, displayNa
   return userCredential;
 }
 
-export async function loginWithGoogle() {
-  if (isWebView()) {
-    return signInWithRedirect(auth, googleProvider);
+export async function loginWithGoogle(callbacks?: NativeAuthCallback) {
+  if (isInReactNativeWebView()) {
+    pendingNativeAuthCallback = callbacks || null;
+    requestNativeGoogleSignIn();
+    return;
   }
+  
   return signInWithPopup(auth, googleProvider);
 }
 
@@ -84,4 +148,4 @@ export async function getIdToken(): Promise<string | null> {
   return user.getIdToken();
 }
 
-export { isWebView };
+export { isInWebView, isInReactNativeWebView };
