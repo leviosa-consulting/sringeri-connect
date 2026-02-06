@@ -402,14 +402,6 @@ export default function Home() {
                             {item.description && (
                               <p className="text-xs text-muted-foreground line-clamp-2 whitespace-normal leading-relaxed">{item.description}</p>
                             )}
-                            <button
-                              className="text-xs font-bold text-white bg-[#e8a735] hover:bg-[#d4962e] px-4 py-1.5 rounded transition-colors mt-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                item.url && window.open(item.url, "_blank");
-                              }}
-                              data-testid={`button-learn-more-event-${item.id}`}
-                            >LEARN MORE</button>
                           </div>
                         </div>
                       ))}
@@ -452,14 +444,6 @@ export default function Home() {
                             {item.description && (
                               <p className="text-xs text-muted-foreground line-clamp-3 whitespace-normal leading-relaxed">{item.description}</p>
                             )}
-                            <button
-                              className="text-xs font-bold text-white bg-[#e8a735] hover:bg-[#d4962e] px-4 py-1.5 rounded transition-colors mt-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                item.url && window.open(item.url, "_blank");
-                              }}
-                              data-testid={`button-learn-more-event-desktop-${item.id}`}
-                            >LEARN MORE</button>
                           </div>
                         </div>
                       ))}
