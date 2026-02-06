@@ -268,6 +268,78 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/announcements", async (req, res) => {
+    try {
+      if (!sringeriDb) {
+        return res.status(503).json({ error: "Sringeri.net Firestore not configured" });
+      }
+
+      const limitNum = Math.min(parseInt(req.query.limit as string) || 10, 20);
+      const colRef = collection(sringeriDb, "announcements");
+      const snapshot = await getDocs(colRef);
+
+      const announcements: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const desc = data.description ? data.description.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').trim().substring(0, 300) : "";
+        if (data.title && desc) {
+          announcements.push({
+            id: doc.id,
+            title: (data.title || "").replace(/&amp;/g, '&'),
+            description: desc,
+            slug: data.slug || "",
+            url: data.slug ? `https://www.sringeri.net/announcements/${data.slug}` : null,
+          });
+        }
+      });
+
+      res.json({ announcements: announcements.slice(0, limitNum) });
+    } catch (error) {
+      console.error("Error fetching announcements:", error);
+      res.status(500).json({ error: "Failed to fetch announcements" });
+    }
+  });
+
+  app.get("/api/youtube-videos", async (req, res) => {
+    try {
+      const channelId = "UCC7AKcYvtFdlubqwW6Ave2Q";
+      const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+      const response = await fetch(feedUrl);
+      if (!response.ok) {
+        return res.status(502).json({ error: "Failed to fetch YouTube feed" });
+      }
+      const xml = await response.text();
+
+      const videos: any[] = [];
+      const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
+      let match;
+      while ((match = entryRegex.exec(xml)) !== null && videos.length < 10) {
+        const entry = match[1];
+        const videoId = entry.match(/<yt:videoId>(.*?)<\/yt:videoId>/)?.[1] || "";
+        const title = entry.match(/<title>(.*?)<\/title>/)?.[1] || "";
+        const published = entry.match(/<published>(.*?)<\/published>/)?.[1] || "";
+        const thumbnail = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+        const desc = entry.match(/<media:description>([\s\S]*?)<\/media:description>/)?.[1]?.substring(0, 200) || "";
+
+        if (videoId) {
+          videos.push({
+            videoId,
+            title: title.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
+            published,
+            date: published ? new Date(published).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+            thumbnail,
+            url: `https://www.youtube.com/watch?v=${videoId}`,
+          });
+        }
+      }
+
+      res.json({ videos });
+    } catch (error) {
+      console.error("Error fetching YouTube videos:", error);
+      res.status(500).json({ error: "Failed to fetch YouTube videos" });
+    }
+  });
+
   app.get("/api/sringeri-events", async (req, res) => {
     try {
       if (!sringeriDb) {

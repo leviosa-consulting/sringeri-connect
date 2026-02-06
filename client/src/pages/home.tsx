@@ -3,7 +3,7 @@ import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Search, Info } from "lucide-react";
+import { Bell, Search, Info, Megaphone, Play, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMedia } from "react-use";
@@ -23,6 +23,23 @@ interface SringeriEvent {
   slug: string;
   isOnline: boolean;
   showLiveStream: boolean;
+}
+
+interface Announcement {
+  id: string;
+  title: string;
+  description: string;
+  slug: string;
+  url: string | null;
+}
+
+interface YouTubeVideo {
+  videoId: string;
+  title: string;
+  published: string;
+  date: string | null;
+  thumbnail: string;
+  url: string;
 }
 
 interface TodayDetails {
@@ -47,6 +64,8 @@ export default function Home() {
   const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
   const [sringeriEvents, setSringeriEvents] = useState<SringeriEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [youtubeVideos, setYoutubeVideos] = useState<YouTubeVideo[]>([]);
   const displayName = profile?.name || user?.displayName || "Devotee";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
@@ -88,6 +107,36 @@ export default function Home() {
     };
     
     fetchEvents();
+  }, []);
+
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        const response = await fetch('/api/announcements?limit=10');
+        if (response.ok) {
+          const data = await response.json();
+          setAnnouncements(data.announcements || []);
+        }
+      } catch (error) {
+        console.error("Error fetching announcements:", error);
+      }
+    };
+    fetchAnnouncements();
+  }, []);
+
+  useEffect(() => {
+    const fetchYoutubeVideos = async () => {
+      try {
+        const response = await fetch('/api/youtube-videos');
+        if (response.ok) {
+          const data = await response.json();
+          setYoutubeVideos(data.videos || []);
+        }
+      } catch (error) {
+        console.error("Error fetching YouTube videos:", error);
+      }
+    };
+    fetchYoutubeVideos();
   }, []);
 
   const formatTodayDate = () => {
@@ -297,10 +346,10 @@ export default function Home() {
         {/* Sidebar / Secondary Content */}
         <div className="md:col-span-4 space-y-8">
            
-           {/* Happenings / Events */}
+           {/* Recent Events */}
            <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif font-bold text-xl">Happenings</h2>
+              <h2 className="font-serif font-bold text-xl">Recent Events</h2>
               <a 
                 href="/events"
                 className="text-sm text-primary hover:underline cursor-pointer"
@@ -392,6 +441,106 @@ export default function Home() {
 
           </section>
         </div>
+
+        {announcements.length > 0 && (
+          <div className="mt-6 px-4 md:px-6">
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Megaphone className="w-5 h-5 text-[#ff6600]" />
+                  <h2 className="text-lg font-bold font-serif" data-testid="text-announcements-heading">Announcements</h2>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                {announcements.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-xl border border-border/50 bg-card hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => item.url && window.open(item.url, "_blank")}
+                    data-testid={`card-announcement-${item.id}`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-serif font-bold text-sm line-clamp-2">{item.title}</h3>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1 leading-relaxed">{item.description}</p>
+                      </div>
+                      {item.url && (
+                        <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {youtubeVideos.length > 0 && (
+          <div className="mt-6 px-4 md:px-6 pb-6">
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Play className="w-5 h-5 text-red-600" />
+                  <h2 className="text-lg font-bold font-serif" data-testid="text-youtube-heading">Latest Videos</h2>
+                </div>
+                <a href="https://www.youtube.com/@SharadaPeetham" target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium" data-testid="link-youtube-channel">View Channel</a>
+              </div>
+
+              <div className="md:hidden">
+                <ScrollArea className="w-full whitespace-nowrap">
+                  <div className="flex gap-3 pb-2">
+                    {youtubeVideos.map((video) => (
+                      <div
+                        key={video.videoId}
+                        className="w-[260px] shrink-0 rounded-xl border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                        onClick={() => window.open(video.url, "_blank")}
+                        data-testid={`card-video-${video.videoId}`}
+                      >
+                        <div className="relative">
+                          <img src={video.thumbnail} alt={video.title} className="w-full h-[146px] object-cover" />
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center">
+                              <Play className="w-5 h-5 text-white fill-white" />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-3">
+                          <h3 className="font-serif font-bold text-xs line-clamp-2 whitespace-normal">{video.title}</h3>
+                          {video.date && <p className="text-[10px] text-muted-foreground mt-1">{video.date}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <ScrollBar orientation="horizontal" className="hidden" />
+                </ScrollArea>
+              </div>
+
+              <div className="hidden md:grid md:grid-cols-3 gap-4">
+                {youtubeVideos.slice(0, 6).map((video) => (
+                  <div
+                    key={video.videoId}
+                    className="rounded-xl border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => window.open(video.url, "_blank")}
+                    data-testid={`card-video-desktop-${video.videoId}`}
+                  >
+                    <div className="relative">
+                      <img src={video.thumbnail} alt={video.title} className="w-full h-[140px] object-cover" />
+                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                        <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center">
+                          <Play className="w-5 h-5 text-white fill-white" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-serif font-bold text-sm line-clamp-2">{video.title}</h3>
+                      {video.date && <p className="text-xs text-muted-foreground mt-1">{video.date}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
 
       </div>
     </div>
