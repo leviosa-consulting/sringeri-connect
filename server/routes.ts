@@ -127,9 +127,9 @@ export async function registerRoutes(
           ? new Date(dateSeconds * 1000).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
           : null;
 
-        const firstImage = Array.isArray(data.images) && data.images.length > 0 ? data.images[0] : null;
-        const imageUrl = firstImage
-          ? (firstImage.startsWith('http') ? firstImage : `${sringeriBaseUrl}/${firstImage}`)
+        const rawImage = data.featuredImage || null;
+        const imageUrl = rawImage
+          ? (rawImage.startsWith('http') ? rawImage : `https://files.sringeri.net/${rawImage}`)
           : null;
 
         const eventUrl = data.slug ? `${sringeriBaseUrl}/events/${data.slug}` : null;
