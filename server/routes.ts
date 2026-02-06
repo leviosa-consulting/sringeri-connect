@@ -135,9 +135,20 @@ export async function registerRoutes(
         return res.json({ article: null });
       }
 
+      const random = req.query.random === "true";
+      const excludeId = req.query.exclude as string | undefined;
+
+      let index: number;
+      if (random) {
+        let pool = excludeId ? pages.filter(p => p.id !== excludeId) : pages;
+        if (pool.length === 0) pool = pages;
+        index = Math.floor(Math.random() * pool.length);
+        return res.json({ article: pool[index] });
+      }
+
       const today = new Date();
       const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
-      const index = dayOfYear % pages.length;
+      index = dayOfYear % pages.length;
       
       res.json({ article: pages[index] });
     } catch (error) {
