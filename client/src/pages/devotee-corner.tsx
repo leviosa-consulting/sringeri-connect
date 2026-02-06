@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Landmark, BookOpen, Mic } from "lucide-react";
 
 interface Article {
   id: string;
@@ -79,23 +79,13 @@ export default function DevoteeCorner() {
 
       {/* Know About Peetham */}
       <Card className="border-l-4 border-l-primary shadow-sm" data-testid="card-know-about-peetham">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardHeader className="pb-3">
           <CardTitle className="font-serif text-xl flex items-center gap-2">
-            <span className="text-2xl">🏛️</span> Know About Peetham
+            <Landmark className="h-5 w-5 text-primary shrink-0" />
+            Know About Peetham
           </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => fetchArticle(true, article?.id)}
-            disabled={articleLoading}
-            className="text-primary hover:text-primary/80"
-            data-testid="button-show-another-article"
-          >
-            <RefreshCw className={`h-4 w-4 mr-1 ${articleLoading ? "animate-spin" : ""}`} />
-            Show Another
-          </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-0">
           {article ? (
             <a href={article.url} target="_blank" rel="noopener noreferrer" className="block group" data-testid="link-peetham-article">
               <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors" data-testid="text-article-title">{article.title}</h3>
@@ -110,27 +100,30 @@ export default function DevoteeCorner() {
             <div className="py-4 text-center text-muted-foreground">No article available.</div>
           )}
         </CardContent>
+        <div className="border-t mt-3 px-6 py-2 flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => fetchArticle(true, article?.id)}
+            disabled={articleLoading}
+            className="text-muted-foreground hover:text-primary text-xs"
+            data-testid="button-show-another-article"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${articleLoading ? "animate-spin" : ""}`} />
+            Show Another
+          </Button>
+        </div>
       </Card>
 
       {/* Stotra of the Day */}
       <Card className="border-l-4 border-l-orange-500 shadow-sm" data-testid="card-stotra-of-the-day">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardHeader className="pb-3">
           <CardTitle className="font-serif text-xl flex items-center gap-2">
-            <span className="text-2xl">🕉️</span> Stotra of the Day
+            <BookOpen className="h-5 w-5 text-orange-500 shrink-0" />
+            Stotra of the Day
           </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => fetchStotra(true, stotra?.id)}
-            disabled={stotraLoading}
-            className="text-primary hover:text-primary/80"
-            data-testid="button-show-another-stotra"
-          >
-            <RefreshCw className={`h-4 w-4 mr-1 ${stotraLoading ? "animate-spin" : ""}`} />
-            Show Another
-          </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-0">
           {stotra ? (
             <a href={stotra.url} target="_blank" rel="noopener noreferrer" className="block group" data-testid="link-stotra">
               <h3 className="font-bold text-lg mb-1 group-hover:text-primary transition-colors font-serif" data-testid="text-stotra-title">{stotra.title}</h3>
@@ -154,27 +147,30 @@ export default function DevoteeCorner() {
             <div className="py-4 text-center text-muted-foreground">No stotra available.</div>
           )}
         </CardContent>
+        <div className="border-t mt-3 px-6 py-2 flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => fetchStotra(true, stotra?.id)}
+            disabled={stotraLoading}
+            className="text-muted-foreground hover:text-primary text-xs"
+            data-testid="button-show-another-stotra"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${stotraLoading ? "animate-spin" : ""}`} />
+            Show Another
+          </Button>
+        </div>
       </Card>
 
       {/* Jagadguru Anugraha */}
       <Card className="border-l-4 border-l-amber-600 shadow-sm" data-testid="card-jagadguru-anugraha">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardHeader className="pb-3">
           <CardTitle className="font-serif text-xl flex items-center gap-2">
-            <span className="text-2xl">🙏</span> Jagadguru Anugraha
+            <Mic className="h-5 w-5 text-amber-600 shrink-0" />
+            Jagadguru Anugraha
           </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => fetchDiscourse(true, discourse?.id)}
-            disabled={discourseLoading}
-            className="text-primary hover:text-primary/80"
-            data-testid="button-show-another-discourse"
-          >
-            <RefreshCw className={`h-4 w-4 mr-1 ${discourseLoading ? "animate-spin" : ""}`} />
-            Show Another
-          </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-0">
           {discourse ? (
             <a href={discourse.url} target="_blank" rel="noopener noreferrer" className="block group" data-testid="link-discourse">
               <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors" data-testid="text-discourse-title">{discourse.title}</h3>
@@ -196,6 +192,19 @@ export default function DevoteeCorner() {
             <div className="py-4 text-center text-muted-foreground">No discourse available.</div>
           )}
         </CardContent>
+        <div className="border-t mt-3 px-6 py-2 flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => fetchDiscourse(true, discourse?.id)}
+            disabled={discourseLoading}
+            className="text-muted-foreground hover:text-primary text-xs"
+            data-testid="button-show-another-discourse"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${discourseLoading ? "animate-spin" : ""}`} />
+            Show Another
+          </Button>
+        </div>
       </Card>
 
     </div>
