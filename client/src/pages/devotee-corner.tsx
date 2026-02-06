@@ -1,11 +1,37 @@
+import { useEffect, useState } from "react";
 import { DEVOTEE_ACTIVITIES } from "@/lib/constants";
 import ServiceCard from "@/components/service-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, Star, Medal } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+interface ArticleOfTheDay {
+  id: string;
+  title: string;
+  description: string;
+  slug: string;
+  featuredImage: string | null;
+  url: string;
+}
+
 export default function DevoteeCorner() {
-  
+  const [article, setArticle] = useState<ArticleOfTheDay | null>(null);
+
+  useEffect(() => {
+    const fetchArticle = async () => {
+      try {
+        const response = await fetch('/api/article-of-the-day');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.article) setArticle(data.article);
+        }
+      } catch (error) {
+        console.error("Error fetching article of the day:", error);
+      }
+    };
+    fetchArticle();
+  }, []);
+
   const leaderboard = [
     { rank: 1, name: "Rahul V.", points: 2450 },
     { rank: 2, name: "Priya S.", points: 2100 },
@@ -57,18 +83,43 @@ export default function DevoteeCorner() {
               <CardTitle className="font-serif text-xl">Article of the Day</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-4 items-start">
-                 <div className="h-24 w-24 bg-secondary/10 rounded-lg shrink-0 flex items-center justify-center">
+              {article ? (
+                <a
+                  href={article.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block group"
+                  data-testid="card-article-of-the-day"
+                >
+                  <div className="flex gap-4 items-start">
+                    {article.featuredImage ? (
+                      <div className="h-24 w-24 rounded-lg shrink-0 overflow-hidden">
+                        <img src={article.featuredImage} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      </div>
+                    ) : (
+                      <div className="h-24 w-24 bg-secondary/10 rounded-lg shrink-0 flex items-center justify-center">
+                        <span className="text-3xl">📖</span>
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">{article.title}</h3>
+                      {article.description && (
+                        <p className="text-muted-foreground line-clamp-3">{article.description}</p>
+                      )}
+                      <span className="text-primary font-medium text-sm mt-2 inline-block group-hover:underline">Read Full Article</span>
+                    </div>
+                  </div>
+                </a>
+              ) : (
+                <div className="flex gap-4 items-start">
+                  <div className="h-24 w-24 bg-secondary/10 rounded-lg shrink-0 flex items-center justify-center">
                     <span className="text-3xl">📖</span>
-                 </div>
-                 <div>
-                   <h3 className="font-bold text-lg mb-2">The Importance of Dharma</h3>
-                   <p className="text-muted-foreground line-clamp-3">
-                     Dharma is the foundation of life. Jagadguru explains how adherence to Dharma leads to both worldly prosperity and spiritual liberation...
-                   </p>
-                   <button className="text-primary font-medium text-sm mt-2 hover:underline">Read Full Article</button>
-                 </div>
-              </div>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Loading today's article...</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

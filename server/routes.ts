@@ -113,8 +113,17 @@ export async function registerRoutes(
 
       const sringeriBaseUrl = "https://www.sringeri.net";
       const colRef = collection(sringeriDb, "pages");
+      const debugSnapshot = await getDocs(query(colRef, limit(5)));
+      const debugMenus: string[] = [];
+      debugSnapshot.forEach((doc) => {
+        const data = doc.data();
+        debugMenus.push(`id=${doc.id} mainMenu=${data.mainMenu} slug=${data.slug}`);
+      });
+      console.log("DEBUG pages collection sample:", debugMenus);
+
       const q = query(colRef, where("mainMenu", "==", "About"));
       const snapshot = await getDocs(q);
+      console.log("DEBUG pages with mainMenu=About:", snapshot.size);
 
       const pages: any[] = [];
       snapshot.forEach((doc) => {

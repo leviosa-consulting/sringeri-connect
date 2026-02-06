@@ -3,7 +3,7 @@ import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Search, Info, Newspaper } from "lucide-react";
+import { Bell, Search, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMedia } from "react-use";
@@ -23,15 +23,6 @@ interface SringeriEvent {
   slug: string;
   isOnline: boolean;
   showLiveStream: boolean;
-}
-
-interface ArticleOfTheDay {
-  id: string;
-  title: string;
-  description: string;
-  slug: string;
-  featuredImage: string | null;
-  url: string;
 }
 
 interface TodayDetails {
@@ -56,8 +47,6 @@ export default function Home() {
   const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
   const [sringeriEvents, setSringeriEvents] = useState<SringeriEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
-  const [articleOfTheDay, setArticleOfTheDay] = useState<ArticleOfTheDay | null>(null);
-
   const displayName = profile?.name || user?.displayName || "Devotee";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
@@ -81,21 +70,6 @@ export default function Home() {
     };
     
     fetchTodayDetails();
-  }, []);
-
-  useEffect(() => {
-    const fetchArticle = async () => {
-      try {
-        const response = await fetch('/api/article-of-the-day');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.article) setArticleOfTheDay(data.article);
-        }
-      } catch (error) {
-        console.error("Error fetching article of the day:", error);
-      }
-    };
-    fetchArticle();
   }, []);
 
   useEffect(() => {
@@ -317,46 +291,6 @@ export default function Home() {
               ))}
             </div>
           </section>
-
-          {articleOfTheDay && (
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-serif font-bold text-lg flex items-center gap-2">
-                  <span className="w-1 h-5 bg-amber-500 rounded-full block"></span>
-                  Article of the Day
-                </h2>
-              </div>
-              <a
-                href={articleOfTheDay.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-xl overflow-hidden border border-border/50 shadow-sm hover:shadow-md transition-shadow group cursor-pointer bg-card"
-                data-testid="card-article-of-the-day"
-              >
-                {articleOfTheDay.featuredImage && (
-                  <div className="h-40 overflow-hidden relative">
-                    <img 
-                      src={articleOfTheDay.featuredImage} 
-                      alt={articleOfTheDay.title} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                    />
-                  </div>
-                )}
-                <div className="p-4 space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-amber-600 font-medium">
-                    <Newspaper className="h-3.5 w-3.5" />
-                    sringeri.net
-                  </div>
-                  <h3 className="font-serif font-bold text-base leading-snug">{articleOfTheDay.title}</h3>
-                  {articleOfTheDay.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                      {articleOfTheDay.description}
-                    </p>
-                  )}
-                </div>
-              </a>
-            </section>
-          )}
 
         </div>
 
