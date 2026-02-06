@@ -112,32 +112,21 @@ export async function registerRoutes(
       }
 
       const sringeriBaseUrl = "https://www.sringeri.net";
-      const colRef = collection(sringeriDb, "pages");
-      const debugSnapshot = await getDocs(query(colRef, limit(5)));
-      const debugMenus: string[] = [];
-      debugSnapshot.forEach((doc) => {
-        const data = doc.data();
-        debugMenus.push(`id=${doc.id} mainMenu=${data.mainMenu} slug=${data.slug}`);
-      });
-      console.log("DEBUG pages collection sample:", debugMenus);
-
+      const colRef = collection(sringeriDb, "temporaryPages");
       const q = query(colRef, where("mainMenu", "==", "About"));
       const snapshot = await getDocs(q);
-      console.log("DEBUG pages with mainMenu=About:", snapshot.size);
 
       const pages: any[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
-        if (data.slug) {
+        if (data.link) {
+          const desc = data.content ? data.content.replace(/<[^>]*>/g, '').trim().substring(0, 200) : "";
           pages.push({
             id: doc.id,
             title: data.title || "",
-            description: data.description ? data.description.replace(/<[^>]*>/g, '').substring(0, 200) : "",
-            slug: data.slug,
-            featuredImage: data.featuredImage
-              ? (data.featuredImage.startsWith('http') ? data.featuredImage : `https://files.sringeri.net/${data.featuredImage}`)
-              : null,
-            url: `${sringeriBaseUrl}/${data.slug}`,
+            description: desc,
+            link: data.link,
+            url: `${sringeriBaseUrl}/${data.link}`,
           });
         }
       });

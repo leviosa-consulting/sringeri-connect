@@ -9,8 +9,7 @@ interface ArticleOfTheDay {
   id: string;
   title: string;
   description: string;
-  slug: string;
-  featuredImage: string | null;
+  link: string;
   url: string;
 }
 
@@ -92,15 +91,9 @@ export default function DevoteeCorner() {
                   data-testid="card-article-of-the-day"
                 >
                   <div className="flex gap-4 items-start">
-                    {article.featuredImage ? (
-                      <div className="h-24 w-24 rounded-lg shrink-0 overflow-hidden">
-                        <img src={article.featuredImage} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      </div>
-                    ) : (
-                      <div className="h-24 w-24 bg-secondary/10 rounded-lg shrink-0 flex items-center justify-center">
-                        <span className="text-3xl">📖</span>
-                      </div>
-                    )}
+                    <div className="h-24 w-24 bg-secondary/10 rounded-lg shrink-0 flex items-center justify-center">
+                      <span className="text-3xl">📖</span>
+                    </div>
                     <div>
                       <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">{article.title}</h3>
                       {article.description && (
