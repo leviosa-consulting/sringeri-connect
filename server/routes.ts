@@ -105,6 +105,49 @@ export async function registerRoutes(
     res.json({ status: "ok" });
   });
 
+  app.get("/api/article-of-the-day", async (req, res) => {
+    try {
+      if (!sringeriDb) {
+        return res.status(503).json({ error: "Sringeri.net Firestore not configured" });
+      }
+
+      const sringeriBaseUrl = "https://www.sringeri.net";
+      const colRef = collection(sringeriDb, "pages");
+      const q = query(colRef, where("mainMenu", "==", "About"));
+      const snapshot = await getDocs(q);
+
+      const pages: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.slug) {
+          pages.push({
+            id: doc.id,
+            title: data.title || "",
+            description: data.description ? data.description.replace(/<[^>]*>/g, '').substring(0, 200) : "",
+            slug: data.slug,
+            featuredImage: data.featuredImage
+              ? (data.featuredImage.startsWith('http') ? data.featuredImage : `https://files.sringeri.net/${data.featuredImage}`)
+              : null,
+            url: `${sringeriBaseUrl}/${data.slug}`,
+          });
+        }
+      });
+
+      if (pages.length === 0) {
+        return res.json({ article: null });
+      }
+
+      const today = new Date();
+      const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+      const index = dayOfYear % pages.length;
+      
+      res.json({ article: pages[index] });
+    } catch (error) {
+      console.error("Error fetching article of the day:", error);
+      res.status(500).json({ error: "Failed to fetch article of the day" });
+    }
+  });
+
   app.get("/api/sringeri-events", async (req, res) => {
     try {
       if (!sringeriDb) {
