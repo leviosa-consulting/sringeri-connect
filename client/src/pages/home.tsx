@@ -374,22 +374,36 @@ export default function Home() {
                       {sringeriEvents.map((item) => (
                         <div 
                           key={item.id} 
-                          className="w-[220px] shrink-0 rounded-xl border border-border/50 bg-card flex flex-col justify-between hover:shadow-md transition-shadow"
+                          className="w-[280px] shrink-0 overflow-hidden border border-border/50 bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                           onClick={() => item.url && window.open(item.url, "_blank")}
                           data-testid={`card-event-${item.id}`}
                         >
-                          <div className="p-4 flex-1">
-                            {item.date && (
-                              <p className="text-xs font-semibold text-[#ff6600] mb-2 whitespace-normal">{item.date}</p>
-                            )}
-                            <h3 className="font-serif font-bold text-sm line-clamp-3 whitespace-normal leading-snug">{item.title}</h3>
+                          {item.featuredImage && (
+                            <div className="h-40 overflow-hidden relative">
+                              <img src={item.featuredImage} alt={item.title} className="w-full h-full object-cover" />
+                              {item.date && (
+                                <div className="absolute bottom-0 left-0">
+                                  <span className="inline-block bg-[#e8a735] text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1">
+                                    {item.date}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {!item.featuredImage && item.date && (
+                            <div className="px-4 pt-4">
+                              <span className="inline-block bg-[#e8a735] text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1">
+                                {item.date}
+                              </span>
+                            </div>
+                          )}
+                          <div className="p-4 space-y-2">
+                            <h3 className="font-serif font-bold text-sm leading-tight line-clamp-2 whitespace-normal">{item.title}</h3>
                             {item.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-3 mt-2 whitespace-normal leading-relaxed">{item.description}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-2 whitespace-normal leading-relaxed">{item.description}</p>
                             )}
-                          </div>
-                          <div className="px-4 pb-4">
                             <button
-                              className="text-xs font-bold text-white bg-neutral-700 hover:bg-neutral-800 px-4 py-1.5 rounded transition-colors"
+                              className="text-xs font-bold text-white bg-[#e8a735] hover:bg-[#d4962e] px-4 py-1.5 rounded transition-colors mt-1"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 item.url && window.open(item.url, "_blank");
@@ -410,22 +424,36 @@ export default function Home() {
                       {sringeriEvents.map((item) => (
                         <div
                           key={item.id}
-                          className="w-[260px] shrink-0 rounded-xl border border-border/50 bg-card flex flex-col justify-between hover:shadow-md transition-shadow"
+                          className="w-[300px] shrink-0 overflow-hidden border border-border/50 bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                           onClick={() => item.url && window.open(item.url, "_blank")}
                           data-testid={`card-event-desktop-${item.id}`}
                         >
-                          <div className="p-5 flex-1">
-                            {item.date && (
-                              <p className="text-xs font-semibold text-[#ff6600] mb-2 whitespace-normal">{item.date}</p>
-                            )}
-                            <h3 className="font-serif font-bold text-sm line-clamp-3 whitespace-normal leading-snug">{item.title}</h3>
+                          {item.featuredImage && (
+                            <div className="h-44 overflow-hidden relative">
+                              <img src={item.featuredImage} alt={item.title} className="w-full h-full object-cover" />
+                              {item.date && (
+                                <div className="absolute bottom-0 left-0">
+                                  <span className="inline-block bg-[#e8a735] text-white text-xs font-bold uppercase tracking-wide px-3 py-1.5">
+                                    {item.date}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {!item.featuredImage && item.date && (
+                            <div className="px-4 pt-4">
+                              <span className="inline-block bg-[#e8a735] text-white text-xs font-bold uppercase tracking-wide px-3 py-1.5">
+                                {item.date}
+                              </span>
+                            </div>
+                          )}
+                          <div className="p-4 space-y-2">
+                            <h3 className="font-serif font-bold text-base leading-tight line-clamp-2 whitespace-normal">{item.title}</h3>
                             {item.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-4 mt-2 whitespace-normal leading-relaxed">{item.description}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-3 whitespace-normal leading-relaxed">{item.description}</p>
                             )}
-                          </div>
-                          <div className="px-5 pb-4">
                             <button
-                              className="text-xs font-bold text-white bg-neutral-700 hover:bg-neutral-800 px-4 py-1.5 rounded transition-colors"
+                              className="text-xs font-bold text-white bg-[#e8a735] hover:bg-[#d4962e] px-4 py-1.5 rounded transition-colors mt-1"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 item.url && window.open(item.url, "_blank");
