@@ -73,31 +73,31 @@ export default function EventsNews() {
         {events.map((item) => (
           <Card 
             key={item.id} 
-            className="overflow-hidden border-border/50 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+            className="rounded-none overflow-hidden border-border/50 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => item.url && window.open(item.url, "_blank")}
             data-testid={`card-event-${item.id}`}
           >
             {item.featuredImage && (
               <div className="h-48 overflow-hidden relative">
                 <img src={item.featuredImage} alt={item.title} className="w-full h-full object-cover" />
+                {item.date && (
+                  <div className="absolute bottom-0 left-0">
+                    <span className="inline-block bg-[#e8a735] text-white text-xs font-bold uppercase tracking-wide px-3 py-1.5">
+                      {item.date}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+            {!item.featuredImage && item.date && (
+              <div className="px-4 pt-4">
+                <span className="inline-block bg-[#e8a735] text-white text-xs font-bold uppercase tracking-wide px-3 py-1.5">
+                  {item.date}
+                </span>
               </div>
             )}
             <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                {item.location && (
-                  <div className="flex items-center text-xs text-primary font-medium">
-                    <MapPin className="mr-1 h-3 w-3" />
-                    {item.location}
-                  </div>
-                )}
-                {item.date && (
-                  <div className="flex items-center text-xs text-muted-foreground">
-                    <CalendarIcon className="mr-1 h-3 w-3" />
-                    {item.date}
-                  </div>
-                )}
-              </div>
-              <CardTitle className="font-serif text-lg leading-tight mt-2">{item.title}</CardTitle>
+              <CardTitle className="font-serif text-lg leading-tight">{item.title}</CardTitle>
             </CardHeader>
             {item.description && (
               <CardContent>
