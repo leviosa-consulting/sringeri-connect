@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Landmark, BookOpen, Mic } from "lucide-react";
+import { RefreshCw, Landmark, BookOpen, Mic, Trophy, Medal, Star } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface Article {
   id: string;
@@ -205,6 +206,71 @@ export default function DevoteeCorner() {
             Show Another
           </Button>
         </div>
+      </Card>
+
+      {/* Your Score & Leaderboard */}
+      <Card className="border-l-4 border-l-yellow-500 shadow-sm" data-testid="card-score-leaderboard">
+        <CardHeader className="pb-3">
+          <CardTitle className="font-serif text-xl flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-yellow-500 shrink-0" />
+            Your Score
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg border border-yellow-100">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Points</p>
+              <p className="text-3xl font-bold text-yellow-600" data-testid="text-your-score">0</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Rank</p>
+              <p className="text-xl font-semibold text-amber-600" data-testid="text-your-rank">--</p>
+            </div>
+            <div className="h-14 w-14 rounded-full bg-yellow-100 flex items-center justify-center">
+              <Star className="h-7 w-7 text-yellow-500" />
+            </div>
+          </div>
+
+          <div className="text-xs text-muted-foreground text-center italic">
+            Earn points by exploring articles, stotras, and discourses above.
+          </div>
+
+          <div>
+            <h4 className="font-serif font-semibold text-base mb-3 flex items-center gap-2">
+              <Medal className="h-4 w-4 text-yellow-500" />
+              Leaderboard
+            </h4>
+            <div className="space-y-2">
+              {[
+                { rank: 1, name: "Devotee A.", points: 1250, color: "text-yellow-500" },
+                { rank: 2, name: "Devotee B.", points: 980, color: "text-gray-400" },
+                { rank: 3, name: "Devotee C.", points: 870, color: "text-amber-700" },
+                { rank: 4, name: "Devotee D.", points: 650, color: "text-muted-foreground" },
+                { rank: 5, name: "Devotee E.", points: 520, color: "text-muted-foreground" },
+              ].map((user) => (
+                <div key={user.rank} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-yellow-50/50 transition-colors" data-testid={`row-leaderboard-${user.rank}`}>
+                  <div className="flex items-center justify-center w-7 h-7">
+                    {user.rank <= 3 ? (
+                      <Medal className={`h-5 w-5 ${user.color}`} />
+                    ) : (
+                      <span className="text-sm font-medium text-muted-foreground">{user.rank}</span>
+                    )}
+                  </div>
+                  <Avatar className="h-8 w-8 border border-border">
+                    <AvatarFallback className="text-xs bg-yellow-50 text-yellow-700">{user.name[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{user.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-sm text-yellow-600">{user.points}</p>
+                    <p className="text-[10px] text-muted-foreground">pts</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
     </div>
