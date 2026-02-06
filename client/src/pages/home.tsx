@@ -374,29 +374,28 @@ export default function Home() {
                       {sringeriEvents.map((item) => (
                         <div 
                           key={item.id} 
-                          className="w-[280px] shrink-0 rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer"
+                          className="w-[220px] shrink-0 rounded-xl border border-border/50 bg-card flex flex-col justify-between hover:shadow-md transition-shadow"
                           onClick={() => item.url && window.open(item.url, "_blank")}
                           data-testid={`card-event-${item.id}`}
                         >
-                          {item.featuredImage && (
-                            <div className="h-32 overflow-hidden relative">
-                              <img 
-                                src={item.featuredImage} 
-                                alt={item.title} 
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                              />
-                            </div>
-                          )}
-                          <div className="p-4 bg-card space-y-2">
+                          <div className="p-4 flex-1">
                             {item.date && (
-                              <div className="text-xs text-primary font-medium">{item.date}</div>
+                              <p className="text-xs font-semibold text-[#ff6600] mb-2 whitespace-normal">{item.date}</p>
                             )}
-                            <h3 className="font-serif font-bold text-base truncate pr-2">{item.title}</h3>
+                            <h3 className="font-serif font-bold text-sm line-clamp-3 whitespace-normal leading-snug">{item.title}</h3>
                             {item.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-2 whitespace-normal leading-relaxed">
-                                {item.description}
-                              </p>
+                              <p className="text-xs text-muted-foreground line-clamp-3 mt-2 whitespace-normal leading-relaxed">{item.description}</p>
                             )}
+                          </div>
+                          <div className="px-4 pb-4">
+                            <button
+                              className="text-xs font-bold text-white bg-neutral-700 hover:bg-neutral-800 px-4 py-1.5 rounded transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                item.url && window.open(item.url, "_blank");
+                              }}
+                              data-testid={`button-learn-more-event-${item.id}`}
+                            >LEARN MORE</button>
                           </div>
                         </div>
                       ))}
@@ -405,30 +404,40 @@ export default function Home() {
                   </ScrollArea>
                 </div>
 
-                {/* Desktop Vertical List */}
-                <div className="hidden md:flex flex-col gap-4">
-                  {sringeriEvents.map((item) => (
-                    <div 
-                      key={item.id} 
-                      className="flex gap-4 p-3 rounded-xl border border-border/50 bg-card hover:shadow-md transition-shadow group cursor-pointer"
-                      onClick={() => item.url && window.open(item.url, "_blank")}
-                      data-testid={`card-event-desktop-${item.id}`}
-                    >
-                      {item.featuredImage && (
-                        <div className="h-20 w-20 rounded-lg overflow-hidden shrink-0">
-                          <img src={item.featuredImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                <div className="hidden md:block">
+                  <ScrollArea className="w-full whitespace-nowrap">
+                    <div className="flex gap-4 pb-2">
+                      {sringeriEvents.map((item) => (
+                        <div
+                          key={item.id}
+                          className="w-[260px] shrink-0 rounded-xl border border-border/50 bg-card flex flex-col justify-between hover:shadow-md transition-shadow"
+                          onClick={() => item.url && window.open(item.url, "_blank")}
+                          data-testid={`card-event-desktop-${item.id}`}
+                        >
+                          <div className="p-5 flex-1">
+                            {item.date && (
+                              <p className="text-xs font-semibold text-[#ff6600] mb-2 whitespace-normal">{item.date}</p>
+                            )}
+                            <h3 className="font-serif font-bold text-sm line-clamp-3 whitespace-normal leading-snug">{item.title}</h3>
+                            {item.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-4 mt-2 whitespace-normal leading-relaxed">{item.description}</p>
+                            )}
+                          </div>
+                          <div className="px-5 pb-4">
+                            <button
+                              className="text-xs font-bold text-white bg-neutral-700 hover:bg-neutral-800 px-4 py-1.5 rounded transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                item.url && window.open(item.url, "_blank");
+                              }}
+                              data-testid={`button-learn-more-event-desktop-${item.id}`}
+                            >LEARN MORE</button>
+                          </div>
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start">
-                          {item.date && (
-                            <span className="text-xs text-muted-foreground">{item.date}</span>
-                          )}
-                        </div>
-                        <h3 className="font-serif font-bold text-sm mt-1 line-clamp-2">{item.title}</h3>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                    <ScrollBar orientation="horizontal" className="hidden" />
+                  </ScrollArea>
                 </div>
               </>
             )}
