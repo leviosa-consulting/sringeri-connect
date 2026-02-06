@@ -157,20 +157,114 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/debug-collection", async (req, res) => {
+  app.get("/api/stotra-of-the-day", async (req, res) => {
     try {
-      if (!sringeriDb) return res.status(503).json({ error: "No Firestore" });
-      const colName = req.query.col as string || "deities";
-      const colRef = collection(sringeriDb, colName);
-      const snapshot = await getDocs(query(colRef, limit(5)));
-      const docs: any[] = [];
+      if (!sringeriDb) {
+        return res.status(503).json({ error: "Sringeri.net Firestore not configured" });
+      }
+
+      const colRef = collection(sringeriDb, "deities");
+      const snapshot = await getDocs(colRef);
+
+      const allStotras: any[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
-        docs.push({ id: doc.id, keys: Object.keys(data), sample: JSON.stringify(data).substring(0, 500) });
+        const deityTitle = data.title || [];
+        const saTitle = deityTitle.find((t: any) => t.lang === "sa")?.value || "";
+        const enTitle = deityTitle.find((t: any) => t.lang === "en")?.value || "";
+        if (data.stotras && Array.isArray(data.stotras)) {
+          data.stotras.forEach((stotra: any) => {
+            const stotraTitle = stotra.title || [];
+            const saStotra = stotraTitle.find((t: any) => t.lang === "sa")?.value || "";
+            const enStotra = stotraTitle.find((t: any) => t.lang === "en")?.value || "";
+            const knStotra = stotraTitle.find((t: any) => t.lang === "kn")?.value || "";
+            allStotras.push({
+              id: stotra.id || doc.id,
+              title: saStotra || enStotra || knStotra,
+              titleEn: enStotra,
+              deityName: saTitle || enTitle,
+              deityNameEn: enTitle,
+              url: `https://www.sringeri.net/stotras/${data.url}/${stotra.url}`,
+              totalShlokas: stotra.totalShlokas || 0,
+            });
+          });
+        }
       });
-      res.json({ collection: colName, count: docs.length, docs });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+
+      if (allStotras.length === 0) {
+        return res.json({ stotra: null });
+      }
+
+      const random = req.query.random === "true";
+      const excludeId = req.query.exclude as string | undefined;
+
+      let index: number;
+      if (random) {
+        let pool = excludeId ? allStotras.filter(s => s.id !== excludeId) : allStotras;
+        if (pool.length === 0) pool = allStotras;
+        index = Math.floor(Math.random() * pool.length);
+        return res.json({ stotra: pool[index] });
+      }
+
+      const today = new Date();
+      const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+      index = dayOfYear % allStotras.length;
+      res.json({ stotra: allStotras[index] });
+    } catch (error) {
+      console.error("Error fetching stotra of the day:", error);
+      res.status(500).json({ error: "Failed to fetch stotra of the day" });
+    }
+  });
+
+  app.get("/api/jagadguru-anugraha", async (req, res) => {
+    try {
+      if (!sringeriDb) {
+        return res.status(503).json({ error: "Sringeri.net Firestore not configured" });
+      }
+
+      const colRef = collection(sringeriDb, "benedictoryCourses");
+      const snapshot = await getDocs(colRef);
+
+      const discourses: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.slug) {
+          const desc = data.description ? data.description.replace(/<[^>]*>/g, '').trim().substring(0, 200) : "";
+          discourses.push({
+            id: doc.id,
+            title: data.title || "",
+            description: desc,
+            slug: data.slug,
+            place: data.place || "",
+            language: data.language?.full || "",
+            videoId: data.videoId || null,
+            url: `https://www.sringeri.net/anugraha-bhashanam/${data.language?.short || "en"}/${data.slug}`,
+          });
+        }
+      });
+
+      if (discourses.length === 0) {
+        return res.json({ discourse: null });
+      }
+
+      const random = req.query.random === "true";
+      const excludeId = req.query.exclude as string | undefined;
+
+      let index: number;
+      if (random) {
+        let pool = excludeId ? discourses.filter(d => d.id !== excludeId) : discourses;
+        if (pool.length === 0) pool = discourses;
+        index = Math.floor(Math.random() * pool.length);
+        return res.json({ discourse: pool[index] });
+      }
+
+      const today = new Date();
+      const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+      index = dayOfYear % discourses.length;
+      res.json({ discourse: discourses[index] });
+    } catch (error) {
+      console.error("Error fetching jagadguru anugraha:", error);
+      res.status(500).json({ error: "Failed to fetch jagadguru anugraha" });
     }
   });
 
