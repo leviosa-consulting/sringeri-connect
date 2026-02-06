@@ -385,11 +385,6 @@ export default function Home() {
                                 alt={item.title} 
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                               />
-                              {item.location && (
-                                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md text-[10px] text-white font-medium uppercase tracking-wider">
-                                  {item.location}
-                                </div>
-                              )}
                             </div>
                           )}
                           <div className="p-4 bg-card space-y-2">
@@ -426,9 +421,6 @@ export default function Home() {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
-                          {item.location && (
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/5 px-2 py-0.5 rounded">{item.location}</span>
-                          )}
                           {item.date && (
                             <span className="text-xs text-muted-foreground">{item.date}</span>
                           )}
