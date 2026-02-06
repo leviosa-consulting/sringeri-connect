@@ -157,6 +157,23 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/debug-collection", async (req, res) => {
+    try {
+      if (!sringeriDb) return res.status(503).json({ error: "No Firestore" });
+      const colName = req.query.col as string || "deities";
+      const colRef = collection(sringeriDb, colName);
+      const snapshot = await getDocs(query(colRef, limit(5)));
+      const docs: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        docs.push({ id: doc.id, keys: Object.keys(data), sample: JSON.stringify(data).substring(0, 500) });
+      });
+      res.json({ collection: colName, count: docs.length, docs });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/sringeri-events", async (req, res) => {
     try {
       if (!sringeriDb) {
