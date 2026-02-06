@@ -279,8 +279,10 @@ export async function registerRoutes(
       const snapshot = await getDocs(colRef);
 
       const announcements: any[] = [];
+      let debugged = false;
       snapshot.forEach((doc) => {
         const data = doc.data();
+        if (!debugged) { console.log("ANNOUNCE_FIELDS:", JSON.stringify(Object.keys(data))); debugged = true; }
         const desc = data.description ? data.description.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').trim().substring(0, 300) : "";
         if (data.title && desc) {
           announcements.push({
