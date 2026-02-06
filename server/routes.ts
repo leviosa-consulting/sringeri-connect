@@ -279,22 +279,24 @@ export async function registerRoutes(
       const snapshot = await getDocs(colRef);
 
       const announcements: any[] = [];
-      let debugged = false;
       snapshot.forEach((doc) => {
         const data = doc.data();
-        if (!debugged) { console.log("ANNOUNCE_FIELDS:", JSON.stringify(Object.keys(data))); debugged = true; }
+        if (!data.title) return;
         const desc = data.description ? data.description.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').trim().substring(0, 300) : "";
-        if (data.title && desc) {
-          announcements.push({
-            id: doc.id,
-            title: (data.title || "").replace(/&amp;/g, '&'),
-            description: desc,
-            slug: data.slug || "",
-            url: data.slug ? `https://www.sringeri.net/announcements/${data.slug}` : null,
-          });
-        }
+        const dateVal = data.date?.toDate ? data.date.toDate() : (data.date?.seconds ? new Date(data.date.seconds * 1000) : (data.date ? new Date(data.date) : null));
+        if (!dateVal || isNaN(dateVal.getTime())) return;
+        announcements.push({
+          id: doc.id,
+          title: (data.title || "").replace(/&amp;/g, '&'),
+          description: desc,
+          slug: data.slug || "",
+          url: data.slug ? `https://www.sringeri.net/announcement/${data.slug}` : null,
+          date: dateVal.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase(),
+          dateTimestamp: dateVal.getTime(),
+        });
       });
 
+      announcements.sort((a, b) => b.dateTimestamp - a.dateTimestamp);
       res.json({ announcements: announcements.slice(0, limitNum) });
     } catch (error) {
       console.error("Error fetching announcements:", error);

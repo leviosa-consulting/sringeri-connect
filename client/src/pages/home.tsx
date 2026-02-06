@@ -3,7 +3,7 @@ import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Search, Info, Megaphone, Play, ExternalLink } from "lucide-react";
+import { Bell, Search, Info, Megaphone, Play } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMedia } from "react-use";
@@ -31,6 +31,8 @@ interface Announcement {
   description: string;
   slug: string;
   url: string | null;
+  date: string | null;
+  dateTimestamp: number;
 }
 
 interface YouTubeVideo {
@@ -451,25 +453,69 @@ export default function Home() {
                   <h2 className="text-lg font-bold font-serif" data-testid="text-announcements-heading">Announcements</h2>
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
-                {announcements.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3 rounded-xl border border-border/50 bg-card hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => item.url && window.open(item.url, "_blank")}
-                    data-testid={`card-announcement-${item.id}`}
-                  >
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-serif font-bold text-sm line-clamp-2">{item.title}</h3>
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1 leading-relaxed">{item.description}</p>
+
+              <div className="md:hidden">
+                <ScrollArea className="w-full whitespace-nowrap">
+                  <div className="flex gap-3 pb-2">
+                    {announcements.map((item) => (
+                      <div
+                        key={item.id}
+                        className="w-[220px] shrink-0 rounded-xl border border-border/50 bg-card flex flex-col justify-between hover:shadow-md transition-shadow"
+                        data-testid={`card-announcement-${item.id}`}
+                      >
+                        <div className="p-4 flex-1">
+                          {item.date && (
+                            <p className="text-xs font-semibold text-[#ff6600] mb-2 whitespace-normal">{item.date}</p>
+                          )}
+                          <h3 className="font-serif font-bold text-sm line-clamp-3 whitespace-normal leading-snug">{item.title}</h3>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-3 mt-2 whitespace-normal leading-relaxed">{item.description}</p>
+                          )}
+                        </div>
+                        <div className="px-4 pb-4">
+                          <button
+                            className="text-xs font-bold text-white bg-neutral-700 hover:bg-neutral-800 px-4 py-1.5 rounded transition-colors"
+                            onClick={() => item.url && window.open(item.url, "_blank")}
+                            data-testid={`button-learn-more-${item.id}`}
+                          >LEARN MORE</button>
+                        </div>
                       </div>
-                      {item.url && (
-                        <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
+                  <ScrollBar orientation="horizontal" className="hidden" />
+                </ScrollArea>
+              </div>
+
+              <div className="hidden md:block">
+                <ScrollArea className="w-full whitespace-nowrap">
+                  <div className="flex gap-4 pb-2">
+                    {announcements.map((item) => (
+                      <div
+                        key={item.id}
+                        className="w-[260px] shrink-0 rounded-xl border border-border/50 bg-card flex flex-col justify-between hover:shadow-md transition-shadow"
+                        data-testid={`card-announcement-desktop-${item.id}`}
+                      >
+                        <div className="p-5 flex-1">
+                          {item.date && (
+                            <p className="text-xs font-semibold text-[#ff6600] mb-2 whitespace-normal">{item.date}</p>
+                          )}
+                          <h3 className="font-serif font-bold text-sm line-clamp-3 whitespace-normal leading-snug">{item.title}</h3>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-4 mt-2 whitespace-normal leading-relaxed">{item.description}</p>
+                          )}
+                        </div>
+                        <div className="px-5 pb-4">
+                          <button
+                            className="text-xs font-bold text-white bg-neutral-700 hover:bg-neutral-800 px-4 py-1.5 rounded transition-colors"
+                            onClick={() => item.url && window.open(item.url, "_blank")}
+                            data-testid={`button-learn-more-desktop-${item.id}`}
+                          >LEARN MORE</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <ScrollBar orientation="horizontal" className="hidden" />
+                </ScrollArea>
               </div>
             </section>
           </div>
