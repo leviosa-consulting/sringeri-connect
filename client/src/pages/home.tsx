@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import ServiceIcon from "@/components/service-icon";
-import { ONLINE_SERVICES, RESOURCES, NEWS_EVENTS } from "@/lib/constants";
+import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Bell, Search, Info } from "lucide-react";
@@ -9,6 +9,20 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
 import guruBanner from "@/assets/guru-banner.png";
+
+interface SringeriEvent {
+  id: string;
+  title: string;
+  description: string;
+  date: string | null;
+  dateTimestamp: number;
+  featuredImage: string | null;
+  location: string;
+  status: string;
+  url: string | null;
+  isOnline: boolean;
+  showLiveStream: boolean;
+}
 
 interface TodayDetails {
   todayWebsiteKannada?: string;
@@ -30,6 +44,8 @@ export default function Home() {
   const { profile, user } = useAuth();
   const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
   const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
+  const [sringeriEvents, setSringeriEvents] = useState<SringeriEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
   const displayName = profile?.name || user?.displayName || "Devotee";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
@@ -54,6 +70,24 @@ export default function Home() {
     };
     
     fetchTodayDetails();
+  }, []);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch('/api/sringeri-events');
+        if (response.ok) {
+          const data = await response.json();
+          setSringeriEvents(data.events || []);
+        }
+      } catch (error) {
+        console.error("Error fetching sringeri events:", error);
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+    
+    fetchEvents();
   }, []);
 
   const formatTodayDate = () => {
@@ -267,56 +301,96 @@ export default function Home() {
            <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-serif font-bold text-xl">Happenings</h2>
-              <span className="text-sm text-primary hover:underline cursor-pointer">View All</span>
+              <a 
+                href="https://www.sringeri.net/events" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline cursor-pointer"
+                data-testid="link-view-all-events"
+              >
+                View All
+              </a>
             </div>
             
-            {/* Mobile Horizontal Scroll */}
-            <div className="md:hidden">
-              <ScrollArea className="w-full whitespace-nowrap">
-                <div className="flex w-max space-x-4 pb-4">
-                  {NEWS_EVENTS.map((item) => (
-                    <div key={item.id} className="w-[280px] shrink-0 rounded-xl overflow-hidden border border-border/50 shadow-sm group">
-                      <div className="h-32 overflow-hidden relative">
-                        <img 
-                          src={item.image} 
-                          alt={item.title} 
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                        />
-                        <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md text-[10px] text-white font-medium uppercase tracking-wider">
-                          {item.type}
+            {eventsLoading ? (
+              <div className="text-sm text-muted-foreground text-center py-6">Loading events...</div>
+            ) : sringeriEvents.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-6">No upcoming events</div>
+            ) : (
+              <>
+                {/* Mobile Horizontal Scroll */}
+                <div className="md:hidden">
+                  <ScrollArea className="w-full whitespace-nowrap">
+                    <div className="flex w-max space-x-4 pb-4">
+                      {sringeriEvents.slice(0, 10).map((item) => (
+                        <div 
+                          key={item.id} 
+                          className="w-[280px] shrink-0 rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer"
+                          onClick={() => item.url && window.open(item.url, "_blank")}
+                          data-testid={`card-event-${item.id}`}
+                        >
+                          {item.featuredImage && (
+                            <div className="h-32 overflow-hidden relative">
+                              <img 
+                                src={item.featuredImage} 
+                                alt={item.title} 
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                              />
+                              {item.location && (
+                                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md text-[10px] text-white font-medium uppercase tracking-wider">
+                                  {item.location}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <div className="p-4 bg-card space-y-2">
+                            {item.date && (
+                              <div className="text-xs text-primary font-medium">{item.date}</div>
+                            )}
+                            <h3 className="font-serif font-bold text-base truncate pr-2">{item.title}</h3>
+                            {item.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-2 whitespace-normal leading-relaxed">
+                                {item.description}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="p-4 bg-card space-y-2">
-                        <div className="text-xs text-primary font-medium">{item.date}</div>
-                        <h3 className="font-serif font-bold text-base truncate pr-2">{item.title}</h3>
-                        <p className="text-xs text-muted-foreground line-clamp-2 whitespace-normal leading-relaxed">
-                          {item.description}
-                        </p>
+                      ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" className="hidden" />
+                  </ScrollArea>
+                </div>
+
+                {/* Desktop Vertical List */}
+                <div className="hidden md:flex flex-col gap-4">
+                  {sringeriEvents.slice(0, 10).map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="flex gap-4 p-3 rounded-xl border border-border/50 bg-card hover:shadow-md transition-shadow group cursor-pointer"
+                      onClick={() => item.url && window.open(item.url, "_blank")}
+                      data-testid={`card-event-desktop-${item.id}`}
+                    >
+                      {item.featuredImage && (
+                        <div className="h-20 w-20 rounded-lg overflow-hidden shrink-0">
+                          <img src={item.featuredImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start">
+                          {item.location && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/5 px-2 py-0.5 rounded">{item.location}</span>
+                          )}
+                          {item.date && (
+                            <span className="text-xs text-muted-foreground">{item.date}</span>
+                          )}
+                        </div>
+                        <h3 className="font-serif font-bold text-sm mt-1 line-clamp-2">{item.title}</h3>
                       </div>
                     </div>
                   ))}
                 </div>
-                <ScrollBar orientation="horizontal" className="hidden" />
-              </ScrollArea>
-            </div>
-
-            {/* Desktop Vertical List */}
-            <div className="hidden md:flex flex-col gap-4">
-               {NEWS_EVENTS.map((item) => (
-                 <div key={item.id} className="flex gap-4 p-3 rounded-xl border border-border/50 bg-card hover:shadow-md transition-shadow group cursor-pointer">
-                    <div className="h-20 w-20 rounded-lg overflow-hidden shrink-0">
-                      <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
-                         <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/5 px-2 py-0.5 rounded">{item.type}</span>
-                         <span className="text-xs text-muted-foreground">{item.date}</span>
-                      </div>
-                      <h3 className="font-serif font-bold text-sm mt-1 line-clamp-2">{item.title}</h3>
-                    </div>
-                 </div>
-               ))}
-            </div>
+              </>
+            )}
 
           </section>
         </div>

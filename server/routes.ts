@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { initializeApp as initializeFirebaseApp, getApps } from "firebase/app";
+import { getFirestore, collection, getDocs, query, orderBy, limit, where, Timestamp } from "firebase/firestore";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -8,6 +10,26 @@ export async function registerRoutes(
 ): Promise<Server> {
   const SRINGERI_API_URL = process.env.VITE_SRINGERI_API_URL || "https://dsspv2.lcpl.in";
   const SRINGERI_API_KEY = process.env.SRINGERI_API_KEY;
+
+  const sringeriNetConfig = {
+    apiKey: process.env.SRINGERI_NET_FIREBASE_API_KEY,
+    authDomain: process.env.SRINGERI_NET_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.SRINGERI_NET_FIREBASE_PROJECT_ID,
+  };
+
+  let sringeriDb: ReturnType<typeof getFirestore> | null = null;
+  
+  if (sringeriNetConfig.apiKey && sringeriNetConfig.projectId) {
+    try {
+      const existingApps = getApps();
+      const sringeriApp = existingApps.find(a => a.name === 'sringeri-net') 
+        || initializeFirebaseApp(sringeriNetConfig, 'sringeri-net');
+      sringeriDb = getFirestore(sringeriApp);
+      console.log("Sringeri.net Firestore initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize Sringeri.net Firestore:", error);
+    }
+  }
 
   app.get("/api/user/profile", async (req, res) => {
     try {
@@ -81,6 +103,54 @@ export async function registerRoutes(
 
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  app.get("/api/sringeri-events", async (req, res) => {
+    try {
+      if (!sringeriDb) {
+        return res.status(503).json({ error: "Sringeri.net Firestore not configured" });
+      }
+
+      const colRef = collection(sringeriDb, "events");
+      const q = query(colRef, orderBy("date", "desc"), limit(50));
+      const snapshot = await getDocs(q);
+
+      const events: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.status && data.status !== "published") return;
+        const dateSeconds = data.date?.seconds;
+        const dateStr = dateSeconds 
+          ? new Date(dateSeconds * 1000).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+          : null;
+        
+        const sringeriBaseUrl = "https://www.sringeri.net";
+        const eventUrl = data.link 
+          ? (data.link.startsWith('http') ? data.link : `${sringeriBaseUrl}/${data.link}`)
+          : (data.slug ? `${sringeriBaseUrl}/events/${data.slug}` : null);
+
+        events.push({
+          id: doc.id,
+          title: data.title || "",
+          description: data.description ? data.description.replace(/<[^>]*>/g, '').substring(0, 200) : "",
+          date: dateStr,
+          dateTimestamp: dateSeconds || 0,
+          featuredImage: data.featuredImage 
+            ? (data.featuredImage.startsWith('http') ? data.featuredImage : `${sringeriBaseUrl}/${data.featuredImage}`)
+            : null,
+          location: data.location || "",
+          status: data.status || "",
+          url: eventUrl,
+          isOnline: data.isOnline || false,
+          showLiveStream: data.showLiveStream || false,
+        });
+      });
+
+      res.json({ events });
+    } catch (error) {
+      console.error("Error fetching sringeri events:", error);
+      res.status(500).json({ error: "Failed to fetch events" });
+    }
   });
 
   app.get("/api/todayDetails/:date", async (req, res) => {
