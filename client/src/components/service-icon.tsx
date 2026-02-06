@@ -28,7 +28,7 @@ export default function ServiceIcon({ title, icon: Icon, color, isExternal, url,
       <div className="relative p-4 rounded-2xl transition-all duration-300 group-hover:scale-110 group-active:scale-95 shadow-sm"
         style={{ backgroundColor: '#ebe3d6' }}
       >
-        <Icon className="h-6 w-6" style={{ color: '#c4722a' }} />
+        <Icon className="h-6 w-6" color="#c4722a" />
         {isExternal && (
           <ExternalLink className="absolute -top-1 -right-1 h-3 w-3 bg-white rounded-full p-0.5" style={{ color: '#c4722a' }} />
         )}
