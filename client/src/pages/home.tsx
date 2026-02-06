@@ -445,7 +445,7 @@ export default function Home() {
         </div>
 
         {announcements.length > 0 && (
-          <div className="mt-6 px-4 md:px-6">
+          <div className="mt-3 px-4 md:px-6">
             <section>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -522,7 +522,7 @@ export default function Home() {
         )}
 
         {youtubeVideos.length > 0 && (
-          <div className="mt-6 px-4 md:px-6 pb-6">
+          <div className="mt-3 px-4 md:px-6 pb-3">
             <section>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -590,7 +590,7 @@ export default function Home() {
 
       </div>
 
-      <footer className="mt-6 py-6 border-t border-border/50 bg-[#fcfbf7]">
+      <footer className="mt-3 py-4 border-t border-border/50 bg-[#fcfbf7]">
         <div className="flex justify-center items-center gap-5 px-4">
           <a href="https://www.youtube.com/@SharadaPeetham" target="_blank" rel="noopener noreferrer" aria-label="YouTube" data-testid="link-social-youtube">
             <svg viewBox="0 0 24 24" className="w-8 h-8 text-[#ff6600]" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
