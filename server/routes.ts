@@ -111,11 +111,14 @@ export async function registerRoutes(
         return res.status(503).json({ error: "Sringeri.net Firestore not configured" });
       }
 
+      const fetchLimit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+      const sringeriBaseUrl = "https://www.sringeri.net";
+
       const colRef = collection(sringeriDb, "events");
-      const q = query(colRef, orderBy("date", "desc"), limit(50));
+      const q = query(colRef, orderBy("date", "desc"), limit(100));
       const snapshot = await getDocs(q);
 
-      const events: any[] = [];
+      const allEvents: any[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
         if (data.status && data.status !== "published") return;
@@ -123,30 +126,35 @@ export async function registerRoutes(
         const dateStr = dateSeconds 
           ? new Date(dateSeconds * 1000).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
           : null;
-        
-        const sringeriBaseUrl = "https://www.sringeri.net";
-        const eventUrl = data.link 
-          ? (data.link.startsWith('http') ? data.link : `${sringeriBaseUrl}/${data.link}`)
-          : (data.slug ? `${sringeriBaseUrl}/events/${data.slug}` : null);
 
-        events.push({
+        const firstImage = Array.isArray(data.images) && data.images.length > 0 ? data.images[0] : null;
+        const imageUrl = firstImage
+          ? (firstImage.startsWith('http') ? firstImage : `${sringeriBaseUrl}/${firstImage}`)
+          : null;
+
+        const eventUrl = data.slug ? `${sringeriBaseUrl}/events/${data.slug}` : null;
+
+        allEvents.push({
           id: doc.id,
           title: data.title || "",
           description: data.description ? data.description.replace(/<[^>]*>/g, '').substring(0, 200) : "",
           date: dateStr,
           dateTimestamp: dateSeconds || 0,
-          featuredImage: data.featuredImage 
-            ? (data.featuredImage.startsWith('http') ? data.featuredImage : `${sringeriBaseUrl}/${data.featuredImage}`)
-            : null,
+          featuredImage: imageUrl,
           location: data.location || "",
           status: data.status || "",
           url: eventUrl,
+          slug: data.slug || "",
           isOnline: data.isOnline || false,
           showLiveStream: data.showLiveStream || false,
         });
       });
 
-      res.json({ events });
+      const offset = parseInt(req.query.offset as string) || 0;
+      const paginatedEvents = allEvents.slice(offset, offset + fetchLimit);
+      const hasMore = offset + fetchLimit < allEvents.length;
+
+      res.json({ events: paginatedEvents, hasMore, total: allEvents.length });
     } catch (error) {
       console.error("Error fetching sringeri events:", error);
       res.status(500).json({ error: "Failed to fetch events" });

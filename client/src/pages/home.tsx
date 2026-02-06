@@ -20,6 +20,7 @@ interface SringeriEvent {
   location: string;
   status: string;
   url: string | null;
+  slug: string;
   isOnline: boolean;
   showLiveStream: boolean;
 }
@@ -75,7 +76,7 @@ export default function Home() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await fetch('/api/sringeri-events');
+        const response = await fetch('/api/sringeri-events?limit=10');
         if (response.ok) {
           const data = await response.json();
           setSringeriEvents(data.events || []);
@@ -302,9 +303,7 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <h2 className="font-serif font-bold text-xl">Happenings</h2>
               <a 
-                href="https://www.sringeri.net/events" 
-                target="_blank" 
-                rel="noopener noreferrer"
+                href="/events"
                 className="text-sm text-primary hover:underline cursor-pointer"
                 data-testid="link-view-all-events"
               >
@@ -322,7 +321,7 @@ export default function Home() {
                 <div className="md:hidden">
                   <ScrollArea className="w-full whitespace-nowrap">
                     <div className="flex w-max space-x-4 pb-4">
-                      {sringeriEvents.slice(0, 10).map((item) => (
+                      {sringeriEvents.map((item) => (
                         <div 
                           key={item.id} 
                           className="w-[280px] shrink-0 rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer"
@@ -363,7 +362,7 @@ export default function Home() {
 
                 {/* Desktop Vertical List */}
                 <div className="hidden md:flex flex-col gap-4">
-                  {sringeriEvents.slice(0, 10).map((item) => (
+                  {sringeriEvents.map((item) => (
                     <div 
                       key={item.id} 
                       className="flex gap-4 p-3 rounded-xl border border-border/50 bg-card hover:shadow-md transition-shadow group cursor-pointer"
