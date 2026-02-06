@@ -26,7 +26,7 @@ export default function ServiceIcon({ title, icon: Icon, color, isExternal, url,
       data-testid={`service-icon-${title.toLowerCase().replace(/\s+/g, '-')}`}
     >
       <div className="relative p-4 rounded-2xl transition-all duration-300 group-hover:scale-110 group-active:scale-95 shadow-sm"
-        style={{ backgroundColor: '#ebe3d6' }}
+        style={{ backgroundColor: '#fcfbf7' }}
       >
         <Icon className="h-6 w-6" color="#ff6600" />
         {isExternal && (
