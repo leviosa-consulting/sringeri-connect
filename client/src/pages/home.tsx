@@ -4,8 +4,7 @@ import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Info, Megaphone, Play } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Info, Megaphone, Play } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
@@ -183,13 +182,7 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search for sevas, books, etc..." 
-              className="pl-9 bg-white/80 border-primary/10 shadow-sm focus:bg-white transition-all rounded-xl" 
-            />
-          </div>
+          {/* Search hidden for now */}
       </div>
 
       {/* Desktop Welcome Banner */}
@@ -197,13 +190,7 @@ export default function Home() {
          <div className="space-y-4 z-10 max-w-lg">
            <h1 className="text-5xl font-serif font-bold text-primary">Sri Sringeri Sharada Peetham</h1>
            <p className="text-xl text-muted-foreground">Official Digital Services Portal for Devotees</p>
-           <div className="relative max-w-md mt-6">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search services..." 
-              className="pl-9 bg-white shadow-sm border-primary/20 h-12 text-base" 
-            />
-          </div>
+           {/* Search hidden for now */}
          </div>
          <div className="absolute right-0 top-0 h-full w-2/3 bg-[url('/assets/temple-hero.jpg')] bg-cover bg-center mask-linear-fade opacity-80" style={{maskImage: 'linear-gradient(to right, transparent, black)'}} />
       </div>
