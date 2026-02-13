@@ -294,13 +294,13 @@ const FEATURED_DONATIONS: FeaturedDonation[] = [
   {
     label: "Sri Malahanikareshwara Temple, Sringeri",
     headingMatch: "sringeri",
-    categoryMatch: "malahanikareshwara",
-    subcategoryMatch: "",
-    description: "Contribute towards the sacred temple at Sringeri",
+    categoryMatch: "preservation",
+    subcategoryMatch: "malahanikareshwara",
+    description: "Contribute for the construction and development of a Grand Temple of Sri Malahanikareshwara, Sringeri.",
   },
   {
     label: "Guru Kanike- Vajrotsava Bharati",
-    headingMatch: "",
+    headingMatch: "sringeri",
     categoryMatch: "kanike",
     subcategoryMatch: "vajrotsava",
     description: "Offer Guru Kanike for Vajrotsava Bharati",
@@ -363,6 +363,8 @@ export default function Donation() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [show80GWarning, setShow80GWarning] = useState(false);
   const [pendingFocusSubcategory, setPendingFocusSubcategory] = useState<string>("");
+  const [expandedDescs, setExpandedDescs] = useState<Set<number>>(new Set());
+  const [showFocusInfo, setShowFocusInfo] = useState<number | null>(null);
 
   const subCategoryRef = useRef<HTMLDivElement>(null);
 
@@ -1239,23 +1241,39 @@ export default function Donation() {
             <Star className="h-4 w-4 inline-block mr-1 text-amber-500" />
             Donations in Focus
           </h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
             {FEATURED_DONATIONS.map((featured, idx) => {
               const Icon = getIconForName(featured.label);
               return (
-                <button
-                  key={idx}
-                  onClick={() => handleFeaturedDonation(featured)}
-                  disabled={headings.length === 0 || categories.length === 0}
-                  className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 text-left transition-all hover:shadow-md hover:border-amber-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                  data-testid={`button-featured-${idx}`}
-                >
-                  <div className="bg-amber-100 rounded-lg w-10 h-10 flex items-center justify-center mb-3">
-                    <Icon className="h-5 w-5 text-amber-700" />
+                <div key={idx} className="relative">
+                  <div
+                    className={`w-full flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-4 py-3 transition-all hover:shadow-md hover:border-amber-300 ${headings.length === 0 || categories.length === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-[0.99]"}`}
+                  >
+                    <button
+                      onClick={() => handleFeaturedDonation(featured)}
+                      disabled={headings.length === 0 || categories.length === 0}
+                      className="flex items-center gap-3 flex-1 text-left min-w-0"
+                      data-testid={`button-featured-${idx}`}
+                    >
+                      <div className="bg-amber-100 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
+                        <Icon className="h-5 w-5 text-amber-700" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground flex-1 leading-tight">{featured.label}</span>
+                    </button>
+                    <button
+                      onClick={() => setShowFocusInfo(showFocusInfo === idx ? null : idx)}
+                      className="shrink-0 p-1 rounded-full hover:bg-amber-100 transition-colors"
+                      data-testid={`button-featured-info-${idx}`}
+                    >
+                      <Info className="h-4 w-4 text-amber-600" />
+                    </button>
                   </div>
-                  <h4 className="text-sm font-semibold text-foreground leading-tight line-clamp-2">{featured.label}</h4>
-                  <p className="text-[11px] text-muted-foreground mt-1 leading-tight line-clamp-2">{featured.description}</p>
-                </button>
+                  {showFocusInfo === idx && featured.description && (
+                    <div className="mx-4 mt-1 mb-1 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg">
+                      <p className="text-xs text-muted-foreground leading-relaxed">{featured.description}</p>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -1349,9 +1367,30 @@ export default function Donation() {
                       )}
                     </div>
                     {sub.desc && (
-                      <p className={`text-xs mt-1 ${selectedSubCategory?.id === sub.id ? "text-white/80" : "text-muted-foreground"}`}>
-                        {sub.desc}
-                      </p>
+                      <div className="mt-1">
+                        <p
+                          className={`text-xs ${selectedSubCategory?.id === sub.id ? "text-white/80" : "text-muted-foreground"} ${expandedDescs.has(sub.id) ? "" : "line-clamp-1"}`}
+                        >
+                          {sub.desc}
+                        </p>
+                        {sub.desc.length > 60 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedDescs((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(sub.id)) next.delete(sub.id);
+                                else next.add(sub.id);
+                                return next;
+                              });
+                            }}
+                            className={`text-[11px] font-medium mt-0.5 ${selectedSubCategory?.id === sub.id ? "text-white/90 underline" : "text-primary underline"}`}
+                            data-testid={`button-desc-toggle-${sub.id}`}
+                          >
+                            {expandedDescs.has(sub.id) ? "Show less" : "More"}
+                          </button>
+                        )}
+                      </div>
                     )}
                   </button>
                 ))}
