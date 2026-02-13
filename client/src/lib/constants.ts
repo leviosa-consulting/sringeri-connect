@@ -28,6 +28,8 @@ export const ONLINE_SERVICES = [
     description: "Order spiritual books and publications",
     icon: LibraryBig,
     color: "bg-emerald-100 text-emerald-600",
+    url: "https://books.sringeri.net/",
+    isExternal: true,
   }
 ];
 
