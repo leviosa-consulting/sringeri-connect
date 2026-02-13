@@ -32,6 +32,19 @@ import {
   Phone,
   MapPin,
   CreditCard,
+  Landmark,
+  Flower2,
+  BookOpen,
+  GraduationCap,
+  Home,
+  Utensils,
+  Music,
+  Sun,
+  Star,
+  Gift,
+  HandHeart,
+  Flame,
+  type LucideIcon,
 } from "lucide-react";
 
 interface DonationHeading {
@@ -141,6 +154,45 @@ function formatNumber(value: number): string {
   return value ? value.toLocaleString("en-IN") : "0";
 }
 
+const HEADING_ICONS: Record<string, LucideIcon> = {
+  sringeri: Landmark,
+  temple: Landmark,
+  math: Landmark,
+  peetham: Landmark,
+  education: GraduationCap,
+  vidya: GraduationCap,
+  school: GraduationCap,
+  anna: Utensils,
+  food: Utensils,
+  bhojan: Utensils,
+  gaushala: Heart,
+  cow: Heart,
+  go: Heart,
+  veda: BookOpen,
+  shastra: BookOpen,
+  patashala: BookOpen,
+  hospital: HandHeart,
+  health: HandHeart,
+  music: Music,
+  cultural: Music,
+};
+
+const CATEGORY_ICONS: LucideIcon[] = [
+  Flower2, Sun, Star, Gift, Flame, Heart, BookOpen, HandHeart, Landmark, Music,
+];
+
+function getHeadingIcon(name: string): LucideIcon {
+  const lower = name.toLowerCase();
+  for (const [key, icon] of Object.entries(HEADING_ICONS)) {
+    if (lower.includes(key)) return icon;
+  }
+  return Landmark;
+}
+
+function getCategoryIcon(index: number): LucideIcon {
+  return CATEGORY_ICONS[index % CATEGORY_ICONS.length];
+}
+
 export default function Donation() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -197,8 +249,6 @@ export default function Donation() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [show80GWarning, setShow80GWarning] = useState(false);
 
-  const headingsScrollRef = useRef<HTMLDivElement>(null);
-  const categoryScrollRef = useRef<HTMLDivElement>(null);
   const subCategoryRef = useRef<HTMLDivElement>(null);
 
   const { data: headings = [] } = useQuery<DonationHeading[]>({
@@ -1034,52 +1084,56 @@ export default function Donation() {
 
       <div className="px-4 mt-4 space-y-4">
         <div>
-          <h3 className="text-sm font-semibold mb-2 px-1" data-testid="text-choose-center">Choose Donation Center</h3>
-          <div
-            ref={headingsScrollRef}
-            className="flex gap-2 overflow-x-auto pb-2 no-scrollbar"
-          >
-            {headings.map((heading) => (
-              <button
-                key={heading.id}
-                onClick={() => handleSelectHeading(heading)}
-                className={`shrink-0 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  selectedHeading?.id === heading.id
-                    ? "bg-primary text-white shadow-md"
-                    : "bg-white border border-border text-foreground hover:border-primary/50"
-                }`}
-                data-testid={`button-heading-${heading.id}`}
-              >
-                {heading.name}
-              </button>
-            ))}
+          <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-center">Choose Donation Center</h3>
+          <div className="grid grid-cols-3 gap-3">
+            {headings.map((heading) => {
+              const Icon = getHeadingIcon(heading.name);
+              const isSelected = selectedHeading?.id === heading.id;
+              return (
+                <button
+                  key={heading.id}
+                  onClick={() => handleSelectHeading(heading)}
+                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl aspect-square transition-all ${
+                    isSelected
+                      ? "bg-primary text-white shadow-lg ring-2 ring-primary/30"
+                      : "bg-white border border-border text-foreground hover:border-primary/50 hover:shadow-md"
+                  }`}
+                  data-testid={`button-heading-${heading.id}`}
+                >
+                  <Icon className={`h-7 w-7 ${isSelected ? "text-white" : "text-primary"}`} />
+                  <span className="text-xs font-medium text-center leading-tight line-clamp-2">{heading.name}</span>
+                </button>
+              );
+            })}
           </div>
           {selectedHeading?.shortDescription && (
-            <p className="text-xs text-muted-foreground mt-2 px-1">{selectedHeading.shortDescription}</p>
+            <p className="text-xs text-muted-foreground mt-3 px-1">{selectedHeading.shortDescription}</p>
           )}
         </div>
 
         {selectedHeading && filteredCategories.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold mb-2 px-1" data-testid="text-choose-category">Choose Category</h3>
-            <div
-              ref={categoryScrollRef}
-              className="flex gap-2 overflow-x-auto pb-2 no-scrollbar"
-            >
-              {filteredCategories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => handleSelectCategory(cat)}
-                  className={`shrink-0 px-4 py-2 rounded-lg text-sm transition-all ${
-                    selectedCategory?.id === cat.id
-                      ? "bg-primary text-white shadow-md"
-                      : "bg-white border border-border text-foreground hover:border-primary/50"
-                  }`}
-                  data-testid={`button-category-${cat.id}`}
-                >
-                  {cat.name}
-                </button>
-              ))}
+            <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-category">Choose Category</h3>
+            <div className="grid grid-cols-3 gap-3">
+              {filteredCategories.map((cat, index) => {
+                const Icon = getCategoryIcon(index);
+                const isSelected = selectedCategory?.id === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleSelectCategory(cat)}
+                    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl aspect-square transition-all ${
+                      isSelected
+                        ? "bg-primary text-white shadow-lg ring-2 ring-primary/30"
+                        : "bg-white border border-border text-foreground hover:border-primary/50 hover:shadow-md"
+                    }`}
+                    data-testid={`button-category-${cat.id}`}
+                  >
+                    <Icon className={`h-6 w-6 ${isSelected ? "text-white" : "text-primary"}`} />
+                    <span className="text-xs font-medium text-center leading-tight line-clamp-2">{cat.name}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
