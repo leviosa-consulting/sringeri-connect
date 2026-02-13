@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon, ExternalLink } from "lucide-react";
+import { useInAppBrowser } from "@/contexts/in-app-browser-context";
 
 interface ServiceCardProps {
   title: string;
@@ -11,9 +12,10 @@ interface ServiceCardProps {
 }
 
 export default function ServiceCard({ title, description, icon: Icon, color, isExternal, onClick, url }: ServiceCardProps & { url?: string }) {
+  const { openUrl } = useInAppBrowser();
   const handleClick = () => {
     if (url) {
-      window.open(url, "_blank");
+      openUrl(url);
     } else if (onClick) {
       onClick();
     }

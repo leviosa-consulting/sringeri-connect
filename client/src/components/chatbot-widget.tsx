@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLocation } from "wouter";
+import { useInAppBrowser } from "@/contexts/in-app-browser-context";
 
 interface SuggestedAction {
   label: string;
@@ -19,7 +20,7 @@ interface ChatMessage {
   isLoading?: boolean;
 }
 
-function renderMarkdown(text: string) {
+function renderMarkdown(text: string, openUrl?: (url: string) => void) {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
 
@@ -66,10 +67,11 @@ function renderMarkdown(text: string) {
       }
 
       if (firstMatch.type === "link") {
+        const linkUrl = firstMatch.url!;
         parts.push(
-          <a key={partKey++} href={firstMatch.url} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">
+          <span key={partKey++} role="link" tabIndex={0} className="text-primary underline hover:text-primary/80 cursor-pointer" onClick={() => openUrl ? openUrl(linkUrl) : window.open(linkUrl, "_blank")} onKeyDown={(e) => { if (e.key === "Enter") { openUrl ? openUrl(linkUrl) : window.open(linkUrl, "_blank"); } }}>
             {firstMatch.content}
-          </a>
+          </span>
         );
       } else if (firstMatch.type === "bold") {
         parts.push(<strong key={partKey++}>{firstMatch.content}</strong>);
@@ -120,6 +122,7 @@ export default function ChatbotWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [, setLocation] = useLocation();
+  const { openUrl } = useInAppBrowser();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -202,7 +205,7 @@ export default function ChatbotWidget() {
   };
 
   return (
-    <div className="fixed bottom-20 md:bottom-8 right-4 z-50" data-testid="chatbot-widget">
+    <div className="fixed bottom-36 md:bottom-8 right-4 z-50" data-testid="chatbot-widget">
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
@@ -271,7 +274,7 @@ export default function ChatbotWidget() {
                             <span className="text-muted-foreground">Looking up information...</span>
                           </div>
                         ) : msg.role === "bot" ? (
-                          renderMarkdown(msg.content)
+                          renderMarkdown(msg.content, openUrl)
                         ) : (
                           msg.content
                         )}

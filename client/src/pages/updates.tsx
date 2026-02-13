@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Loader2, Calendar, Megaphone, Play, Filter } from "lucide-react";
+import { useInAppBrowser } from "@/contexts/in-app-browser-context";
 
 interface UpdateItem {
   id: string;
@@ -61,6 +62,7 @@ function normalizeVideos(videos: any[]): UpdateItem[] {
 }
 
 export default function Updates() {
+  const { openUrl } = useInAppBrowser();
   const [items, setItems] = useState<UpdateItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -190,11 +192,9 @@ export default function Updates() {
                 const tag = TAG[item.type];
                 const Icon = tag.icon;
                 return (
-                  <a
+                  <div
                     key={item.id}
-                    href={item.url || "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    onClick={() => item.url && openUrl(item.url)}
                     className="flex items-start gap-2.5 group py-1.5 cursor-pointer"
                     data-testid={`link-update-${item.id}`}
                   >
@@ -205,7 +205,7 @@ export default function Updates() {
                     <span className="text-sm leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
                       {item.title}
                     </span>
-                  </a>
+                  </div>
                 );
               })}
             </div>
