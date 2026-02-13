@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -81,6 +81,8 @@ export default function Accommodation() {
   const [selectedRoom, setSelectedRoom] = useState<RoomOption | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const roomSectionRef = useRef<HTMLDivElement>(null);
 
   const [occupant1, setOccupant1] = useState({ name: "", age: "", idNumber: "" });
   const [occupant2, setOccupant2] = useState({ name: "", age: "", idNumber: "" });
@@ -165,6 +167,9 @@ export default function Accommodation() {
     setErrorMessage("");
     setSelectedDate(day);
     setSelectedRoom(null);
+    setTimeout(() => {
+      roomSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
   }, []);
 
   const handleSelectRoom = useCallback((room: RoomOption) => {
@@ -515,7 +520,7 @@ export default function Accommodation() {
 
                 {/* Selected Date Info & Room Selection */}
                 {selectedDate && (
-                  <Card data-testid="card-room-selection">
+                  <Card ref={roomSectionRef} data-testid="card-room-selection" className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-2 mb-4">
                         <Calendar className="h-4 w-4 text-primary" />
