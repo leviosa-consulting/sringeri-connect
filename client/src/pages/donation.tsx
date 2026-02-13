@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -308,7 +308,7 @@ const FEATURED_DONATIONS: FeaturedDonation[] = [
 ];
 
 export default function Donation() {
-  const { user } = useAuth();
+  const { user, devoteeData } = useAuth();
   const [, navigate] = useLocation();
 
   const [step, setStep] = useState<"select" | "review" | "payee">("select");
@@ -359,8 +359,6 @@ export default function Donation() {
   const [errorMessage, setErrorMessage] = useState("");
   const [showKartaList, setShowKartaList] = useState(false);
   const [showAddressList, setShowAddressList] = useState(false);
-  const [kartas, setKartas] = useState<Karta[]>([]);
-  const [addresses, setAddresses] = useState<Address[]>([]);
   const [show80GWarning, setShow80GWarning] = useState(false);
   const [pendingFocusSubcategory, setPendingFocusSubcategory] = useState<string>("");
   const [expandedDescs, setExpandedDescs] = useState<Set<number>>(new Set());
@@ -496,23 +494,8 @@ export default function Donation() {
     }
   }, [subcategories, pendingFocusSubcategory]);
 
-  const fetchKartas = useCallback(async () => {
-    if (!user?.uid) return;
-    try {
-      const res = await fetch(`/api/devoteeKarta/${user.uid}`);
-      const data = await res.json();
-      setKartas(data || []);
-    } catch {}
-  }, [user?.uid]);
-
-  const fetchAddresses = useCallback(async () => {
-    if (!user?.uid) return;
-    try {
-      const res = await fetch(`/api/devoteeAddress/${user.uid}`);
-      const data = await res.json();
-      setAddresses(data || []);
-    } catch {}
-  }, [user?.uid]);
+  const kartas = devoteeData?.kartas || [];
+  const addresses = devoteeData?.addresses || [];
 
   const totalAmount = cart.reduce((sum, d) => sum + Number(d.donationAmount), 0) + donationForm.postageCharges;
 
@@ -870,26 +853,26 @@ export default function Donation() {
                 <h3 className="font-serif font-bold text-base">Address</h3>
                 <button
                   className="text-xs text-primary underline"
-                  onClick={() => { fetchAddresses(); setShowAddressList(!showAddressList); }}
+                  onClick={() => setShowAddressList(!showAddressList)}
                   data-testid="button-pick-address"
                 >
                   + Pick from saved
                 </button>
               </div>
-              {showAddressList && addresses.length > 0 && (
+              {showAddressList && (
                 <div className="bg-muted/50 rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
-                  {addresses.map((addr, i) => (
+                  {addresses.length > 0 ? addresses.map((addr, i) => (
                     <button
                       key={i}
                       className="w-full text-left text-xs p-2 rounded hover:bg-primary/10 transition-colors"
                       onClick={() => {
-                        updatePayeeField("addressLine1", addr.addressLine1);
+                        updatePayeeField("addressLine1", addr.addressLine1 || "");
                         updatePayeeField("addressLine2", addr.addressLine2 || "");
                         updatePayeeField("landmark", addr.landmark || "");
-                        updatePayeeField("city", addr.city);
-                        updatePayeeField("state", addr.state);
-                        updatePayeeField("country", addr.country);
-                        updatePayeeField("pincode", addr.pincode);
+                        updatePayeeField("city", addr.city || "");
+                        updatePayeeField("state", addr.state || "");
+                        updatePayeeField("country", addr.country || "");
+                        updatePayeeField("pincode", addr.pincode || "");
                         setShowAddressList(false);
                       }}
                       data-testid={`button-address-${i}`}
@@ -897,7 +880,9 @@ export default function Donation() {
                       <span className="font-semibold">{addr.addresseeName || addr.city}</span>
                       <span className="text-muted-foreground"> — {addr.addressLine1}, {addr.city}</span>
                     </button>
-                  ))}
+                  )) : (
+                    <p className="text-xs text-muted-foreground text-center py-2">No saved addresses found</p>
+                  )}
                 </div>
               )}
               <div className="space-y-3">
@@ -1563,24 +1548,26 @@ export default function Donation() {
                       <label className="text-xs text-muted-foreground mb-1 block">Donation in the name of</label>
                       <button
                         className="text-xs text-primary underline"
-                        onClick={() => { fetchKartas(); setShowKartaList(!showKartaList); }}
+                        onClick={() => setShowKartaList(!showKartaList)}
                         data-testid="button-pick-karta"
                       >
                         + Pick karta
                       </button>
                     </div>
-                    {showKartaList && kartas.length > 0 && (
+                    {showKartaList && (
                       <div className="bg-muted/50 rounded-lg p-2 mb-2 max-h-32 overflow-y-auto">
-                        {kartas.map((karta, i) => (
+                        {kartas.length > 0 ? kartas.map((karta, i) => (
                           <button
                             key={i}
                             className="w-full text-left text-xs p-2 rounded hover:bg-primary/10"
-                            onClick={() => { setDonationInTheNameOf(karta.name); setShowKartaList(false); }}
+                            onClick={() => { setDonationInTheNameOf(karta.name || ""); setShowKartaList(false); }}
                             data-testid={`button-karta-${i}`}
                           >
-                            {karta.name}
+                            {karta.name}{karta.gotra ? ` (${karta.gotra})` : ""}
                           </button>
-                        ))}
+                        )) : (
+                          <p className="text-xs text-muted-foreground text-center py-2">No saved kartas found</p>
+                        )}
                       </div>
                     )}
                     <input
