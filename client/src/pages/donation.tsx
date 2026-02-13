@@ -1,0 +1,1386 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { useAuth } from "@/contexts/auth-context";
+import { useLocation } from "wouter";
+import {
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Heart,
+  Loader2,
+  Minus,
+  Plus,
+  ShoppingCart,
+  Trash2,
+  X,
+  Info,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  CreditCard,
+} from "lucide-react";
+
+interface DonationHeading {
+  id: number;
+  name: string;
+  shortDescription?: string;
+  about?: string;
+  slug?: string;
+}
+
+interface DonationCategory {
+  id: number;
+  name: string;
+  donationHeadingId: number;
+  subcategories?: DonationSubCategory[];
+}
+
+interface DonationSubCategory {
+  id: number;
+  name: string;
+  desc?: string;
+  is80G: number;
+  amountOptions?: number[];
+  anyAmount?: boolean;
+  hasDonationDate?: number;
+  hasUpload?: number;
+  donationCategoryId?: number;
+}
+
+interface CartDonation {
+  donationName: string;
+  donationId: number;
+  subCategoryId: number;
+  subcategoryName: string;
+  is80G: number;
+  donationAmount: number;
+  calendarType: string;
+  monthId: string;
+  fromChandraMasaId: string;
+  fromSouraMasaId: string;
+  specificDate: string;
+  fromTithiId: string;
+  fromNakshatraId: string;
+  donationInTheNameOf: string;
+  donationRemarks: string;
+  imagePath: string;
+}
+
+interface DonationForm {
+  uid: string;
+  selectedDonations: CartDonation[];
+  donorName: string;
+  countryCode: string;
+  mobileNumber: string;
+  email: string;
+  country: string;
+  pincode: string;
+  state: string;
+  addressLine1: string;
+  addressLine2: string;
+  landmark: string;
+  city: string;
+  district: string;
+  postageCharges: number;
+  postageId: string;
+  totalAmount: number;
+  claim80G: number;
+  pan: string;
+  confirmInfo: boolean;
+}
+
+interface PostageOption {
+  id: number;
+  name: string;
+  amount: number;
+}
+
+interface CalendarType {
+  id: number;
+  name: string;
+}
+
+interface Karta {
+  name: string;
+  id?: number;
+}
+
+interface Address {
+  addresseeName?: string;
+  addressLine1: string;
+  addressLine2?: string;
+  landmark?: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+}
+
+const MONTHS = [
+  { id: 1, name: "January" }, { id: 2, name: "February" }, { id: 3, name: "March" },
+  { id: 4, name: "April" }, { id: 5, name: "May" }, { id: 6, name: "June" },
+  { id: 7, name: "July" }, { id: 8, name: "August" }, { id: 9, name: "September" },
+  { id: 10, name: "October" }, { id: 11, name: "November" }, { id: 12, name: "December" },
+];
+
+function formatNumber(value: number): string {
+  return value ? value.toLocaleString("en-IN") : "0";
+}
+
+export default function Donation() {
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+
+  const [step, setStep] = useState<"select" | "review" | "payee">("select");
+  const [selectedHeading, setSelectedHeading] = useState<DonationHeading | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<DonationCategory | null>(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<DonationSubCategory | null>(null);
+  const [selectedAmount, setSelectedAmount] = useState<number>(0);
+  const [customAmount, setCustomAmount] = useState<string>("");
+  const [donationInTheNameOf, setDonationInTheNameOf] = useState("");
+  const [donationRemarks, setDonationRemarks] = useState("");
+
+  const [calendarType, setCalendarType] = useState("");
+  const [monthId, setMonthId] = useState("");
+  const [specificDate, setSpecificDate] = useState("");
+  const [chandraMasaId, setChandraMasaId] = useState("");
+  const [souraMasaId, setSouraMasaId] = useState("");
+  const [tithiId, setTithiId] = useState("");
+  const [nakshatraId, setNakshatraId] = useState("");
+
+  const [cart, setCart] = useState<CartDonation[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  const [donationForm, setDonationForm] = useState<DonationForm>({
+    uid: user?.uid || "",
+    selectedDonations: [],
+    donorName: "",
+    countryCode: "+91",
+    mobileNumber: "",
+    email: "",
+    country: "India",
+    pincode: "",
+    state: "",
+    addressLine1: "",
+    addressLine2: "",
+    landmark: "",
+    city: "",
+    district: "",
+    postageCharges: 0,
+    postageId: "",
+    totalAmount: 0,
+    claim80G: 0,
+    pan: "",
+    confirmInfo: false,
+  });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showKartaList, setShowKartaList] = useState(false);
+  const [showAddressList, setShowAddressList] = useState(false);
+  const [kartas, setKartas] = useState<Karta[]>([]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [show80GWarning, setShow80GWarning] = useState(false);
+
+  const headingsScrollRef = useRef<HTMLDivElement>(null);
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const subCategoryRef = useRef<HTMLDivElement>(null);
+
+  const { data: headings = [] } = useQuery<DonationHeading[]>({
+    queryKey: ["donationHeadings"],
+    queryFn: async () => {
+      const res = await fetch("/api/donationHeading");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const { data: categories = [] } = useQuery<DonationCategory[]>({
+    queryKey: ["donationCategories"],
+    queryFn: async () => {
+      const res = await fetch("/api/donationCategory");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const filteredCategories = categories.filter(
+    (c) => c.donationHeadingId === selectedHeading?.id
+  );
+
+  const { data: apiSubcategories = [], isLoading: subCatLoading } = useQuery<DonationSubCategory[]>({
+    queryKey: ["donationSubCategory", selectedCategory?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/donationSubCategory/${selectedCategory!.id}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!selectedCategory?.id && !selectedCategory?.subcategories?.length,
+  });
+
+  const rawSubcategories = selectedCategory?.subcategories?.length
+    ? selectedCategory.subcategories
+    : apiSubcategories;
+
+  const subcategories = rawSubcategories.map((sub) => ({
+    ...sub,
+    amountOptions: sub.amountOptions
+      ? sub.amountOptions.map((a: any) => Number(a)).filter((a: number) => !isNaN(a) && a > 0)
+      : [],
+  }));
+
+  const { data: postageOptions = [] } = useQuery<PostageOption[]>({
+    queryKey: ["postageOptions"],
+    queryFn: async () => {
+      const res = await fetch("/api/postageOptionsDonation");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const { data: calendarTypes = [] } = useQuery<CalendarType[]>({
+    queryKey: ["calendarTypes"],
+    queryFn: async () => {
+      const res = await fetch("/api/calendarTypes");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const { data: tithis = [] } = useQuery<any[]>({
+    queryKey: ["tithis"],
+    queryFn: async () => {
+      const res = await fetch("/api/tithis");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const { data: chandraMasas = [] } = useQuery<any[]>({
+    queryKey: ["chandraMasas"],
+    queryFn: async () => {
+      const res = await fetch("/api/chandraMasas");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const { data: souraMasas = [] } = useQuery<any[]>({
+    queryKey: ["souraMasas"],
+    queryFn: async () => {
+      const res = await fetch("/api/souraMasas");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const { data: nakshatras = [] } = useQuery<any[]>({
+    queryKey: ["nakshatras"],
+    queryFn: async () => {
+      const res = await fetch("/api/nakshatras");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (user?.uid) {
+      fetch(`/api/onlineDevotee/${user.uid}`)
+        .then((r) => r.json())
+        .then((data) => {
+          setDonationForm((prev) => ({
+            ...prev,
+            uid: user.uid,
+            donorName: data.name || "",
+            email: data.email || "",
+            mobileNumber: data.mobile || "",
+            countryCode: data.countryCode || "+91",
+          }));
+        })
+        .catch(() => {});
+    }
+  }, [user?.uid]);
+
+  const fetchKartas = useCallback(async () => {
+    if (!user?.uid) return;
+    try {
+      const res = await fetch(`/api/devoteeKarta/${user.uid}`);
+      const data = await res.json();
+      setKartas(data || []);
+    } catch {}
+  }, [user?.uid]);
+
+  const fetchAddresses = useCallback(async () => {
+    if (!user?.uid) return;
+    try {
+      const res = await fetch(`/api/devoteeAddress/${user.uid}`);
+      const data = await res.json();
+      setAddresses(data || []);
+    } catch {}
+  }, [user?.uid]);
+
+  const totalAmount = cart.reduce((sum, d) => sum + Number(d.donationAmount), 0) + donationForm.postageCharges;
+
+  const has80GInCart = cart.some((d) => Number(d.is80G) === 1);
+  const hasNon80GInCart = cart.some((d) => Number(d.is80G) === 0);
+
+  const resetSelection = () => {
+    setSelectedSubCategory(null);
+    setSelectedAmount(0);
+    setCustomAmount("");
+    setDonationInTheNameOf("");
+    setDonationRemarks("");
+    setCalendarType("");
+    setMonthId("");
+    setSpecificDate("");
+    setChandraMasaId("");
+    setSouraMasaId("");
+    setTithiId("");
+    setNakshatraId("");
+    setValidationErrors([]);
+  };
+
+  const handleSelectHeading = (heading: DonationHeading) => {
+    setSelectedHeading(heading);
+    setSelectedCategory(null);
+    resetSelection();
+  };
+
+  const handleSelectCategory = (category: DonationCategory) => {
+    setSelectedCategory(category);
+    resetSelection();
+  };
+
+  const handleSelectSubCategory = (sub: DonationSubCategory) => {
+    const isAdding80G = Number(sub.is80G) === 1;
+    if ((has80GInCart && !isAdding80G) || (hasNon80GInCart && isAdding80G)) {
+      setShow80GWarning(true);
+      return;
+    }
+    setSelectedSubCategory(sub);
+    setSelectedAmount(0);
+    setCustomAmount("");
+    setValidationErrors([]);
+    setTimeout(() => {
+      subCategoryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  };
+
+  const handleSelectAmount = (amount: number) => {
+    setSelectedAmount(amount);
+    setCustomAmount("");
+  };
+
+  const applyCustomAmount = () => {
+    const val = parseInt(customAmount);
+    if (val > 0) {
+      setSelectedAmount(val);
+    }
+  };
+
+  const validateAndAddToCart = () => {
+    const errors: string[] = [];
+    if (!selectedCategory) errors.push("Please select a donation category.");
+    if (!selectedSubCategory) errors.push("Please select a donation cause.");
+    if (!selectedAmount && !customAmount) errors.push("Please select or enter a donation amount.");
+    if (customAmount && parseInt(customAmount) <= 0) errors.push("Please enter a valid amount.");
+
+    if (selectedSubCategory?.hasDonationDate === 1) {
+      if (!calendarType) errors.push("Please select a calendar type.");
+      if (calendarType === "1" && !monthId) errors.push("Please select a month.");
+      if (calendarType === "1" && !specificDate) errors.push("Please select a date.");
+      if (calendarType === "2" && !chandraMasaId) errors.push("Please select a Chandra Masa.");
+      if (calendarType === "3" && !souraMasaId) errors.push("Please select a Soura Masa.");
+      if ((calendarType === "2" || calendarType === "3") && !tithiId && !nakshatraId) {
+        errors.push("Please select a Tithi or Nakshatra.");
+      }
+    }
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    const amt = selectedAmount || parseInt(customAmount) || 0;
+    const newDonation: CartDonation = {
+      donationName: selectedCategory?.name || "",
+      donationId: selectedCategory!.id,
+      subCategoryId: selectedSubCategory!.id,
+      subcategoryName: selectedSubCategory!.name,
+      is80G: selectedSubCategory!.is80G,
+      donationAmount: amt,
+      calendarType,
+      monthId,
+      specificDate,
+      fromChandraMasaId: chandraMasaId,
+      fromSouraMasaId: souraMasaId,
+      fromTithiId: tithiId,
+      fromNakshatraId: nakshatraId,
+      donationInTheNameOf,
+      donationRemarks,
+      imagePath: "",
+    };
+
+    const isAdding80G = Number(selectedSubCategory!.is80G) === 1;
+    if ((has80GInCart && !isAdding80G) || (hasNon80GInCart && isAdding80G)) {
+      setCart([newDonation]);
+    } else {
+      setCart((prev) => [...prev, newDonation]);
+    }
+
+    resetSelection();
+    setSelectedCategory(null);
+    setShowCart(true);
+  };
+
+  const removeDonation = (index: number) => {
+    setCart((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleProceedToPayee = () => {
+    if (cart.length === 0) return;
+    setDonationForm((prev) => ({
+      ...prev,
+      selectedDonations: cart,
+      totalAmount: totalAmount,
+    }));
+    setStep("payee");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const validatePayeeAndSubmit = async () => {
+    const errors: string[] = [];
+    if (!donationForm.donorName || donationForm.donorName.trim().length < 3)
+      errors.push("Donor name must be at least 3 characters.");
+    if (!donationForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(donationForm.email.trim()))
+      errors.push("Enter a valid email address.");
+    if (!donationForm.mobileNumber)
+      errors.push("Enter a valid mobile number.");
+    if (!donationForm.countryCode)
+      errors.push("Please select a country code.");
+    if (!donationForm.country)
+      errors.push("Please enter your country.");
+    if (!donationForm.state)
+      errors.push("Please enter your state.");
+    if (!donationForm.city)
+      errors.push("Please enter your city.");
+    if (!donationForm.addressLine1)
+      errors.push("Please enter your street address.");
+    if (!donationForm.pincode)
+      errors.push("Please enter your pincode.");
+    if (donationForm.claim80G === 1 && !donationForm.pan)
+      errors.push("PAN number is required for 80G claims.");
+    if (!donationForm.confirmInfo)
+      errors.push("Please confirm the information is correct.");
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      const payload = {
+        ...donationForm,
+        selectedDonations: cart,
+        totalAmount: totalAmount,
+        uid: user?.uid || "",
+      };
+
+      const res = await fetch("/api/makeDonation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setErrorMessage(errData.error || "Failed to submit donation. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.status === "Successful" && data.encRequest && data.access_code) {
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = "https://secure.ccavenue.com/transaction/transaction.do?command=initiateTransaction";
+        form.style.display = "none";
+
+        const params: Record<string, string> = {
+          encRequest: data.encRequest,
+          access_code: data.access_code,
+        };
+
+        for (const [key, value] of Object.entries(params)) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = value;
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+      } else if (data.orderId) {
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = "https://api.razorpay.com/v1/checkout/embedded";
+        form.style.display = "none";
+
+        const fields: Record<string, string> = {
+          key_id: data.key_id || "",
+          name: "Sri Sringeri Sharada Peetham",
+          description: "Donation",
+          order_id: data.orderId,
+          amount: String(data.amount),
+          currency: "INR",
+          callback_url: data.callback_url || "https://donate.sringeri.net/rpg/onlinesevaresponse",
+          cancel_url: data.cancel_url || "https://donate.sringeri.net/rpg/onlinesevaresponse",
+          "prefill[name]": donationForm.donorName,
+          "prefill[email]": donationForm.email,
+          "prefill[contact]": `${donationForm.countryCode}${donationForm.mobileNumber}`,
+        };
+
+        for (const [key, value] of Object.entries(fields)) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = value;
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+      } else {
+        setErrorMessage("We could not complete the payment at this moment. Please try after sometime.");
+      }
+    } catch {
+      setErrorMessage("Something went wrong. Please try again.");
+    }
+    setSubmitting(false);
+  };
+
+  const updatePayeeField = (field: keyof DonationForm, value: any) => {
+    setDonationForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  if (step === "payee") {
+    return (
+      <div className="min-h-screen bg-[#F7F2EC] pb-24">
+        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+          <button
+            onClick={() => { setStep("review"); setValidationErrors([]); }}
+            className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
+            data-testid="button-back-payee"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
+          <div className="flex items-center gap-3">
+            <Heart className="h-7 w-7" />
+            <div>
+              <h1 className="text-xl font-serif font-bold" data-testid="text-payee-title">Payee Details</h1>
+              <p className="text-sm opacity-80">Complete your donation</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 mt-4 space-y-4">
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <h3 className="font-serif font-bold text-base">Personal Details</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Donor Name *</label>
+                  <input
+                    type="text"
+                    value={donationForm.donorName}
+                    onChange={(e) => updatePayeeField("donorName", e.target.value)}
+                    className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                    data-testid="input-donor-name"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Email *</label>
+                  <input
+                    type="email"
+                    value={donationForm.email}
+                    onChange={(e) => updatePayeeField("email", e.target.value)}
+                    className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                    data-testid="input-email"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Code</label>
+                    <input
+                      type="text"
+                      value={donationForm.countryCode}
+                      onChange={(e) => updatePayeeField("countryCode", e.target.value)}
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-testid="input-country-code"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-muted-foreground mb-1 block">Mobile *</label>
+                    <input
+                      type="text"
+                      value={donationForm.mobileNumber}
+                      onChange={(e) => updatePayeeField("mobileNumber", e.target.value)}
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-testid="input-mobile"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-serif font-bold text-base">Address</h3>
+                <button
+                  className="text-xs text-primary underline"
+                  onClick={() => { fetchAddresses(); setShowAddressList(!showAddressList); }}
+                  data-testid="button-pick-address"
+                >
+                  + Pick from saved
+                </button>
+              </div>
+              {showAddressList && addresses.length > 0 && (
+                <div className="bg-muted/50 rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
+                  {addresses.map((addr, i) => (
+                    <button
+                      key={i}
+                      className="w-full text-left text-xs p-2 rounded hover:bg-primary/10 transition-colors"
+                      onClick={() => {
+                        updatePayeeField("addressLine1", addr.addressLine1);
+                        updatePayeeField("addressLine2", addr.addressLine2 || "");
+                        updatePayeeField("landmark", addr.landmark || "");
+                        updatePayeeField("city", addr.city);
+                        updatePayeeField("state", addr.state);
+                        updatePayeeField("country", addr.country);
+                        updatePayeeField("pincode", addr.pincode);
+                        setShowAddressList(false);
+                      }}
+                      data-testid={`button-address-${i}`}
+                    >
+                      <span className="font-semibold">{addr.addresseeName || addr.city}</span>
+                      <span className="text-muted-foreground"> — {addr.addressLine1}, {addr.city}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Country *</label>
+                  <input
+                    type="text"
+                    value={donationForm.country}
+                    onChange={(e) => updatePayeeField("country", e.target.value)}
+                    className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                    data-testid="input-country"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">State *</label>
+                    <input
+                      type="text"
+                      value={donationForm.state}
+                      onChange={(e) => updatePayeeField("state", e.target.value)}
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-testid="input-state"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Pincode *</label>
+                    <input
+                      type="text"
+                      value={donationForm.pincode}
+                      onChange={(e) => updatePayeeField("pincode", e.target.value)}
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-testid="input-pincode"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Street Address *</label>
+                  <input
+                    type="text"
+                    value={donationForm.addressLine1}
+                    onChange={(e) => updatePayeeField("addressLine1", e.target.value)}
+                    className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                    data-testid="input-address1"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Locality</label>
+                    <input
+                      type="text"
+                      value={donationForm.addressLine2}
+                      onChange={(e) => updatePayeeField("addressLine2", e.target.value)}
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-testid="input-address2"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">City *</label>
+                    <input
+                      type="text"
+                      value={donationForm.city}
+                      onChange={(e) => updatePayeeField("city", e.target.value)}
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-testid="input-city"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Landmark</label>
+                  <input
+                    type="text"
+                    value={donationForm.landmark}
+                    onChange={(e) => updatePayeeField("landmark", e.target.value)}
+                    className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                    data-testid="input-landmark"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {postageOptions.length > 0 && (
+            <Card>
+              <CardContent className="p-5 space-y-3">
+                <h3 className="font-serif font-bold text-base">Postage</h3>
+                <select
+                  value={donationForm.postageId}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const opt = JSON.parse(e.target.value);
+                      setDonationForm((prev) => ({
+                        ...prev,
+                        postageId: opt.id,
+                        postageCharges: opt.amount,
+                      }));
+                    } else {
+                      setDonationForm((prev) => ({ ...prev, postageId: "", postageCharges: 0 }));
+                    }
+                  }}
+                  className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                  data-testid="select-postage"
+                >
+                  <option value="">No postage needed</option>
+                  {postageOptions.map((opt) => (
+                    <option key={opt.id} value={JSON.stringify({ id: opt.id, amount: opt.amount })}>
+                      {opt.name} — ₹{opt.amount}
+                    </option>
+                  ))}
+                </select>
+              </CardContent>
+            </Card>
+          )}
+
+          {has80GInCart && (
+            <Card>
+              <CardContent className="p-5 space-y-3">
+                <h3 className="font-serif font-bold text-base">80G Tax Benefit</h3>
+                <div className="flex items-center gap-4">
+                  <label className="text-sm">Claim 80G benefit?</label>
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-1 text-sm">
+                      <input
+                        type="radio"
+                        name="claim80G"
+                        value={1}
+                        checked={donationForm.claim80G === 1}
+                        onChange={() => updatePayeeField("claim80G", 1)}
+                        className="accent-primary"
+                      />
+                      Yes
+                    </label>
+                    <label className="flex items-center gap-1 text-sm">
+                      <input
+                        type="radio"
+                        name="claim80G"
+                        value={0}
+                        checked={donationForm.claim80G === 0}
+                        onChange={() => updatePayeeField("claim80G", 0)}
+                        className="accent-primary"
+                      />
+                      No
+                    </label>
+                  </div>
+                </div>
+                {donationForm.claim80G === 1 && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">PAN Number *</label>
+                    <input
+                      type="text"
+                      value={donationForm.pan}
+                      onChange={(e) => updatePayeeField("pan", e.target.value.toUpperCase())}
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary uppercase"
+                      data-testid="input-pan"
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardContent className="p-5">
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={donationForm.confirmInfo}
+                  onChange={(e) => updatePayeeField("confirmInfo", e.target.checked)}
+                  className="mt-0.5 accent-primary"
+                  data-testid="checkbox-confirm"
+                />
+                <span>I confirm that the information given in this form is true, complete and accurate. I agree that the above contribution may be treated as donation towards the corpus fund of the trust.</span>
+              </label>
+            </CardContent>
+          </Card>
+
+          {validationErrors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              {validationErrors.map((err, i) => (
+                <p key={i} className="text-red-600 text-xs">{err}</p>
+              ))}
+            </div>
+          )}
+
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <p className="text-red-600 text-sm">{errorMessage}</p>
+            </div>
+          )}
+
+          <div className="bg-white border border-border rounded-lg p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium">Total Amount</span>
+              <span className="text-xl font-serif font-bold text-primary">₹{formatNumber(totalAmount)}</span>
+            </div>
+            <Button
+              className="w-full h-12 text-base font-semibold"
+              onClick={validatePayeeAndSubmit}
+              disabled={submitting || !donationForm.confirmInfo}
+              data-testid="button-submit-donation"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                `Pay ₹${formatNumber(totalAmount)}`
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "review") {
+    return (
+      <div className="min-h-screen bg-[#F7F2EC] pb-24">
+        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+          <button
+            onClick={() => setStep("select")}
+            className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
+            data-testid="button-back-review"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Add More
+          </button>
+          <div className="flex items-center gap-3">
+            <ShoppingCart className="h-7 w-7" />
+            <div>
+              <h1 className="text-xl font-serif font-bold" data-testid="text-review-title">Review Donations</h1>
+              <p className="text-sm opacity-80">{cart.length} donation(s) added</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 mt-4 space-y-3">
+          {cart.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Heart className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                <p className="text-muted-foreground">No donations added yet.</p>
+                <Button className="mt-4" onClick={() => setStep("select")} data-testid="button-add-first">
+                  Add a Donation
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {cart.map((donation, index) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm" data-testid={`text-donation-name-${index}`}>
+                            {donation.donationName}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {donation.is80G === 0
+                              ? `${donation.subcategoryName} (non-80G)`
+                              : donation.subcategoryName}
+                          </p>
+                          {donation.donationInTheNameOf && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              In the name of: {donation.donationInTheNameOf}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="font-serif font-bold text-lg">₹{formatNumber(donation.donationAmount)}</span>
+                        <button
+                          className="text-red-500 text-xs flex items-center gap-1"
+                          onClick={() => removeDonation(index)}
+                          data-testid={`button-remove-${index}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+
+              <div className="bg-white border border-border rounded-lg p-4 shadow-sm mt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="font-medium">Total</span>
+                  <span className="text-2xl font-serif font-bold text-primary">
+                    ₹{formatNumber(totalAmount)}
+                  </span>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setStep("select")}
+                    data-testid="button-add-another"
+                  >
+                    + Add Another
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={handleProceedToPayee}
+                    data-testid="button-proceed-pay"
+                  >
+                    Proceed to Pay
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F7F2EC] pb-24">
+      <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+        <button
+          onClick={() => navigate("/home")}
+          className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
+          data-testid="button-back-home"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+        <div className="flex items-center gap-3">
+          <Heart className="h-7 w-7" />
+          <div>
+            <h1 className="text-xl font-serif font-bold" data-testid="text-page-title">Make a Donation</h1>
+            <p className="text-sm opacity-80">Sri Sringeri Sharada Peetham</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 mt-4 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold mb-2 px-1" data-testid="text-choose-center">Choose Donation Center</h3>
+          <div
+            ref={headingsScrollRef}
+            className="flex gap-2 overflow-x-auto pb-2 no-scrollbar"
+          >
+            {headings.map((heading) => (
+              <button
+                key={heading.id}
+                onClick={() => handleSelectHeading(heading)}
+                className={`shrink-0 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  selectedHeading?.id === heading.id
+                    ? "bg-primary text-white shadow-md"
+                    : "bg-white border border-border text-foreground hover:border-primary/50"
+                }`}
+                data-testid={`button-heading-${heading.id}`}
+              >
+                {heading.name}
+              </button>
+            ))}
+          </div>
+          {selectedHeading?.shortDescription && (
+            <p className="text-xs text-muted-foreground mt-2 px-1">{selectedHeading.shortDescription}</p>
+          )}
+        </div>
+
+        {selectedHeading && filteredCategories.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold mb-2 px-1" data-testid="text-choose-category">Choose Category</h3>
+            <div
+              ref={categoryScrollRef}
+              className="flex gap-2 overflow-x-auto pb-2 no-scrollbar"
+            >
+              {filteredCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => handleSelectCategory(cat)}
+                  className={`shrink-0 px-4 py-2 rounded-lg text-sm transition-all ${
+                    selectedCategory?.id === cat.id
+                      ? "bg-primary text-white shadow-md"
+                      : "bg-white border border-border text-foreground hover:border-primary/50"
+                  }`}
+                  data-testid={`button-category-${cat.id}`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedCategory && (
+          <div>
+            <h3 className="text-sm font-semibold mb-2 px-1" data-testid="text-choose-cause">Choose Donation Cause</h3>
+            {subCatLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2">
+                {subcategories.map((sub) => (
+                  <button
+                    key={sub.id}
+                    onClick={() => handleSelectSubCategory(sub)}
+                    className={`w-full text-left rounded-lg p-3 transition-all ${
+                      selectedSubCategory?.id === sub.id
+                        ? "bg-primary text-white shadow-md"
+                        : "bg-white border border-border hover:border-primary/50"
+                    }`}
+                    data-testid={`button-subcategory-${sub.id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        {sub.is80G === 0 ? `${sub.name} (non-80G)` : sub.name}
+                      </span>
+                      {selectedSubCategory?.id === sub.id && (
+                        <Check className="h-4 w-4" />
+                      )}
+                    </div>
+                    {sub.desc && (
+                      <p className={`text-xs mt-1 ${selectedSubCategory?.id === sub.id ? "text-white/80" : "text-muted-foreground"}`}>
+                        {sub.desc}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {selectedSubCategory && (
+          <div ref={subCategoryRef}>
+            <Card>
+              <CardContent className="p-5 space-y-4">
+                <h3 className="font-serif font-bold text-base">
+                  {selectedSubCategory.name}
+                </h3>
+
+                {selectedSubCategory.amountOptions && selectedSubCategory.amountOptions.length > 0 && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-2 block">Select Amount</label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedSubCategory.amountOptions.map((amt) => (
+                        <button
+                          key={amt}
+                          onClick={() => handleSelectAmount(amt)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            selectedAmount === amt
+                              ? "bg-primary text-white shadow-md"
+                              : "bg-white border border-border hover:border-primary/50"
+                          }`}
+                          data-testid={`button-amount-${amt}`}
+                        >
+                          ₹{formatNumber(amt)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedSubCategory.anyAmount && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Or enter custom amount</label>
+                    <input
+                      type="number"
+                      value={customAmount}
+                      onChange={(e) => { setCustomAmount(e.target.value); setSelectedAmount(0); }}
+                      onBlur={applyCustomAmount}
+                      onKeyDown={(e) => e.key === "Enter" && applyCustomAmount()}
+                      placeholder="Enter amount"
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-testid="input-custom-amount"
+                    />
+                  </div>
+                )}
+
+                {selectedSubCategory.hasDonationDate === 1 && (
+                  <div className="space-y-3 pt-2 border-t border-border">
+                    <label className="text-xs text-muted-foreground block">Donation Date (Optional)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {calendarTypes.map((ct) => (
+                        <button
+                          key={ct.id}
+                          onClick={() => {
+                            setCalendarType(String(ct.id));
+                            setMonthId(""); setSpecificDate("");
+                            setChandraMasaId(""); setSouraMasaId("");
+                            setTithiId(""); setNakshatraId("");
+                          }}
+                          className={`px-3 py-1.5 rounded text-xs ${
+                            calendarType === String(ct.id)
+                              ? "bg-primary text-white"
+                              : "bg-white border border-border"
+                          }`}
+                          data-testid={`button-cal-type-${ct.id}`}
+                        >
+                          {ct.name}
+                        </button>
+                      ))}
+                    </div>
+
+                    {calendarType === "1" && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={monthId}
+                          onChange={(e) => setMonthId(e.target.value)}
+                          className="border border-border rounded-md px-3 py-2 text-sm bg-white"
+                          data-testid="select-month"
+                        >
+                          <option value="">Month</option>
+                          {MONTHS.map((m) => (
+                            <option key={m.id} value={String(m.id)}>{m.name}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={specificDate}
+                          onChange={(e) => setSpecificDate(e.target.value)}
+                          placeholder="Date (1-31)"
+                          className="border border-border rounded-md px-3 py-2 text-sm bg-white"
+                          data-testid="input-specific-date"
+                        />
+                      </div>
+                    )}
+
+                    {calendarType === "2" && (
+                      <select
+                        value={chandraMasaId}
+                        onChange={(e) => setChandraMasaId(e.target.value)}
+                        className="w-full border border-border rounded-md px-3 py-2 text-sm bg-white"
+                        data-testid="select-chandra-masa"
+                      >
+                        <option value="">Select Chandra Masa</option>
+                        {chandraMasas.map((cm: any) => (
+                          <option key={cm.id} value={cm.id}>{cm.name}</option>
+                        ))}
+                      </select>
+                    )}
+
+                    {calendarType === "3" && (
+                      <select
+                        value={souraMasaId}
+                        onChange={(e) => setSouraMasaId(e.target.value)}
+                        className="w-full border border-border rounded-md px-3 py-2 text-sm bg-white"
+                        data-testid="select-soura-masa"
+                      >
+                        <option value="">Select Soura Masa</option>
+                        {souraMasas.map((sm: any) => (
+                          <option key={sm.id} value={sm.id}>{sm.name}</option>
+                        ))}
+                      </select>
+                    )}
+
+                    {(calendarType === "2" || calendarType === "3") && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={tithiId}
+                          onChange={(e) => { setTithiId(e.target.value); if (e.target.value) setNakshatraId(""); }}
+                          className="border border-border rounded-md px-3 py-2 text-sm bg-white"
+                          data-testid="select-tithi"
+                        >
+                          <option value="">Tithi</option>
+                          {tithis.map((t: any) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={nakshatraId}
+                          onChange={(e) => { setNakshatraId(e.target.value); if (e.target.value) setTithiId(""); }}
+                          className="border border-border rounded-md px-3 py-2 text-sm bg-white"
+                          data-testid="select-nakshatra"
+                        >
+                          <option value="">Nakshatra</option>
+                          {nakshatras.map((n: any) => (
+                            <option key={n.id} value={n.id}>{n.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-3 pt-2 border-t border-border">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs text-muted-foreground mb-1 block">Donation in the name of</label>
+                      <button
+                        className="text-xs text-primary underline"
+                        onClick={() => { fetchKartas(); setShowKartaList(!showKartaList); }}
+                        data-testid="button-pick-karta"
+                      >
+                        + Pick karta
+                      </button>
+                    </div>
+                    {showKartaList && kartas.length > 0 && (
+                      <div className="bg-muted/50 rounded-lg p-2 mb-2 max-h-32 overflow-y-auto">
+                        {kartas.map((karta, i) => (
+                          <button
+                            key={i}
+                            className="w-full text-left text-xs p-2 rounded hover:bg-primary/10"
+                            onClick={() => { setDonationInTheNameOf(karta.name); setShowKartaList(false); }}
+                            data-testid={`button-karta-${i}`}
+                          >
+                            {karta.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      value={donationInTheNameOf}
+                      onChange={(e) => setDonationInTheNameOf(e.target.value)}
+                      placeholder="Optional"
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-testid="input-name-of"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Remarks</label>
+                    <input
+                      type="text"
+                      value={donationRemarks}
+                      onChange={(e) => setDonationRemarks(e.target.value)}
+                      placeholder="Optional"
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-testid="input-remarks"
+                    />
+                  </div>
+                </div>
+
+                {validationErrors.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                    {validationErrors.map((err, i) => (
+                      <p key={i} className="text-red-600 text-xs">{err}</p>
+                    ))}
+                  </div>
+                )}
+
+                <Button
+                  className="w-full h-11"
+                  onClick={validateAndAddToCart}
+                  disabled={!selectedAmount && !customAmount}
+                  data-testid="button-add-to-cart"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Donation{selectedAmount || customAmount ? ` — ₹${formatNumber(selectedAmount || parseInt(customAmount) || 0)}` : ""}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+
+      {cart.length > 0 && (
+        <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-border shadow-lg px-4 py-3 z-40">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">{cart.length} donation(s)</p>
+              <p className="text-lg font-serif font-bold text-primary">₹{formatNumber(totalAmount)}</p>
+            </div>
+            <Button
+              onClick={() => setStep("review")}
+              className="px-6"
+              data-testid="button-view-cart"
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Review & Pay
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={show80GWarning} onOpenChange={setShow80GWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cannot Mix Donation Types</AlertDialogTitle>
+            <AlertDialogDescription>
+              Donations for 80G and non-80G causes cannot be added in a single transaction due to statutory reasons. Please complete the current donations first or clear your cart.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-80g-cancel">OK</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

@@ -578,5 +578,466 @@ export async function registerRoutes(
     }
   });
 
+  // Donation API routes
+  app.get("/api/donationHeading", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/donationHeading`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch donation headings" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching donation headings:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/donationCategory", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/donationCategory`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch donation categories" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching donation categories:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/donationSubCategory/:categoryId", async (req, res) => {
+    try {
+      const { categoryId } = req.params;
+      const response = await fetch(`${SRINGERI_API_URL}/api/donationSubCategory/${categoryId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch donation subcategories" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching donation subcategories:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/postageOptionsDonation", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/postageOptionsDonation`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch postage options" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching postage options:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/calendarTypes", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/calendarTypes`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch calendar types" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching calendar types:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/tithis", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/tithis`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch tithis" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching tithis:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/chandraMasas", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/chandraMasas`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch chandra masas" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching chandra masas:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/souraMasas", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/souraMasas`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch soura masas" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching soura masas:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/nakshatras", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/nakshatras`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch nakshatras" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching nakshatras:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/devoteeKarta/:uid", async (req, res) => {
+    try {
+      const { uid } = req.params;
+      const response = await fetch(`${SRINGERI_API_URL}/api/devoteeKarta/${uid}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch devotee karta" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching devotee karta:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/devoteeAddress/:uid", async (req, res) => {
+    try {
+      const { uid } = req.params;
+      const response = await fetch(`${SRINGERI_API_URL}/api/devoteeAddress/${uid}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch devotee address" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching devotee address:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/onlineDonationRzp", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/onlineDonationRzp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to submit donation" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error submitting donation:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/makeDonation", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/makeDonation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to submit donation" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('{');
+        if (jsonStart !== -1) {
+          data = JSON.parse(text.substring(jsonStart));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error submitting donation:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   return httpServer;
 }

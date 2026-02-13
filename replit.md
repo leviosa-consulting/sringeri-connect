@@ -68,7 +68,9 @@ Preferred communication style: Simple, everyday language.
 ### Sringeri External API
 - Base URL configured via `VITE_SRINGERI_API_URL` (defaults to `https://dsspv2.lcpl.in`)
 - Optional API key via `SRINGERI_API_KEY`
-- Backend proxies requests to fetch user profiles, devotee data, and accommodation inventory/booking
+- Backend proxies requests to fetch user profiles, devotee data, accommodation inventory/booking, and donation data/payment
+- Donation flow uses `/api/makeDonation` endpoint with CCAvenue payment gateway (fallback to Razorpay if orderId returned)
+- Donation APIs: donationHeading, donationCategory, donationSubCategory, postageOptionsDonation, calendarTypes, tithis, chandraMasas, souraMasas, nakshatras, devoteeKarta, devoteeAddress
 
 ### Database
 - PostgreSQL via `DATABASE_URL` environment variable
