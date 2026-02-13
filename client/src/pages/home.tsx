@@ -345,7 +345,7 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <h2 className="font-serif font-bold text-xl">Recent Events</h2>
               <a 
-                href="/events"
+                href="/updates"
                 className="text-sm text-primary hover:underline cursor-pointer"
                 data-testid="link-view-all-events"
               >

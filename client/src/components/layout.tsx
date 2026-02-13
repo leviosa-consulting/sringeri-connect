@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Calendar, Users, User } from "lucide-react";
+import { Home, Bell, Users, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DesktopNav from "./desktop-nav";
 import ChatbotWidget from "./chatbot-widget";
@@ -11,7 +11,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { icon: Home, label: "Services", path: "/home" },
-    { icon: Calendar, label: "Events", path: "/events" },
+    { icon: Bell, label: "Updates", path: "/updates" },
     { icon: Users, label: "Devotee", path: "/devotee" },
     { icon: User, label: "Account", path: "/profile" },
   ];

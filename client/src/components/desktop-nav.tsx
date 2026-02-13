@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Calendar, Users, User, LogOut } from "lucide-react";
+import { Home, Bell, Users, User, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -11,7 +11,7 @@ export default function DesktopNav() {
 
   const navItems = [
     { icon: Home, label: "Services", path: "/home" },
-    { icon: Calendar, label: "Events", path: "/events" },
+    { icon: Bell, label: "Updates", path: "/updates" },
     { icon: Users, label: "Devotee Corner", path: "/devotee" },
     { icon: User, label: "My Account", path: "/profile" },
   ];

@@ -549,7 +549,7 @@ export async function handleChatMessage(message: string): Promise<{ reply: strin
     case "events":
       reply = await buildEventsResponse();
       suggestedActions = [
-        { label: "View All Events", action: "navigate:/events" },
+        { label: "View All Updates", action: "navigate:/updates" },
         { label: "Announcements", action: "announcements" },
         { label: "Donations", action: "donation" },
       ];

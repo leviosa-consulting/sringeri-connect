@@ -6,7 +6,7 @@ import NotFound from "@/pages/not-found";
 import Layout from "@/components/layout";
 import Login from "@/pages/login";
 import Home from "@/pages/home";
-import EventsNews from "@/pages/events-news";
+import Updates from "@/pages/updates";
 import DevoteeCorner from "@/pages/devotee-corner";
 import Profile from "@/pages/profile";
 import Accommodation from "@/pages/accommodation";
@@ -39,7 +39,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Login} />
         <Route path="/home">{() => <ProtectedRoute component={Home} />}</Route>
-        <Route path="/events">{() => <ProtectedRoute component={EventsNews} />}</Route>
+        <Route path="/updates">{() => <ProtectedRoute component={Updates} />}</Route>
         <Route path="/devotee">{() => <ProtectedRoute component={DevoteeCorner} />}</Route>
         <Route path="/profile">{() => <ProtectedRoute component={Profile} />}</Route>
         <Route path="/accommodation">{() => <ProtectedRoute component={Accommodation} />}</Route>
