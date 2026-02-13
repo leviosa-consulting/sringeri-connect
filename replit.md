@@ -68,7 +68,7 @@ Preferred communication style: Simple, everyday language.
 ### Sringeri External API
 - Base URL configured via `VITE_SRINGERI_API_URL` (defaults to `https://dsspv2.lcpl.in`)
 - Optional API key via `SRINGERI_API_KEY`
-- Backend proxies requests to fetch user profiles and devotee data
+- Backend proxies requests to fetch user profiles, devotee data, and accommodation inventory/booking
 
 ### Database
 - PostgreSQL via `DATABASE_URL` environment variable

@@ -437,5 +437,146 @@ export async function registerRoutes(
     }
   });
 
+  // Accommodation API routes
+  app.get("/api/onlineInventory", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/onlineInventory`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch inventory" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        console.error("Error parsing inventory response:", text.substring(0, 200));
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching inventory:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/govtIdTypes", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/govtIdTypes`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch ID types" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching govt ID types:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/checkReservationAadhaar/:aadhaar/:date", async (req, res) => {
+    try {
+      const { aadhaar, date } = req.params;
+      const response = await fetch(`${SRINGERI_API_URL}/api/checkReservationAadhaar/${aadhaar}/${date}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to check Aadhaar" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('{');
+        if (jsonStart !== -1) {
+          data = JSON.parse(text.substring(jsonStart));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error checking Aadhaar:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/onlineReservationRzp", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/onlineReservationRzp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to submit reservation" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('{');
+        if (jsonStart !== -1) {
+          data = JSON.parse(text.substring(jsonStart));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error submitting reservation:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   return httpServer;
 }

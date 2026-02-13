@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -62,6 +63,7 @@ interface TodayDetails {
 
 export default function Home() {
   const isDesktop = useMedia('(min-width: 768px)', false);
+  const [_, setLocation] = useLocation();
   const { profile, user } = useAuth();
   const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
   const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
@@ -320,7 +322,9 @@ export default function Home() {
                 <ServiceIcon 
                   key={service.id}
                   {...service}
-                  onClick={() => console.log(`Clicked ${service.id}`)}
+                  onClick={() => {
+                    if (service.id === "accommodation") setLocation("/accommodation");
+                  }}
                 />
               ))}
             </div>

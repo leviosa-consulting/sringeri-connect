@@ -9,6 +9,7 @@ import Home from "@/pages/home";
 import EventsNews from "@/pages/events-news";
 import DevoteeCorner from "@/pages/devotee-corner";
 import Profile from "@/pages/profile";
+import Accommodation from "@/pages/accommodation";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { Loader2 } from "lucide-react";
 
@@ -39,6 +40,7 @@ function Router() {
         <Route path="/events">{() => <ProtectedRoute component={EventsNews} />}</Route>
         <Route path="/devotee">{() => <ProtectedRoute component={DevoteeCorner} />}</Route>
         <Route path="/profile">{() => <ProtectedRoute component={Profile} />}</Route>
+        <Route path="/accommodation">{() => <ProtectedRoute component={Accommodation} />}</Route>
         <Route component={NotFound} />
       </Switch>
     </Layout>
