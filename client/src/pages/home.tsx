@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
 import guruBanner from "@/assets/guru-banner.png";
+import calendarBg from "@assets/background-writing-web_1770978468122.jpg";
 
 interface SringeriEvent {
   id: string;
@@ -208,15 +209,15 @@ export default function Home() {
 
       {/* Hindu Calendar Strip */}
       {todayDetails && (
-        <div className="mx-4 md:mx-0 py-4 px-6 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-primary/10 rounded-xl text-center space-y-2" data-testid="card-today-calendar">
+        <div className="py-4 px-6 text-center space-y-2 bg-cover bg-center w-screen relative left-1/2 -translate-x-1/2" style={{ backgroundImage: `url(${calendarBg})` }} data-testid="card-today-calendar">
           {/* Occasion if any */}
           {(todayDetails.occasionK || todayDetails.occasion) && (
-            <div className="pb-2 border-b border-primary/10">
+            <div className="pb-2 border-b border-foreground/10">
               {todayDetails.occasionK && (
-                <div className="text-sm font-medium text-primary" data-testid="text-occasion-kannada">{todayDetails.occasionK}</div>
+                <div className="text-sm font-medium text-foreground" data-testid="text-occasion-kannada">{todayDetails.occasionK}</div>
               )}
               {todayDetails.occasion && (
-                <div className="text-xs text-muted-foreground" data-testid="text-occasion-english">{todayDetails.occasion}</div>
+                <div className="text-xs text-foreground/70" data-testid="text-occasion-english">{todayDetails.occasion}</div>
               )}
             </div>
           )}
@@ -228,7 +229,7 @@ export default function Home() {
                 <div className="text-base font-serif text-foreground" data-testid="text-calendar-kannada">{todayDetails.todayWebsiteKannada}</div>
               )}
               {todayDetails.todayWebsiteEnglish && (
-                <div className="text-sm text-muted-foreground" data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
+                <div className="text-sm text-foreground/70" data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
               )}
             </div>
             
@@ -286,13 +287,13 @@ export default function Home() {
           </div>
           
           {/* Date and Link */}
-          <div className="pt-2 border-t border-primary/10 flex items-center justify-between">
-            <div className="text-xs font-semibold text-primary" data-testid="text-today-date">{formatTodayDate()}</div>
+          <div className="pt-2 border-t border-foreground/10 flex items-center justify-between">
+            <div className="text-xs font-semibold text-foreground" data-testid="text-today-date">{formatTodayDate()}</div>
             <a 
               href="https://sandhyakala.vercel.app" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-xs text-primary hover:underline font-medium"
+              className="text-xs text-foreground hover:underline font-medium"
               data-testid="link-detailed-panchanga"
             >
               Sandhya Kala Details →
@@ -487,7 +488,7 @@ export default function Home() {
                         </div>
                         <div className="px-4 pb-4">
                           <button
-                            className="text-xs font-bold text-white bg-neutral-700 hover:bg-neutral-800 px-4 py-1.5 rounded transition-colors"
+                            className="text-xs font-bold text-white bg-[#B4A597] hover:bg-[#a39487] px-4 py-1.5 rounded-[3px] transition-colors"
                             onClick={() => item.url && window.open(item.url, "_blank")}
                             data-testid={`button-learn-more-${item.id}`}
                           >LEARN MORE</button>
@@ -519,7 +520,7 @@ export default function Home() {
                         </div>
                         <div className="px-5 pb-4">
                           <button
-                            className="text-xs font-bold text-white bg-neutral-700 hover:bg-neutral-800 px-4 py-1.5 rounded transition-colors"
+                            className="text-xs font-bold text-white bg-[#B4A597] hover:bg-[#a39487] px-4 py-1.5 rounded-[3px] transition-colors"
                             onClick={() => item.url && window.open(item.url, "_blank")}
                             data-testid={`button-learn-more-desktop-${item.id}`}
                           >LEARN MORE</button>
