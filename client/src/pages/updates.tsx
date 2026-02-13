@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { Loader2, Calendar, Megaphone, Play } from "lucide-react";
+import { Loader2, Calendar, Megaphone, Play, Filter } from "lucide-react";
 
 interface UpdateItem {
   id: string;
@@ -94,9 +94,16 @@ export default function Updates() {
     fetchAll();
   }, []);
 
+  const [activeFilter, setActiveFilter] = useState<"all" | "event" | "announcement" | "video">("all");
+
+  const filtered = useMemo(() => {
+    if (activeFilter === "all") return items;
+    return items.filter((i) => i.type === activeFilter);
+  }, [items, activeFilter]);
+
   const groups = useMemo<DateGroup[]>(() => {
     const map = new Map<string, { label: string; items: UpdateItem[] }>();
-    for (const item of items) {
+    for (const item of filtered) {
       const key = toDateKey(item.timestamp);
       if (!map.has(key)) {
         map.set(key, { label: toDateLabel(item.timestamp), items: [] });
@@ -104,7 +111,7 @@ export default function Updates() {
       map.get(key)!.items.push(item);
     }
     return Array.from(map.values());
-  }, [items]);
+  }, [filtered]);
 
   if (loading) {
     return (
@@ -116,9 +123,32 @@ export default function Updates() {
 
   return (
     <div className="px-4 py-8 pb-24">
-      <h1 className="text-2xl font-serif font-bold mb-6 px-1" data-testid="text-updates-title">Updates</h1>
+      <h1 className="text-2xl font-serif font-bold mb-4 px-1" data-testid="text-updates-title">Updates</h1>
 
-      {items.length === 0 && (
+      <div className="flex items-center gap-2 mb-5 px-1 overflow-x-auto" data-testid="filter-bar">
+        {([
+          { key: "all", label: "All", icon: Filter },
+          { key: "event", label: "Events", icon: Calendar },
+          { key: "announcement", label: "Announcements", icon: Megaphone },
+          { key: "video", label: "Videos", icon: Play },
+        ] as const).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setActiveFilter(key)}
+            className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+              activeFilter === key
+                ? "bg-[#e8a735] text-white border-[#e8a735]"
+                : "bg-white text-foreground/70 border-border hover:border-foreground/30"
+            }`}
+            data-testid={`filter-${key}`}
+          >
+            <Icon className="h-3 w-3" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 && (
         <p className="text-center text-muted-foreground py-12" data-testid="text-no-updates">No updates available</p>
       )}
 
