@@ -44,6 +44,19 @@ import {
   Gift,
   HandHeart,
   Flame,
+  Hospital,
+  Stethoscope,
+  Eye,
+  Baby,
+  Pill,
+  Ambulance,
+  Microscope,
+  Scissors,
+  Droplets,
+  TreePine,
+  Wheat,
+  Brush,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -154,43 +167,119 @@ function formatNumber(value: number): string {
   return value ? value.toLocaleString("en-IN") : "0";
 }
 
-const HEADING_ICONS: Record<string, LucideIcon> = {
-  sringeri: Landmark,
-  temple: Landmark,
-  math: Landmark,
-  peetham: Landmark,
-  education: GraduationCap,
-  vidya: GraduationCap,
-  school: GraduationCap,
-  anna: Utensils,
-  food: Utensils,
-  bhojan: Utensils,
-  gaushala: Heart,
-  cow: Heart,
-  go: Heart,
-  veda: BookOpen,
-  shastra: BookOpen,
-  patashala: BookOpen,
-  hospital: HandHeart,
-  health: HandHeart,
-  music: Music,
-  cultural: Music,
-};
-
-const CATEGORY_ICONS: LucideIcon[] = [
-  Flower2, Sun, Star, Gift, Flame, Heart, BookOpen, HandHeart, Landmark, Music,
+const ICON_KEYWORDS: [string, LucideIcon][] = [
+  ["nephro", Droplets],
+  ["kidney", Droplets],
+  ["dialysis", Droplets],
+  ["uro", Droplets],
+  ["hospital", Hospital],
+  ["clinic", Hospital],
+  ["medical", Hospital],
+  ["dispensary", Hospital],
+  ["eye", Eye],
+  ["ophthal", Eye],
+  ["nethra", Eye],
+  ["netra", Eye],
+  ["dental", Scissors],
+  ["ortho", Stethoscope],
+  ["cardio", Heart],
+  ["heart", Heart],
+  ["pediatr", Baby],
+  ["paediatr", Baby],
+  ["child", Baby],
+  ["pharma", Pill],
+  ["medicine", Pill],
+  ["lab", Microscope],
+  ["pathol", Microscope],
+  ["diagnostic", Microscope],
+  ["ambulance", Ambulance],
+  ["emergency", Ambulance],
+  ["surgery", Stethoscope],
+  ["doctor", Stethoscope],
+  ["health", Stethoscope],
+  ["gaushala", TreePine],
+  ["goshala", TreePine],
+  ["cow", TreePine],
+  ["anna", Utensils],
+  ["annadana", Utensils],
+  ["food", Utensils],
+  ["bhojan", Utensils],
+  ["kitchen", Utensils],
+  ["meal", Utensils],
+  ["bhojana", Utensils],
+  ["education", GraduationCap],
+  ["vidya", GraduationCap],
+  ["school", GraduationCap],
+  ["patashala", GraduationCap],
+  ["pathshala", GraduationCap],
+  ["student", GraduationCap],
+  ["scholarship", GraduationCap],
+  ["veda", BookOpen],
+  ["shastra", BookOpen],
+  ["vedic", BookOpen],
+  ["library", BookOpen],
+  ["grantha", BookOpen],
+  ["book", BookOpen],
+  ["puja", Flower2],
+  ["pooja", Flower2],
+  ["archana", Flower2],
+  ["homa", Flame],
+  ["havan", Flame],
+  ["yagna", Flame],
+  ["yajna", Flame],
+  ["yaga", Flame],
+  ["temple", Landmark],
+  ["mandir", Landmark],
+  ["sringeri", Landmark],
+  ["math", Landmark],
+  ["peetham", Landmark],
+  ["mutt", Landmark],
+  ["kanike", Gift],
+  ["donation", Gift],
+  ["daan", Gift],
+  ["seva", HandHeart],
+  ["service", HandHeart],
+  ["kainkary", HandHeart],
+  ["samaj", HandHeart],
+  ["trust", HandHeart],
+  ["music", Music],
+  ["cultural", Music],
+  ["sangeet", Music],
+  ["kala", Music],
+  ["festival", Sun],
+  ["utsav", Sun],
+  ["jayanti", Sun],
+  ["celebration", Sun],
+  ["special", Star],
+  ["general", Sparkles],
+  ["other", Sparkles],
+  ["misc", Sparkles],
+  ["wheat", Wheat],
+  ["grain", Wheat],
+  ["crop", Wheat],
+  ["agri", Wheat],
+  ["farm", Wheat],
+  ["nature", TreePine],
+  ["garden", TreePine],
+  ["environment", TreePine],
+  ["tree", TreePine],
+  ["plant", TreePine],
+  ["clean", Brush],
+  ["maintenance", Brush],
+  ["repair", Brush],
+  ["construction", Home],
+  ["building", Home],
+  ["accommodation", Home],
+  ["guest", Home],
+  ["choultry", Home],
 ];
 
-function getHeadingIcon(name: string): LucideIcon {
+function getIconForName(name: string): LucideIcon {
   const lower = name.toLowerCase();
-  for (const [key, icon] of Object.entries(HEADING_ICONS)) {
-    if (lower.includes(key)) return icon;
+  for (const [keyword, icon] of ICON_KEYWORDS) {
+    if (lower.includes(keyword)) return icon;
   }
   return Landmark;
-}
-
-function getCategoryIcon(index: number): LucideIcon {
-  return CATEGORY_ICONS[index % CATEGORY_ICONS.length];
 }
 
 export default function Donation() {
@@ -1087,21 +1176,23 @@ export default function Donation() {
           <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-center">Choose Donation Center</h3>
           <div className="grid grid-cols-3 gap-3">
             {headings.map((heading) => {
-              const Icon = getHeadingIcon(heading.name);
+              const Icon = getIconForName(heading.name);
               const isSelected = selectedHeading?.id === heading.id;
               return (
                 <button
                   key={heading.id}
                   onClick={() => handleSelectHeading(heading)}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl aspect-square transition-all ${
+                  className={`flex flex-col items-center rounded-xl p-3 pt-4 pb-3 transition-all min-h-[100px] ${
                     isSelected
                       ? "bg-primary text-white shadow-lg ring-2 ring-primary/30"
                       : "bg-white border border-border text-foreground hover:border-primary/50 hover:shadow-md"
                   }`}
                   data-testid={`button-heading-${heading.id}`}
                 >
-                  <Icon className={`h-7 w-7 ${isSelected ? "text-white" : "text-primary"}`} />
-                  <span className="text-xs font-medium text-center leading-tight line-clamp-2">{heading.name}</span>
+                  <div className="flex-1 flex items-center">
+                    <Icon className={`h-7 w-7 ${isSelected ? "text-white" : "text-primary"}`} />
+                  </div>
+                  <span className="text-[11px] font-medium text-center leading-tight line-clamp-2 mt-2">{heading.name}</span>
                 </button>
               );
             })}
@@ -1115,22 +1206,24 @@ export default function Donation() {
           <div>
             <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-category">Choose Category</h3>
             <div className="grid grid-cols-3 gap-3">
-              {filteredCategories.map((cat, index) => {
-                const Icon = getCategoryIcon(index);
+              {filteredCategories.map((cat) => {
+                const Icon = getIconForName(cat.name);
                 const isSelected = selectedCategory?.id === cat.id;
                 return (
                   <button
                     key={cat.id}
                     onClick={() => handleSelectCategory(cat)}
-                    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl aspect-square transition-all ${
+                    className={`flex flex-col items-center rounded-xl p-3 pt-4 pb-3 transition-all min-h-[100px] ${
                       isSelected
                         ? "bg-primary text-white shadow-lg ring-2 ring-primary/30"
                         : "bg-white border border-border text-foreground hover:border-primary/50 hover:shadow-md"
                     }`}
                     data-testid={`button-category-${cat.id}`}
                   >
-                    <Icon className={`h-6 w-6 ${isSelected ? "text-white" : "text-primary"}`} />
-                    <span className="text-xs font-medium text-center leading-tight line-clamp-2">{cat.name}</span>
+                    <div className="flex-1 flex items-center">
+                      <Icon className={`h-6 w-6 ${isSelected ? "text-white" : "text-primary"}`} />
+                    </div>
+                    <span className="text-[11px] font-medium text-center leading-tight line-clamp-2 mt-2">{cat.name}</span>
                   </button>
                 );
               })}
