@@ -4,11 +4,12 @@ import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Search, Info, Megaphone, Play } from "lucide-react";
+import { Search, Info, Megaphone, Play } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
+import FontSizeToggle from "@/components/font-size-toggle";
 import guruBanner from "@/assets/guru-banner.png";
 import calendarBg from "@assets/background-writing-web_1770978468122.jpg";
 
@@ -173,10 +174,8 @@ export default function Home() {
               <h2 className="text-sm font-medium text-muted-foreground">Namaste,</h2>
               <h1 className="text-2xl font-serif font-bold text-foreground">{displayName}</h1>
             </div>
-            <div className="flex gap-3">
-              <button className="p-2 rounded-full bg-white/80 border border-primary/10 shadow-sm hover:bg-white transition-colors">
-                <Bell className="h-5 w-5 text-primary" />
-              </button>
+            <div className="flex gap-3 items-center">
+              <FontSizeToggle />
               <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
                 <AvatarImage src={user?.photoURL || undefined} />
                 <AvatarFallback>{initials}</AvatarFallback>

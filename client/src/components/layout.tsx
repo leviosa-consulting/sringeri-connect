@@ -3,7 +3,6 @@ import { Home, Calendar, Users, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DesktopNav from "./desktop-nav";
 import ChatbotWidget from "./chatbot-widget";
-import FontSizeToggle from "./font-size-toggle";
 import { useMedia } from "react-use";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -28,10 +27,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <DesktopNav />
       ) : (
         /* Mobile Top Bar (Logo Only) - since Nav is at bottom */
-        <div className="md:hidden h-20 bg-background/80 backdrop-blur border-b sticky top-0 z-40 flex items-center justify-between px-4">
-          <div className="w-8" />
+        <div className="md:hidden h-20 bg-background/80 backdrop-blur border-b sticky top-0 z-40 flex items-center justify-center px-4">
           <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
-          <FontSizeToggle />
         </div>
       )}
 
