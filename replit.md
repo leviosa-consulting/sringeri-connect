@@ -13,7 +13,7 @@ Preferred communication style: Simple, everyday language.
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript
 - **Routing**: Wouter (lightweight React router)
-- **State Management**: TanStack React Query for server state, React Context for auth state
+- **State Management**: TanStack React Query for server state, React Context for auth state and font size preference
 - **Styling**: Tailwind CSS v4 with shadcn/ui component library (New York style)
 - **Build Tool**: Vite with custom plugins for Replit integration
 
