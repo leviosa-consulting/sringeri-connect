@@ -1,14 +1,62 @@
+import { useState, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, Settings, History, MapPin, Users, Heart, Home, Loader2, RefreshCw } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { LogOut, Settings, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
+
+const PAGE_SIZE = 20;
+
+function parseDateStr(dateStr: string | undefined | null): Date | null {
+  if (!dateStr) return null;
+  const parts = dateStr.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
+  if (parts) {
+    const d = new Date(`${parts[2]} ${parts[1]}, ${parts[3]}`);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function filterByDateRange<T>(items: T[], dateExtractor: (item: T) => string | undefined | null, fromDate: string, toDate: string): T[] {
+  if (!fromDate && !toDate) return items;
+  const from = fromDate ? new Date(fromDate) : null;
+  const to = toDate ? new Date(toDate + "T23:59:59") : null;
+  return items.filter(item => {
+    const parsed = parseDateStr(dateExtractor(item));
+    if (!parsed) return true;
+    if (from && parsed < from) return false;
+    if (to && parsed > to) return false;
+    return true;
+  });
+}
 
 export default function Profile() {
   const [_, setLocation] = useLocation();
   const { profile, user, logout, devoteeData, devoteeLoading, refreshDevoteeData } = useAuth();
+
+  const [sevasOpen, setSevasOpen] = useState(false);
+  const [donationsOpen, setDonationsOpen] = useState(false);
+  const [accommodationsOpen, setAccommodationsOpen] = useState(false);
+
+  const [sevasShown, setSevasShown] = useState(PAGE_SIZE);
+  const [donationsShown, setDonationsShown] = useState(PAGE_SIZE);
+  const [accommodationsShown, setAccommodationsShown] = useState(PAGE_SIZE);
+
+  const [sevaFilterOpen, setSevaFilterOpen] = useState(false);
+  const [sevaFromDate, setSevaFromDate] = useState("");
+  const [sevaToDate, setSevaToDate] = useState("");
+
+  const [donationFilterOpen, setDonationFilterOpen] = useState(false);
+  const [donationFromDate, setDonationFromDate] = useState("");
+  const [donationToDate, setDonationToDate] = useState("");
+
+  const [accomFilterOpen, setAccomFilterOpen] = useState(false);
+  const [accomFromDate, setAccomFromDate] = useState("");
+  const [accomToDate, setAccomToDate] = useState("");
 
   const displayName = devoteeData?.name || profile?.name || user?.displayName || "Devotee";
   const email = devoteeData?.email || profile?.email || user?.email || "";
@@ -25,6 +73,21 @@ export default function Profile() {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(numAmount);
   };
+
+  const filteredSevas = useMemo(() => {
+    const sevas = devoteeData?.pastSevas || [];
+    return filterByDateRange(sevas, s => s.sevaDate, sevaFromDate, sevaToDate);
+  }, [devoteeData?.pastSevas, sevaFromDate, sevaToDate]);
+
+  const filteredDonations = useMemo(() => {
+    const donations = devoteeData?.pastDonations || [];
+    return filterByDateRange(donations, d => d.donationDate, donationFromDate, donationToDate);
+  }, [devoteeData?.pastDonations, donationFromDate, donationToDate]);
+
+  const filteredAccommodations = useMemo(() => {
+    const accommodations = devoteeData?.pastAccommodations || [];
+    return filterByDateRange(accommodations, a => a.checkIn, accomFromDate, accomToDate);
+  }, [devoteeData?.pastAccommodations, accomFromDate, accomToDate]);
 
   return (
     <div className="pb-24 md:pb-8">
@@ -86,125 +149,248 @@ export default function Profile() {
             <TabsTrigger value="saved" data-testid="tab-saved">Saved Info</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="history" className="space-y-4 mt-4">
+          <TabsContent value="history" className="space-y-3 mt-4">
             {devoteeLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
               <>
-                {/* Past Sevas */}
-                <Card data-testid="card-past-sevas">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-serif flex items-center gap-2">
-                      <History className="h-4 w-4 text-primary" />
-                      Past Sevas ({devoteeData?.pastSevas?.length || 0})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {devoteeData?.pastSevas && devoteeData.pastSevas.length > 0 ? (
-                      <div className="space-y-3 max-h-64 overflow-y-auto">
-                        {devoteeData.pastSevas.map((seva, index) => (
-                          <div key={seva.id || index} className="flex justify-between items-start py-2 border-b last:border-0" data-testid={`row-seva-${seva.id || index}`}>
-                            <div className="flex-1 min-w-0 pr-2">
-                              <div className="font-medium text-sm truncate">{seva.sevaName || "Seva"}</div>
-                              <div className="text-xs text-muted-foreground">{seva.deityName}</div>
-                              <div className="text-xs text-muted-foreground">For: {seva.devoteeName}</div>
-                              <div className="text-xs text-muted-foreground">{seva.sevaDate}</div>
+                {/* Past Sevas - Collapsible */}
+                <Collapsible open={sevasOpen} onOpenChange={(open) => { setSevasOpen(open); if (!open) setSevasShown(PAGE_SIZE); }}>
+                  <Card data-testid="card-past-sevas">
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                        <CardTitle className="text-base font-serif flex items-center gap-2">
+                          <History className="h-4 w-4 text-primary" />
+                          <span className="flex-1">Past Sevas ({devoteeData?.pastSevas?.length || 0})</span>
+                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${sevasOpen ? 'rotate-180' : ''}`} />
+                        </CardTitle>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0">
+                        {/* Date Filter */}
+                        <div className="mb-3">
+                          <button
+                            onClick={() => setSevaFilterOpen(!sevaFilterOpen)}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            data-testid="button-seva-filter-toggle"
+                          >
+                            <Filter className="h-3 w-3" />
+                            Filter by date
+                          </button>
+                          {sevaFilterOpen && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <input type="date" value={sevaFromDate} onChange={e => { setSevaFromDate(e.target.value); setSevasShown(PAGE_SIZE); }} className="text-xs border rounded px-2 py-1 flex-1 bg-background" data-testid="input-seva-from-date" />
+                              <span className="text-xs text-muted-foreground">to</span>
+                              <input type="date" value={sevaToDate} onChange={e => { setSevaToDate(e.target.value); setSevasShown(PAGE_SIZE); }} className="text-xs border rounded px-2 py-1 flex-1 bg-background" data-testid="input-seva-to-date" />
+                              {(sevaFromDate || sevaToDate) && (
+                                <button onClick={() => { setSevaFromDate(""); setSevaToDate(""); setSevasShown(PAGE_SIZE); }} className="p-1 hover:bg-muted rounded" data-testid="button-seva-filter-clear">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
                             </div>
-                            <div className="text-right shrink-0">
-                              <div className="font-medium text-sm text-primary">{formatCurrency(seva.amount || "0")}</div>
-                              <div className="text-xs text-muted-foreground">{seva.performedAs}</div>
-                              <div className="text-[10px] text-green-600">{seva.performedStatus}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-sevas">No past sevas found</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Past Donations */}
-                <Card data-testid="card-past-donations">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-serif flex items-center gap-2">
-                      <Heart className="h-4 w-4 text-secondary" />
-                      Past Donations ({devoteeData?.pastDonations?.length || 0})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {devoteeData?.pastDonations && devoteeData.pastDonations.length > 0 ? (
-                      <div className="space-y-3 max-h-64 overflow-y-auto">
-                        {devoteeData.pastDonations.map((donation, index) => (
-                          <div key={donation.id || index} className="py-2 border-b last:border-0" data-testid={`row-donation-${donation.id || index}`}>
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1 min-w-0 pr-2">
-                                <div className="font-medium text-sm">{donation.payeeName}</div>
-                                <div className="text-xs text-muted-foreground">{donation.donationDate}</div>
+                          )}
+                        </div>
+                        {filteredSevas.length > 0 ? (
+                          <div className="space-y-0">
+                            {filteredSevas.slice(0, sevasShown).map((seva, index) => (
+                              <div key={seva.id || index} className="flex justify-between items-start py-2 border-b last:border-0" data-testid={`row-seva-${seva.id || index}`}>
+                                <div className="flex-1 min-w-0 pr-2">
+                                  <div className="font-medium text-sm truncate">{seva.sevaName || "Seva"}</div>
+                                  <div className="text-xs text-muted-foreground">{seva.deityName}</div>
+                                  <div className="text-xs text-muted-foreground">For: {seva.devoteeName}</div>
+                                  <div className="text-xs text-muted-foreground">{seva.sevaDate}</div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <div className="font-medium text-sm text-primary">{formatCurrency(seva.amount || "0")}</div>
+                                  <div className="text-xs text-muted-foreground">{seva.performedAs}</div>
+                                  <div className="text-[10px] text-green-600">{seva.performedStatus}</div>
+                                </div>
                               </div>
-                              <div className="text-right shrink-0">
-                                <div className="font-medium text-sm text-secondary">{formatCurrency(donation.totalAmount || 0)}</div>
-                                {donation.requireTaxReceipt === "Yes" && (
-                                  <div className="text-[10px] text-blue-600">Tax Receipt</div>
-                                )}
-                              </div>
-                            </div>
-                            {donation.details && donation.details.length > 0 && (
-                              <div className="mt-2 pl-2 border-l-2 border-secondary/20 space-y-1">
-                                {donation.details.map((detail, dIdx) => (
-                                  <div key={detail.id || dIdx} className="text-xs text-muted-foreground">
-                                    <span className="font-medium text-foreground">{detail.causeName}</span>
-                                    <span className="text-secondary ml-1">({detail.categoryName})</span>
-                                    <span className="ml-1">- {formatCurrency(detail.donationAmount || 0)}</span>
-                                    {detail.donationInTheNameOf && (
-                                      <span className="block text-[10px]">In name of: {detail.donationInTheNameOf}</span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
+                            ))}
+                            {sevasShown < filteredSevas.length && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full mt-2 text-xs text-primary"
+                                onClick={() => setSevasShown(prev => prev + PAGE_SIZE)}
+                                data-testid="button-load-more-sevas"
+                              >
+                                Load More ({filteredSevas.length - sevasShown} remaining)
+                              </Button>
                             )}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-donations">No past donations found</p>
-                    )}
-                  </CardContent>
-                </Card>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-sevas">No past sevas found</p>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
 
-                {/* Past Accommodations */}
-                <Card data-testid="card-past-accommodations">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-serif flex items-center gap-2">
-                      <Home className="h-4 w-4 text-blue-600" />
-                      Past Accommodations ({devoteeData?.pastAccommodations?.length || 0})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {devoteeData?.pastAccommodations && devoteeData.pastAccommodations.length > 0 ? (
-                      <div className="space-y-3">
-                        {devoteeData.pastAccommodations.map((booking, index) => (
-                          <div key={booking.id || index} className="flex justify-between items-center py-2 border-b last:border-0" data-testid={`row-accommodation-${booking.id || index}`}>
-                            <div>
-                              <div className="font-medium text-sm">{booking.roomType || "Room"}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {booking.checkIn} - {booking.checkOut}
+                {/* Past Donations - Collapsible */}
+                <Collapsible open={donationsOpen} onOpenChange={(open) => { setDonationsOpen(open); if (!open) setDonationsShown(PAGE_SIZE); }}>
+                  <Card data-testid="card-past-donations">
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                        <CardTitle className="text-base font-serif flex items-center gap-2">
+                          <Heart className="h-4 w-4 text-secondary" />
+                          <span className="flex-1">Past Donations ({devoteeData?.pastDonations?.length || 0})</span>
+                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${donationsOpen ? 'rotate-180' : ''}`} />
+                        </CardTitle>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0">
+                        {/* Date Filter */}
+                        <div className="mb-3">
+                          <button
+                            onClick={() => setDonationFilterOpen(!donationFilterOpen)}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            data-testid="button-donation-filter-toggle"
+                          >
+                            <Filter className="h-3 w-3" />
+                            Filter by date
+                          </button>
+                          {donationFilterOpen && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <input type="date" value={donationFromDate} onChange={e => { setDonationFromDate(e.target.value); setDonationsShown(PAGE_SIZE); }} className="text-xs border rounded px-2 py-1 flex-1 bg-background" data-testid="input-donation-from-date" />
+                              <span className="text-xs text-muted-foreground">to</span>
+                              <input type="date" value={donationToDate} onChange={e => { setDonationToDate(e.target.value); setDonationsShown(PAGE_SIZE); }} className="text-xs border rounded px-2 py-1 flex-1 bg-background" data-testid="input-donation-to-date" />
+                              {(donationFromDate || donationToDate) && (
+                                <button onClick={() => { setDonationFromDate(""); setDonationToDate(""); setDonationsShown(PAGE_SIZE); }} className="p-1 hover:bg-muted rounded" data-testid="button-donation-filter-clear">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {filteredDonations.length > 0 ? (
+                          <div className="space-y-0">
+                            {filteredDonations.slice(0, donationsShown).map((donation, index) => (
+                              <div key={donation.id || index} className="py-2 border-b last:border-0" data-testid={`row-donation-${donation.id || index}`}>
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1 min-w-0 pr-2">
+                                    <div className="font-medium text-sm">{donation.payeeName}</div>
+                                    <div className="text-xs text-muted-foreground">{donation.donationDate}</div>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <div className="font-medium text-sm text-secondary">{formatCurrency(donation.totalAmount || 0)}</div>
+                                    {donation.requireTaxReceipt === "Yes" && (
+                                      <div className="text-[10px] text-blue-600">Tax Receipt</div>
+                                    )}
+                                  </div>
+                                </div>
+                                {donation.details && donation.details.length > 0 && (
+                                  <div className="mt-2 pl-2 border-l-2 border-secondary/20 space-y-1">
+                                    {donation.details.map((detail, dIdx) => (
+                                      <div key={detail.id || dIdx} className="text-xs text-muted-foreground">
+                                        <span className="font-medium text-foreground">{detail.causeName}</span>
+                                        <span className="text-secondary ml-1">({detail.categoryName})</span>
+                                        <span className="ml-1">- {formatCurrency(detail.donationAmount || 0)}</span>
+                                        {detail.donationInTheNameOf && (
+                                          <span className="block text-[10px]">In name of: {detail.donationInTheNameOf}</span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-medium text-sm">{booking.guests || 1} guests</div>
-                              <div className="text-xs text-muted-foreground">{booking.status || "Completed"}</div>
-                            </div>
+                            ))}
+                            {donationsShown < filteredDonations.length && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full mt-2 text-xs text-primary"
+                                onClick={() => setDonationsShown(prev => prev + PAGE_SIZE)}
+                                data-testid="button-load-more-donations"
+                              >
+                                Load More ({filteredDonations.length - donationsShown} remaining)
+                              </Button>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-accommodations">No past accommodations found</p>
-                    )}
-                  </CardContent>
-                </Card>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-donations">No past donations found</p>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+
+                {/* Past Accommodations - Collapsible */}
+                <Collapsible open={accommodationsOpen} onOpenChange={(open) => { setAccommodationsOpen(open); if (!open) setAccommodationsShown(PAGE_SIZE); }}>
+                  <Card data-testid="card-past-accommodations">
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                        <CardTitle className="text-base font-serif flex items-center gap-2">
+                          <Home className="h-4 w-4 text-blue-600" />
+                          <span className="flex-1">Past Accommodations ({devoteeData?.pastAccommodations?.length || 0})</span>
+                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${accommodationsOpen ? 'rotate-180' : ''}`} />
+                        </CardTitle>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0">
+                        {/* Date Filter */}
+                        <div className="mb-3">
+                          <button
+                            onClick={() => setAccomFilterOpen(!accomFilterOpen)}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            data-testid="button-accom-filter-toggle"
+                          >
+                            <Filter className="h-3 w-3" />
+                            Filter by date
+                          </button>
+                          {accomFilterOpen && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <input type="date" value={accomFromDate} onChange={e => { setAccomFromDate(e.target.value); setAccommodationsShown(PAGE_SIZE); }} className="text-xs border rounded px-2 py-1 flex-1 bg-background" data-testid="input-accom-from-date" />
+                              <span className="text-xs text-muted-foreground">to</span>
+                              <input type="date" value={accomToDate} onChange={e => { setAccomToDate(e.target.value); setAccommodationsShown(PAGE_SIZE); }} className="text-xs border rounded px-2 py-1 flex-1 bg-background" data-testid="input-accom-to-date" />
+                              {(accomFromDate || accomToDate) && (
+                                <button onClick={() => { setAccomFromDate(""); setAccomToDate(""); setAccommodationsShown(PAGE_SIZE); }} className="p-1 hover:bg-muted rounded" data-testid="button-accom-filter-clear">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {filteredAccommodations.length > 0 ? (
+                          <div className="space-y-0">
+                            {filteredAccommodations.slice(0, accommodationsShown).map((booking, index) => (
+                              <div key={booking.id || index} className="flex justify-between items-center py-2 border-b last:border-0" data-testid={`row-accommodation-${booking.id || index}`}>
+                                <div>
+                                  <div className="font-medium text-sm">{booking.roomType || "Room"}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {booking.checkIn} - {booking.checkOut}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-medium text-sm">{booking.guests || 1} guests</div>
+                                  <div className="text-xs text-muted-foreground">{booking.status || "Completed"}</div>
+                                </div>
+                              </div>
+                            ))}
+                            {accommodationsShown < filteredAccommodations.length && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full mt-2 text-xs text-primary"
+                                onClick={() => setAccommodationsShown(prev => prev + PAGE_SIZE)}
+                                data-testid="button-load-more-accommodations"
+                              >
+                                Load More ({filteredAccommodations.length - accommodationsShown} remaining)
+                              </Button>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-accommodations">No past accommodations found</p>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
               </>
             )}
           </TabsContent>
