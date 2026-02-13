@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { initializeApp as initializeFirebaseApp, getApps } from "firebase/app";
 import { getFirestore, collection, getDocs, query, orderBy, limit, where, Timestamp } from "firebase/firestore";
+import { handleChatMessage, setEventsCache, setAnnouncementsCache } from "./chatbot";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -297,6 +298,7 @@ export async function registerRoutes(
       });
 
       announcements.sort((a, b) => b.dateTimestamp - a.dateTimestamp);
+      setAnnouncementsCache(announcements);
       res.json({ announcements: announcements.slice(0, limitNum) });
     } catch (error) {
       console.error("Error fetching announcements:", error);
@@ -393,6 +395,7 @@ export async function registerRoutes(
       const paginatedEvents = allEvents.slice(offset, offset + fetchLimit);
       const hasMore = offset + fetchLimit < allEvents.length;
 
+      setEventsCache(allEvents);
       res.json({ events: paginatedEvents, hasMore, total: allEvents.length });
     } catch (error) {
       console.error("Error fetching sringeri events:", error);
@@ -1036,6 +1039,21 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error submitting donation:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { message } = req.body;
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      const result = await handleChatMessage(message.trim());
+      res.json(result);
+    } catch (error) {
+      console.error("Error in chat:", error);
+      res.status(500).json({ error: "Failed to process message" });
     }
   });
 
