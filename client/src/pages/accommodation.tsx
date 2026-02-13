@@ -92,6 +92,7 @@ export default function Accommodation() {
   const [errorMessage, setErrorMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showLocationConfirm, setShowLocationConfirm] = useState(false);
+  const [showTermsConfirm, setShowTermsConfirm] = useState(false);
 
   const roomSectionRef = useRef<HTMLDivElement>(null);
 
@@ -379,12 +380,27 @@ export default function Accommodation() {
 
           <Button
             className="w-full h-12 text-base font-semibold"
-            onClick={() => setTermsAccepted(true)}
+            onClick={() => setShowTermsConfirm(true)}
             data-testid="button-agree-terms"
           >
             I AGREE WITH THESE TERMS
           </Button>
         </div>
+
+        <AlertDialog open={showTermsConfirm} onOpenChange={setShowTermsConfirm}>
+          <AlertDialogContent className="max-w-[90vw] rounded-xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-serif">Accept Terms & Conditions</AlertDialogTitle>
+              <AlertDialogDescription className="text-base">
+                By continuing, you confirm that you have read and agree to all the terms and conditions for accommodation at Sringeri.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-terms-cancel">Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { setShowTermsConfirm(false); setTermsAccepted(true); }} data-testid="button-terms-continue">Continue</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
