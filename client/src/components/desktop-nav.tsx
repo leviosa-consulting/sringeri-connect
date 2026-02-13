@@ -3,6 +3,7 @@ import { Home, Calendar, Users, User, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
+import FontSizeToggle from "./font-size-toggle";
 
 export default function DesktopNav() {
   const [location, setLocation] = useLocation();
@@ -42,6 +43,7 @@ export default function DesktopNav() {
               </Link>
             );
           })}
+          <FontSizeToggle />
           <div className="pl-6 border-l">
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
