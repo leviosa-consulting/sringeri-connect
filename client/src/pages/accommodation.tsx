@@ -2,6 +2,16 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { useLocation } from "wouter";
 import {
@@ -81,6 +91,7 @@ export default function Accommodation() {
   const [selectedRoom, setSelectedRoom] = useState<RoomOption | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showLocationConfirm, setShowLocationConfirm] = useState(false);
 
   const roomSectionRef = useRef<HTMLDivElement>(null);
 
@@ -205,13 +216,18 @@ export default function Accommodation() {
 
   const handleProceed = () => {
     if (currentStep === 1 && validateStep1()) {
-      alert(`Selected location: ${selectedRoom!.dispName} at SRINGERI`);
-      setCurrentStep(2);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      setShowLocationConfirm(true);
+      return;
     } else if (currentStep === 2 && validateStep2()) {
       setCurrentStep(3);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+  };
+
+  const handleLocationConfirm = () => {
+    setShowLocationConfirm(false);
+    setCurrentStep(2);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleBack = () => {
@@ -802,6 +818,20 @@ export default function Accommodation() {
           </>
         )}
       </div>
+      <AlertDialog open={showLocationConfirm} onOpenChange={setShowLocationConfirm}>
+        <AlertDialogContent className="max-w-[90vw] rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif">Confirm Location</AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Selected location: <span className="font-semibold text-foreground">{selectedRoom?.dispName}</span> at <span className="font-semibold text-foreground">SRINGERI</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-location-cancel">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLocationConfirm} data-testid="button-location-continue">Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
