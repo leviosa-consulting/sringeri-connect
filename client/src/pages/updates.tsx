@@ -94,12 +94,30 @@ export default function Updates() {
     fetchAll();
   }, []);
 
-  const [activeFilter, setActiveFilter] = useState<"all" | "event" | "announcement" | "video">("all");
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(["event", "announcement", "video"]));
+
+  const allSelected = activeFilters.size === 3;
+
+  const toggleFilter = (key: string) => {
+    if (key === "all") {
+      setActiveFilters(new Set(["event", "announcement", "video"]));
+      return;
+    }
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        if (next.size > 1) next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
 
   const filtered = useMemo(() => {
-    if (activeFilter === "all") return items;
-    return items.filter((i) => i.type === activeFilter);
-  }, [items, activeFilter]);
+    if (allSelected) return items;
+    return items.filter((i) => activeFilters.has(i.type));
+  }, [items, activeFilters, allSelected]);
 
   const groups = useMemo<DateGroup[]>(() => {
     const map = new Map<string, { label: string; items: UpdateItem[] }>();
@@ -131,21 +149,24 @@ export default function Updates() {
           { key: "event", label: "Events", icon: Calendar },
           { key: "announcement", label: "Announcements", icon: Megaphone },
           { key: "video", label: "Videos", icon: Play },
-        ] as const).map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setActiveFilter(key)}
-            className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-              activeFilter === key
-                ? "bg-[#e8a735] text-white border-[#e8a735]"
-                : "bg-white text-foreground/70 border-border hover:border-foreground/30"
-            }`}
-            data-testid={`filter-${key}`}
-          >
-            <Icon className="h-3 w-3" />
-            {label}
-          </button>
-        ))}
+        ] as const).map(({ key, label, icon: Icon }) => {
+          const isActive = key === "all" ? allSelected : activeFilters.has(key);
+          return (
+            <button
+              key={key}
+              onClick={() => toggleFilter(key)}
+              className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+                isActive
+                  ? "bg-[#e8a735] text-white border-[#e8a735]"
+                  : "bg-white text-foreground/70 border-border hover:border-foreground/30"
+              }`}
+              data-testid={`filter-${key}`}
+            >
+              <Icon className="h-3 w-3" />
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {filtered.length === 0 && (
