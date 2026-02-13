@@ -1,33 +1,41 @@
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState, useMemo } from "react";
 import { Loader2, Calendar, Megaphone, Play } from "lucide-react";
 
 interface UpdateItem {
   id: string;
   type: "event" | "announcement" | "video";
   title: string;
-  description: string;
-  date: string | null;
   timestamp: number;
-  image: string | null;
   url: string | null;
 }
 
-const TYPE_CONFIG = {
-  event: { label: "Event", icon: Calendar, color: "bg-[#e8a735] text-white" },
-  announcement: { label: "Announcement", icon: Megaphone, color: "bg-[#b85c2f] text-white" },
-  video: { label: "Video", icon: Play, color: "bg-[#c0392b] text-white" },
+interface DateGroup {
+  label: string;
+  items: UpdateItem[];
+}
+
+const TAG: Record<string, { label: string; icon: typeof Calendar; bg: string }> = {
+  event: { label: "Event", icon: Calendar, bg: "bg-[#e8a735]/15 text-[#b8860b]" },
+  announcement: { label: "Announcement", icon: Megaphone, bg: "bg-[#b85c2f]/15 text-[#b85c2f]" },
+  video: { label: "Video", icon: Play, bg: "bg-[#c0392b]/15 text-[#c0392b]" },
 };
+
+function toDateLabel(ts: number): string {
+  const d = new Date(ts);
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function toDateKey(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 function normalizeEvents(events: any[]): UpdateItem[] {
   return events.map((e) => ({
     id: `event-${e.id}`,
     type: "event" as const,
     title: e.title,
-    description: e.description || "",
-    date: e.date || null,
     timestamp: (e.dateTimestamp || 0) * (e.dateTimestamp < 1e12 ? 1000 : 1),
-    image: e.featuredImage || null,
     url: e.url || null,
   }));
 }
@@ -37,10 +45,7 @@ function normalizeAnnouncements(announcements: any[]): UpdateItem[] {
     id: `ann-${a.id}`,
     type: "announcement" as const,
     title: a.title,
-    description: a.description || "",
-    date: a.date || null,
     timestamp: (a.dateTimestamp || 0) * ((a.dateTimestamp || 0) < 1e12 ? 1000 : 1),
-    image: null,
     url: a.url || null,
   }));
 }
@@ -50,10 +55,7 @@ function normalizeVideos(videos: any[]): UpdateItem[] {
     id: `vid-${v.videoId}`,
     type: "video" as const,
     title: v.title?.replace(/&amp;/g, "&") || "",
-    description: "",
-    date: v.date || null,
     timestamp: v.published ? new Date(v.published).getTime() : 0,
-    image: v.thumbnail || null,
     url: v.url || null,
   }));
 }
@@ -92,6 +94,18 @@ export default function Updates() {
     fetchAll();
   }, []);
 
+  const groups = useMemo<DateGroup[]>(() => {
+    const map = new Map<string, { label: string; items: UpdateItem[] }>();
+    for (const item of items) {
+      const key = toDateKey(item.timestamp);
+      if (!map.has(key)) {
+        map.set(key, { label: toDateLabel(item.timestamp), items: [] });
+      }
+      map.get(key)!.items.push(item);
+    }
+    return Array.from(map.values());
+  }, [items]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -101,68 +115,51 @@ export default function Updates() {
   }
 
   return (
-    <div className="px-4 py-8 pb-24 space-y-4">
-      <h1 className="text-2xl font-serif font-bold px-2" data-testid="text-updates-title">Updates</h1>
+    <div className="px-4 py-8 pb-24">
+      <h1 className="text-2xl font-serif font-bold mb-6 px-1" data-testid="text-updates-title">Updates</h1>
 
       {items.length === 0 && (
         <p className="text-center text-muted-foreground py-12" data-testid="text-no-updates">No updates available</p>
       )}
 
-      <div className="space-y-3">
-        {items.map((item) => {
-          const cfg = TYPE_CONFIG[item.type];
-          const Icon = cfg.icon;
-          return (
-            <Card
-              key={item.id}
-              className="rounded-none overflow-hidden border-border/50 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => item.url && window.open(item.url, "_blank")}
-              data-testid={`card-update-${item.id}`}
-            >
-              {item.image && (
-                <div className="h-44 overflow-hidden relative">
-                  <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
-                  <div className="absolute top-0 left-0 flex items-center gap-1">
-                    <span className={`inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide px-2 py-1 ${cfg.color}`}>
-                      <Icon className="h-3 w-3" />
-                      {cfg.label}
+      <div className="relative pl-6">
+        <div className="absolute left-[9px] top-2 bottom-2 w-px bg-border" />
+
+        {groups.map((group, gi) => (
+          <div key={gi} className="mb-6 last:mb-0">
+            <div className="relative flex items-center mb-3">
+              <div className="absolute -left-6 w-[19px] h-[19px] rounded-full bg-[#e8a735] border-2 border-white shadow-sm flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full bg-white" />
+              </div>
+              <span className="text-sm font-semibold text-foreground/80 tracking-wide">{group.label}</span>
+            </div>
+
+            <div className="space-y-2 ml-1">
+              {group.items.map((item) => {
+                const tag = TAG[item.type];
+                const Icon = tag.icon;
+                return (
+                  <a
+                    key={item.id}
+                    href={item.url || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-2.5 group py-1.5 cursor-pointer"
+                    data-testid={`link-update-${item.id}`}
+                  >
+                    <span className={`shrink-0 mt-0.5 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${tag.bg}`}>
+                      <Icon className="h-2.5 w-2.5" />
+                      {tag.label}
                     </span>
-                  </div>
-                  {item.date && (
-                    <div className="absolute bottom-0 left-0">
-                      <span className="inline-block bg-black/60 text-white text-xs px-2.5 py-1">
-                        {item.date}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {!item.image && (
-                <div className="px-4 pt-3 flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide px-2 py-1 ${cfg.color}`}>
-                    <Icon className="h-3 w-3" />
-                    {cfg.label}
-                  </span>
-                  {item.date && (
-                    <span className="text-xs text-muted-foreground">{item.date}</span>
-                  )}
-                </div>
-              )}
-
-              <CardHeader className="pb-1 pt-2">
-                <CardTitle className="font-serif text-base leading-tight">{item.title}</CardTitle>
-              </CardHeader>
-              {item.description && (
-                <CardContent className="pt-0">
-                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-                    {item.description}
-                  </p>
-                </CardContent>
-              )}
-            </Card>
-          );
-        })}
+                    <span className="text-sm leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                      {item.title}
+                    </span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
