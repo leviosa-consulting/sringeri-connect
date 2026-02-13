@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Bot, Loader2 } from "lucide-react";
+import { MessageCircle, X, Send, Bot, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -106,15 +106,15 @@ const INITIAL_ACTIONS: SuggestedAction[] = [
   { label: "ℹ️ Services", action: "services" },
 ];
 
+const INITIAL_MESSAGE: ChatMessage = {
+  role: "bot",
+  content: "Namaste! 🙏 I am Sringeri Sahayak. I can help you with information about donations, accommodation, panchanga, events, and more.\n\nChoose a topic below or type your question.",
+  suggestedActions: INITIAL_ACTIONS,
+};
+
 export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "bot",
-      content: "Namaste! 🙏 I am Sringeri Sahayak. I can help you with information about donations, accommodation, panchanga, events, and more.\n\nChoose a topic below or type your question.",
-      suggestedActions: INITIAL_ACTIONS,
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -185,6 +185,12 @@ export default function ChatbotWidget() {
     }
   };
 
+  const clearChat = () => {
+    setMessages([INITIAL_MESSAGE]);
+    setInput("");
+    setIsLoading(false);
+  };
+
   const handleAction = (action: string) => {
     if (action.startsWith("navigate:")) {
       const path = action.replace("navigate:", "");
@@ -222,15 +228,27 @@ export default function ChatbotWidget() {
                 <p className="text-xs opacity-80">Verified information only</p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:bg-white/20"
-              data-testid="button-close-chat"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearChat}
+                className="text-white hover:bg-white/20 h-8 w-8"
+                title="Clear chat"
+                data-testid="button-clear-chat"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+                className="text-white hover:bg-white/20 h-8 w-8"
+                data-testid="button-close-chat"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </CardHeader>
 
           <CardContent className="flex-1 p-0 overflow-hidden bg-background/50 min-h-0">

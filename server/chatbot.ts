@@ -86,6 +86,73 @@ function getCachedAnnouncements(): any[] {
   return [];
 }
 
+const MONTH_NAMES: Record<string, number> = {
+  jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3,
+  apr: 4, april: 4, may: 5, jun: 6, june: 6,
+  jul: 7, july: 7, aug: 8, august: 8, sep: 9, september: 9,
+  oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12,
+  februaray: 2, feburary: 2, febuary: 2, janury: 1, augst: 8,
+  septmber: 9, ocotber: 10, novmber: 11, decmber: 12,
+};
+
+function parseDateFromMessage(message: string): { date: string; dispDate: string } | "invalid" | null {
+  const cleaned = message.toLowerCase().replace(/[,]/g, ' ').replace(/\s+/g, ' ').trim();
+  const currentYear = new Date().getFullYear();
+
+  let day: number | null = null;
+  let month: number | null = null;
+  let year: number = currentYear;
+
+  const ddmmyyyySlash = cleaned.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
+  if (ddmmyyyySlash) {
+    day = parseInt(ddmmyyyySlash[1]);
+    month = parseInt(ddmmyyyySlash[2]);
+    if (ddmmyyyySlash[3]) {
+      year = parseInt(ddmmyyyySlash[3]);
+      if (year < 100) year += 2000;
+    }
+  }
+
+  if (!day || !month) {
+    const ordinalMonth = cleaned.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([a-z]+)(?:\s+(\d{4}))?/);
+    if (ordinalMonth) {
+      day = parseInt(ordinalMonth[1]);
+      const monthStr = ordinalMonth[2];
+      month = MONTH_NAMES[monthStr] ?? null;
+      if (ordinalMonth[3]) year = parseInt(ordinalMonth[3]);
+    }
+  }
+
+  if (!day || !month) {
+    const monthDay = cleaned.match(/([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?/);
+    if (monthDay) {
+      const monthStr = monthDay[1];
+      const parsedMonth = MONTH_NAMES[monthStr];
+      if (parsedMonth) {
+        month = parsedMonth;
+        day = parseInt(monthDay[2]);
+        if (monthDay[3]) year = parseInt(monthDay[3]);
+      }
+    }
+  }
+
+  if (!day || !month) {
+    const hasDateHint = /\d/.test(cleaned) || Object.keys(MONTH_NAMES).some(m => cleaned.includes(m));
+    if (hasDateHint) return "invalid";
+    return null;
+  }
+
+  if (day < 1 || day > 31 || month < 1 || month > 12) return "invalid";
+
+  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const dispDate = `${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`;
+
+  const testDate = new Date(year, month - 1, day);
+  if (testDate.getDate() !== day || testDate.getMonth() !== month - 1) return "invalid";
+
+  return { date: dateStr, dispDate };
+}
+
 type Intent = "greeting" | "donation" | "accommodation" | "panchanga" | "events" | "announcements" | "services" | "contact" | "help" | "unknown";
 
 const INTENT_PATTERNS: { intent: Intent; patterns: RegExp[] }[] = [
@@ -213,16 +280,30 @@ async function buildDonationResponse(): Promise<string> {
   return response;
 }
 
-async function buildAccommodationResponse(): Promise<string> {
+async function buildAccommodationResponse(requestedDate?: { date: string; dispDate: string } | null): Promise<string> {
   const inventory = await getAccommodationInventory();
 
   let response = "**Accommodation at Sringeri — Yatri Nivas**\n\n";
 
   if (Array.isArray(inventory) && inventory.length > 0) {
-    const firstDateWithRooms = inventory.find((d: any) => d.availability && d.availability.length > 0);
-    if (firstDateWithRooms && firstDateWithRooms.availability) {
-      response += `**Room Types (availability for ${firstDateWithRooms.dispDate}):**\n`;
-      firstDateWithRooms.availability.forEach((room: any) => {
+    let targetEntry: any = null;
+
+    if (requestedDate) {
+      targetEntry = inventory.find((d: any) => d.date === requestedDate.date || d.dispDate === requestedDate.dispDate);
+      if (!targetEntry) {
+        response += `⚠️ No availability data found for **${requestedDate.dispDate}**. The accommodation system only shows availability for the next few days.\n\n`;
+        response += "Please check the **Accommodation** section in the app to search for your preferred dates.\n\n";
+        response += "📌 **How to book:** Go to the **Accommodation** section from the home page, select your dates, choose a room type, and complete the booking.\n\n";
+        response += "📋 **Requirements:** A valid government ID (Aadhaar preferred) is required for booking.";
+        return response;
+      }
+    } else {
+      targetEntry = inventory.find((d: any) => d.availability && d.availability.length > 0);
+    }
+
+    if (targetEntry && targetEntry.availability && targetEntry.availability.length > 0) {
+      response += `**Room Types (availability for ${targetEntry.dispDate}):**\n`;
+      targetEntry.availability.forEach((room: any) => {
         const name = room.dispName || room.roomType || room.name || "";
         const rent = room.rent || room.tariff || "";
         const available = room.available ?? "";
@@ -234,6 +315,8 @@ async function buildAccommodationResponse(): Promise<string> {
         }
       });
       response += "\n";
+    } else if (targetEntry) {
+      response += `No rooms available for **${targetEntry.dispDate}**. All rooms may be booked for this date.\n\n`;
     } else {
       response += "No rooms currently available for the nearest dates. Please check the Accommodation section for other dates.\n\n";
     }
@@ -245,6 +328,14 @@ async function buildAccommodationResponse(): Promise<string> {
   response += "📋 **Requirements:** A valid government ID (Aadhaar preferred) is required for booking.";
 
   return response;
+}
+
+function buildInvalidDateResponse(): string {
+  return "I couldn't understand that date format. Could you please try again with a format like:\n\n" +
+    "• **18 February** or **18th Feb**\n" +
+    "• **Feb 18** or **February 18**\n" +
+    "• **18/02** or **18-02-2026**\n\n" +
+    "Or you can check availability directly in the **Accommodation** section of the app.";
 }
 
 async function buildPanchangaResponse(): Promise<string> {
@@ -395,8 +486,17 @@ function buildUnknownResponse(): string {
     "Please try one of these topics, or contact the Sringeri office directly for other queries.";
 }
 
+let lastIntent: Intent = "unknown";
+
 export async function handleChatMessage(message: string): Promise<{ reply: string; intent: Intent; suggestedActions?: { label: string; action: string }[] }> {
-  const intent = detectIntent(message);
+  let intent = detectIntent(message);
+
+  if (intent === "unknown") {
+    const parsedDate = parseDateFromMessage(message);
+    if (parsedDate !== null) {
+      intent = "accommodation";
+    }
+  }
 
   let reply: string;
   let suggestedActions: { label: string; action: string }[] | undefined;
@@ -419,14 +519,25 @@ export async function handleChatMessage(message: string): Promise<{ reply: strin
         { label: "Events", action: "events" },
       ];
       break;
-    case "accommodation":
-      reply = await buildAccommodationResponse();
-      suggestedActions = [
-        { label: "Book Accommodation", action: "navigate:/accommodation" },
-        { label: "Donations", action: "donation" },
-        { label: "Events", action: "events" },
-      ];
+    case "accommodation": {
+      const parsedDate = parseDateFromMessage(message);
+      if (parsedDate === "invalid") {
+        reply = buildInvalidDateResponse();
+        suggestedActions = [
+          { label: "Book Accommodation", action: "navigate:/accommodation" },
+          { label: "Donations", action: "donation" },
+          { label: "Events", action: "events" },
+        ];
+      } else {
+        reply = await buildAccommodationResponse(parsedDate);
+        suggestedActions = [
+          { label: "Book Accommodation", action: "navigate:/accommodation" },
+          { label: "Donations", action: "donation" },
+          { label: "Events", action: "events" },
+        ];
+      }
       break;
+    }
     case "panchanga":
       reply = await buildPanchangaResponse();
       suggestedActions = [
@@ -487,5 +598,6 @@ export async function handleChatMessage(message: string): Promise<{ reply: strin
       break;
   }
 
+  lastIntent = intent;
   return { reply, intent, suggestedActions };
 }
