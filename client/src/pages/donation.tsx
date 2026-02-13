@@ -282,6 +282,31 @@ function getIconForName(name: string): LucideIcon {
   return Landmark;
 }
 
+interface FeaturedDonation {
+  label: string;
+  headingMatch: string;
+  categoryMatch: string;
+  subcategoryMatch: string;
+  description: string;
+}
+
+const FEATURED_DONATIONS: FeaturedDonation[] = [
+  {
+    label: "Sri Malahanikareshwara Temple, Sringeri",
+    headingMatch: "sringeri",
+    categoryMatch: "malahanikareshwara",
+    subcategoryMatch: "",
+    description: "Contribute towards the sacred temple at Sringeri",
+  },
+  {
+    label: "Guru Kanike- Vajrotsava Bharati",
+    headingMatch: "",
+    categoryMatch: "kanike",
+    subcategoryMatch: "vajrotsava",
+    description: "Offer Guru Kanike for Vajrotsava Bharati",
+  },
+];
+
 export default function Donation() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -337,6 +362,7 @@ export default function Donation() {
   const [kartas, setKartas] = useState<Karta[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [show80GWarning, setShow80GWarning] = useState(false);
+  const [pendingFocusSubcategory, setPendingFocusSubcategory] = useState<string>("");
 
   const subCategoryRef = useRef<HTMLDivElement>(null);
 
@@ -455,6 +481,18 @@ export default function Donation() {
     }
   }, [user?.uid]);
 
+  useEffect(() => {
+    if (pendingFocusSubcategory && subcategories.length > 0) {
+      const match = subcategories.find((s) =>
+        s.name.toLowerCase().includes(pendingFocusSubcategory.toLowerCase())
+      );
+      if (match) {
+        handleSelectSubCategory(match);
+      }
+      setPendingFocusSubcategory("");
+    }
+  }, [subcategories, pendingFocusSubcategory]);
+
   const fetchKartas = useCallback(async () => {
     if (!user?.uid) return;
     try {
@@ -492,6 +530,30 @@ export default function Donation() {
     setTithiId("");
     setNakshatraId("");
     setValidationErrors([]);
+  };
+
+  const handleFeaturedDonation = (featured: FeaturedDonation) => {
+    const heading = headings.find((h) =>
+      featured.headingMatch && h.name.toLowerCase().includes(featured.headingMatch.toLowerCase())
+    );
+    const category = categories.find((c) =>
+      featured.categoryMatch && c.name.toLowerCase().includes(featured.categoryMatch.toLowerCase())
+    );
+
+    if (heading) {
+      setSelectedHeading(heading);
+    } else if (category) {
+      const parentHeading = headings.find((h) => h.id === category.donationHeadingId);
+      if (parentHeading) setSelectedHeading(parentHeading);
+    }
+
+    if (category) {
+      setSelectedCategory(category);
+      resetSelection();
+      if (featured.subcategoryMatch) {
+        setPendingFocusSubcategory(featured.subcategoryMatch);
+      }
+    }
   };
 
   const handleSelectHeading = (heading: DonationHeading) => {
@@ -1172,6 +1234,33 @@ export default function Donation() {
       </div>
 
       <div className="px-4 mt-4 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-donations-in-focus">
+            <Star className="h-4 w-4 inline-block mr-1 text-amber-500" />
+            Donations in Focus
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            {FEATURED_DONATIONS.map((featured, idx) => {
+              const Icon = getIconForName(featured.label);
+              return (
+                <button
+                  key={idx}
+                  onClick={() => handleFeaturedDonation(featured)}
+                  disabled={headings.length === 0 || categories.length === 0}
+                  className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 text-left transition-all hover:shadow-md hover:border-amber-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  data-testid={`button-featured-${idx}`}
+                >
+                  <div className="bg-amber-100 rounded-lg w-10 h-10 flex items-center justify-center mb-3">
+                    <Icon className="h-5 w-5 text-amber-700" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-foreground leading-tight line-clamp-2">{featured.label}</h4>
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-tight line-clamp-2">{featured.description}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div>
           <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-center">Choose Donation Center</h3>
           <div className="grid grid-cols-3 gap-3">
