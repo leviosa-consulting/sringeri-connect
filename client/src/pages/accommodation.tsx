@@ -205,6 +205,7 @@ export default function Accommodation() {
 
   const handleProceed = () => {
     if (currentStep === 1 && validateStep1()) {
+      alert(`Selected location: ${selectedRoom!.dispName} at SRINGERI`);
       setCurrentStep(2);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (currentStep === 2 && validateStep2()) {
