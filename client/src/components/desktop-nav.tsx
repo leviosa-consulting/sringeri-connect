@@ -10,7 +10,7 @@ export default function DesktopNav() {
   const { logout } = useAuth();
 
   const navItems = [
-    { icon: Home, label: "Services", path: "/home" },
+    { icon: Home, label: "Home", path: "/home" },
     { icon: Bell, label: "Updates", path: "/updates" },
     { icon: Users, label: "Devotee Corner", path: "/devotee" },
     { icon: User, label: "My Account", path: "/profile" },

@@ -10,7 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const isDesktop = useMedia('(min-width: 768px)', false);
 
   const navItems = [
-    { icon: Home, label: "Services", path: "/home" },
+    { icon: Home, label: "Home", path: "/home" },
     { icon: Bell, label: "Updates", path: "/updates" },
     { icon: Users, label: "Devotee", path: "/devotee" },
     { icon: User, label: "Account", path: "/profile" },
