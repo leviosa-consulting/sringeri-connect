@@ -567,6 +567,9 @@ export default function Donation() {
   const handleSelectCategory = (category: DonationCategory) => {
     setSelectedCategory(category);
     resetSelection();
+    setTimeout(() => {
+      subCategoryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
   };
 
   const handleSelectSubCategory = (sub: DonationSubCategory) => {
