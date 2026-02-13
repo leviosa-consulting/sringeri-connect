@@ -311,8 +311,8 @@ export default function Accommodation() {
     if (!day.date) return "";
     if (selectedDate?.dbDate === day.dbDate) return "bg-primary text-white font-bold shadow-md ring-2 ring-primary/30";
     if (day.disabled) return "text-muted-foreground/30 cursor-not-allowed";
-    if (day.available === 0) return "text-red-400 cursor-not-allowed";
-    if (day.available > 0) return "text-foreground hover:bg-primary/10 cursor-pointer font-medium";
+    if (day.available === 0) return "text-red-400/70 cursor-not-allowed font-semibold";
+    if (day.available > 0) return "text-foreground hover:bg-primary/10 cursor-pointer font-bold";
     return "";
   };
 
@@ -494,7 +494,7 @@ export default function Accommodation() {
                             <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-green-500" />
                           )}
                           {day.date !== "" && !day.disabled && day.available === 0 && (
-                            <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-red-400" />
+                            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[8px] font-bold text-red-500 leading-none">Full</span>
                           )}
                         </div>
                       ))}
@@ -507,8 +507,8 @@ export default function Accommodation() {
                         <span className="text-[10px] text-muted-foreground">Available</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-red-400" />
-                        <span className="text-[10px] text-muted-foreground">Full</span>
+                        <span className="text-[8px] font-bold text-red-500">Full</span>
+                        <span className="text-[10px] text-muted-foreground">Unavailable</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-primary" />
