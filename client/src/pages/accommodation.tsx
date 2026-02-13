@@ -355,7 +355,13 @@ export default function Accommodation() {
           </div>
         </div>
 
-        <div className="px-4 mt-6 space-y-4">
+        <div className="mx-4 mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
+          <p className="text-[11px] leading-tight text-amber-800 font-medium text-center">
+            Payment debited but no confirmation? Please wait or email <a href="mailto:online@sringeri.net" className="underline font-bold">online@sringeri.net</a>. <span className="font-bold">DO NOT RE-BOOK.</span>
+          </p>
+        </div>
+
+        <div className="px-4 mt-4 space-y-4">
           <Card>
             <CardContent className="p-5">
               <h2 className="text-lg font-serif font-bold mb-3 text-center" data-testid="text-terms-heading">Terms & Conditions</h2>
@@ -373,7 +379,7 @@ export default function Accommodation() {
               <div className="mt-4 p-3 bg-muted/50 rounded-lg flex items-start gap-2">
                 <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <p className="text-xs text-muted-foreground">
-                  For inquiries, please contact our helpline at <span className="font-semibold">08265-252525 / 295123</span>
+                  For inquiries, contact helpline: <a href="tel:08265252525" className="font-semibold underline">08265-252525</a> / <a href="tel:08265295123" className="font-semibold underline">295123</a>
                 </p>
               </div>
             </CardContent>
@@ -424,6 +430,12 @@ export default function Accommodation() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mx-4 mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
+        <p className="text-[11px] leading-tight text-amber-800 font-medium text-center">
+          Payment debited but no confirmation? Please wait or email <a href="mailto:online@sringeri.net" className="underline font-bold">online@sringeri.net</a>. <span className="font-bold">DO NOT RE-BOOK.</span>
+        </p>
       </div>
 
       {/* Step Progress Bar */}
