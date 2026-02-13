@@ -384,7 +384,7 @@ export default function Accommodation() {
             onClick={() => setShowTermsConfirm(true)}
             data-testid="button-agree-terms"
           >
-            I AGREE WITH THESE TERMS
+            Proceed
           </Button>
         </div>
 
