@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -361,21 +360,16 @@ export default function Accommodation() {
             <CardContent className="p-5">
               <h2 className="text-lg font-serif font-bold mb-3 text-center" data-testid="text-terms-heading">Terms & Conditions</h2>
               <p className="text-xs text-muted-foreground text-center mb-4">Please review each item before proceeding</p>
-              <Accordion type="multiple" className="w-full">
+              <div className="space-y-2.5">
                 {TERMS.map((term, idx) => (
-                  <AccordionItem key={idx} value={`term-${idx}`} data-testid={`text-term-${idx}`}>
-                    <AccordionTrigger className="text-sm font-semibold py-3 hover:no-underline">
-                      <span className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">{idx + 1}</span>
-                        {term.label}
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent className="text-sm text-muted-foreground leading-relaxed pl-7">
-                      {term.text}
-                    </AccordionContent>
-                  </AccordionItem>
+                  <div key={idx} className="flex items-start gap-2.5" data-testid={`text-term-${idx}`}>
+                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
+                    <p className="text-sm leading-relaxed">
+                      <span className="font-semibold">{term.label}:</span> {term.text}
+                    </p>
+                  </div>
                 ))}
-              </Accordion>
+              </div>
               <div className="mt-4 p-3 bg-muted/50 rounded-lg flex items-start gap-2">
                 <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <p className="text-xs text-muted-foreground">
