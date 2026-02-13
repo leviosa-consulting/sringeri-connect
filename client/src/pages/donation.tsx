@@ -367,6 +367,7 @@ export default function Donation() {
   const [showFocusInfo, setShowFocusInfo] = useState<number | null>(null);
 
   const subCategoryRef = useRef<HTMLDivElement>(null);
+  const causeListRef = useRef<HTMLDivElement>(null);
 
   const { data: headings = [] } = useQuery<DonationHeading[]>({
     queryKey: ["donationHeadings"],
@@ -568,8 +569,8 @@ export default function Donation() {
     setSelectedCategory(category);
     resetSelection();
     setTimeout(() => {
-      subCategoryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 150);
+      causeListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 200);
   };
 
   const handleSelectSubCategory = (sub: DonationSubCategory) => {
@@ -1342,7 +1343,7 @@ export default function Donation() {
         )}
 
         {selectedCategory && (
-          <div>
+          <div ref={causeListRef}>
             <h3 className="text-sm font-semibold mb-2 px-1" data-testid="text-choose-cause">Choose Donation Cause</h3>
             {subCatLoading ? (
               <div className="flex items-center justify-center py-8">
