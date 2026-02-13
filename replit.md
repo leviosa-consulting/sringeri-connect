@@ -48,6 +48,7 @@ Preferred communication style: Simple, everyday language.
 ├── server/           # Express backend
 │   ├── index.ts      # Server entry point
 │   ├── routes.ts     # API route definitions
+│   ├── chatbot.ts    # Rule-based chatbot with API data cache
 │   ├── storage.ts    # Data storage abstraction
 │   └── vite.ts       # Vite dev server integration
 ├── shared/           # Shared TypeScript types and schema
@@ -71,6 +72,13 @@ Preferred communication style: Simple, everyday language.
 - Backend proxies requests to fetch user profiles, devotee data, accommodation inventory/booking, and donation data/payment
 - Donation flow uses `/api/makeDonation` endpoint with CCAvenue payment gateway (fallback to Razorpay if orderId returned)
 - Donation APIs: donationHeading, donationCategory, donationSubCategory, postageOptionsDonation, calendarTypes, tithis, chandraMasas, souraMasas, nakshatras, devoteeKarta, devoteeAddress
+
+### Chatbot (Sringeri Sahayak)
+- Rule-based chatbot — no AI/LLM, only verified data from Sringeri APIs
+- Backend caches API responses (donations, accommodation, panchanga, events, announcements) with 30-min TTL
+- Keyword/intent matching maps user questions to cached data topics
+- Frontend widget with markdown rendering, quick-reply buttons, and navigation actions
+- User preference: avoid OpenAI/LLM due to risk of unverified information
 
 ### Database
 - PostgreSQL via `DATABASE_URL` environment variable
