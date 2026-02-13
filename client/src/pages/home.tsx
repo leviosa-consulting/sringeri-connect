@@ -450,7 +450,7 @@ export default function Home() {
         </div>
 
         {announcements.length > 0 && (
-          <div className="mt-3 px-4 md:px-6">
+          <div className="px-4 md:px-6">
             <section>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
