@@ -309,33 +309,76 @@ export async function registerRoutes(
   app.get("/api/youtube-videos", async (req, res) => {
     try {
       const channelId = "UCC7AKcYvtFdlubqwW6Ave2Q";
+      let videos: any[] = [];
+
       const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
-      const response = await fetch(feedUrl);
-      if (!response.ok) {
-        return res.status(502).json({ error: "Failed to fetch YouTube feed" });
+      try {
+        const response = await fetch(feedUrl);
+        if (response.ok) {
+          const xml = await response.text();
+          const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
+          let match;
+          while ((match = entryRegex.exec(xml)) !== null && videos.length < 10) {
+            const entry = match[1];
+            const videoId = entry.match(/<yt:videoId>(.*?)<\/yt:videoId>/)?.[1] || "";
+            const title = entry.match(/<title>(.*?)<\/title>/)?.[1] || "";
+            const published = entry.match(/<published>(.*?)<\/published>/)?.[1] || "";
+            const thumbnail = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+            if (videoId) {
+              videos.push({
+                videoId,
+                title: title.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
+                published,
+                date: published ? new Date(published).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+                thumbnail,
+                url: `https://www.youtube.com/watch?v=${videoId}`,
+              });
+            }
+          }
+        }
+      } catch (rssErr) {
+        console.log("RSS feed failed, trying channel page scrape...");
       }
-      const xml = await response.text();
 
-      const videos: any[] = [];
-      const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
-      let match;
-      while ((match = entryRegex.exec(xml)) !== null && videos.length < 10) {
-        const entry = match[1];
-        const videoId = entry.match(/<yt:videoId>(.*?)<\/yt:videoId>/)?.[1] || "";
-        const title = entry.match(/<title>(.*?)<\/title>/)?.[1] || "";
-        const published = entry.match(/<published>(.*?)<\/published>/)?.[1] || "";
-        const thumbnail = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
-        const desc = entry.match(/<media:description>([\s\S]*?)<\/media:description>/)?.[1]?.substring(0, 200) || "";
-
-        if (videoId) {
-          videos.push({
-            videoId,
-            title: title.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
-            published,
-            date: published ? new Date(published).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
-            thumbnail,
-            url: `https://www.youtube.com/watch?v=${videoId}`,
+      if (videos.length === 0) {
+        try {
+          const pageRes = await fetch(`https://www.youtube.com/channel/${channelId}`, {
+            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
           });
+          if (pageRes.ok) {
+            const html = await pageRes.text();
+            const dataMatch = html.match(/var ytInitialData = ({.*?});<\/script>/);
+            if (dataMatch) {
+              const data = JSON.parse(dataMatch[1]);
+              const homeTab = data?.contents?.twoColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+              const found: any[] = [];
+              const seen = new Set<string>();
+              const findVideos = (obj: any): void => {
+                if (!obj || typeof obj !== 'object') return;
+                if (obj.videoId && obj.title && !seen.has(obj.videoId)) {
+                  seen.add(obj.videoId);
+                  const title = obj.title?.runs?.[0]?.text || obj.title?.simpleText || "";
+                  const pub = obj.publishedTimeText?.simpleText || "";
+                  found.push({ videoId: obj.videoId, title, published: pub });
+                  return;
+                }
+                for (const v of Object.values(obj)) findVideos(v);
+              };
+              findVideos(homeTab);
+              for (const v of found.slice(0, 10)) {
+                videos.push({
+                  videoId: v.videoId,
+                  title: v.title,
+                  published: v.published,
+                  date: v.published || null,
+                  thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
+                  url: `https://www.youtube.com/watch?v=${v.videoId}`,
+                });
+              }
+            }
+          }
+        } catch (scrapeErr) {
+          console.error("Channel page scrape also failed:", scrapeErr);
         }
       }
 

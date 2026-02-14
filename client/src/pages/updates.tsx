@@ -50,12 +50,26 @@ function normalizeAnnouncements(announcements: any[]): UpdateItem[] {
   }));
 }
 
+function parseRelativeTime(str: string): number {
+  if (!str) return Date.now();
+  const isoDate = new Date(str).getTime();
+  if (!isNaN(isoDate) && isoDate > 0) return isoDate;
+  const m = str.match(/(\d+)\s*(second|minute|hour|day|week|month|year)s?\s*ago/i);
+  if (m) {
+    const n = parseInt(m[1], 10);
+    const unit = m[2].toLowerCase();
+    const ms: Record<string, number> = { second: 1000, minute: 60000, hour: 3600000, day: 86400000, week: 604800000, month: 2592000000, year: 31536000000 };
+    return Date.now() - n * (ms[unit] || 86400000);
+  }
+  return Date.now();
+}
+
 function normalizeVideos(videos: any[]): UpdateItem[] {
   return videos.map((v) => ({
     id: `vid-${v.videoId}`,
     type: "video" as const,
-    title: v.title?.replace(/&amp;/g, "&") || "",
-    timestamp: v.published ? new Date(v.published).getTime() : 0,
+    title: v.title?.replace(/&amp;/g, "&") || "Sringeri Video",
+    timestamp: parseRelativeTime(v.published),
     url: v.url || null,
   }));
 }
