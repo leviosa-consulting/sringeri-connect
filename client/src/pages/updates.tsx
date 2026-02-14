@@ -61,7 +61,6 @@ function normalizeVideos(videos: any[]): UpdateItem[] {
 }
 
 export default function Updates() {
-
   const [items, setItems] = useState<UpdateItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -191,9 +190,11 @@ export default function Updates() {
                 const tag = TAG[item.type];
                 const Icon = tag.icon;
                 return (
-                  <div
+                  <a
                     key={item.id}
-                    onClick={() => item.url && window.open(item.url, "_blank")}
+                    href={item.url || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex items-start gap-2.5 group py-1.5 cursor-pointer"
                     data-testid={`link-update-${item.id}`}
                   >
@@ -204,7 +205,7 @@ export default function Updates() {
                     <span className="text-sm leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
                       {item.title}
                     </span>
-                  </div>
+                  </a>
                 );
               })}
             </div>

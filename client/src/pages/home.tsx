@@ -8,7 +8,6 @@ import { Info, Megaphone, Play } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
-
 import FontSizeToggle from "@/components/font-size-toggle";
 import guruBanner from "@/assets/guru-banner.png";
 import calendarBg from "@assets/background-writing-web_1770978468122.jpg";
@@ -66,7 +65,6 @@ export default function Home() {
   const isDesktop = useMedia('(min-width: 768px)', false);
   const [_, setLocation] = useLocation();
   const { profile, user } = useAuth();
-
   const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
   const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
   const [sringeriEvents, setSringeriEvents] = useState<SringeriEvent[]>([]);
@@ -279,13 +277,15 @@ export default function Home() {
           {/* Date and Link */}
           <div className="pt-2 border-t border-foreground/10 flex items-center justify-between">
             <div className="text-xs font-semibold text-foreground" data-testid="text-today-date">{formatTodayDate()}</div>
-            <div 
-              onClick={() => window.open("https://sandhyakala.vercel.app", "_blank")}
-              className="text-xs text-foreground hover:underline font-medium cursor-pointer"
+            <a 
+              href="https://sandhyakala.vercel.app" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-xs text-foreground hover:underline font-medium"
               data-testid="link-detailed-panchanga"
             >
               Sandhya Kala Details →
-            </div>
+            </a>
           </div>
         </div>
       )}
@@ -534,7 +534,7 @@ export default function Home() {
                   <Play className="w-5 h-5 text-red-600" />
                   <h2 className="text-lg font-bold font-serif" data-testid="text-youtube-heading">Latest Videos</h2>
                 </div>
-                <span onClick={() => window.open("https://www.youtube.com/@SharadaPeetham", "_blank")} className="text-xs text-primary font-medium cursor-pointer" data-testid="link-youtube-channel">View Channel</span>
+                <a href="https://www.youtube.com/@SharadaPeetham" target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium" data-testid="link-youtube-channel">View Channel</a>
               </div>
 
               <div className="md:hidden">

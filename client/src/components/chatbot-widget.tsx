@@ -66,11 +66,10 @@ function renderMarkdown(text: string) {
       }
 
       if (firstMatch.type === "link") {
-        const linkUrl = firstMatch.url!;
         parts.push(
-          <span key={partKey++} role="link" tabIndex={0} className="text-primary underline hover:text-primary/80 cursor-pointer" onClick={() => window.open(linkUrl, "_blank")} onKeyDown={(e) => { if (e.key === "Enter") window.open(linkUrl, "_blank"); }}>
+          <a key={partKey++} href={firstMatch.url} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">
             {firstMatch.content}
-          </span>
+          </a>
         );
       } else if (firstMatch.type === "bold") {
         parts.push(<strong key={partKey++}>{firstMatch.content}</strong>);
@@ -203,7 +202,7 @@ export default function ChatbotWidget() {
   };
 
   return (
-    <div className="fixed bottom-36 md:bottom-8 right-4 z-50" data-testid="chatbot-widget">
+    <div className="fixed bottom-20 md:bottom-8 right-4 z-50" data-testid="chatbot-widget">
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}

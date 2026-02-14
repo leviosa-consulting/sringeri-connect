@@ -39,6 +39,7 @@ export default function ServiceCard({ title, description, icon: Icon, color, isE
         </div>
       </div>
       
+      {/* Decorative accent */}
       <div className="absolute top-0 right-0 -mt-2 -mr-2 w-16 h-16 bg-gradient-to-br from-primary/5 to-transparent rounded-full blur-xl group-hover:from-primary/10 transition-colors" />
     </div>
   );

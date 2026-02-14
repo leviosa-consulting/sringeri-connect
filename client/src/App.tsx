@@ -13,7 +13,6 @@ import Accommodation from "@/pages/accommodation";
 import Donation from "@/pages/donation";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { FontSizeProvider } from "@/contexts/font-size-context";
-
 import { Loader2 } from "lucide-react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
