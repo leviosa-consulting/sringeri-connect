@@ -1042,6 +1042,361 @@ export async function registerRoutes(
     }
   });
 
+  // Seva Booking API routes
+  app.get("/api/centres", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/centres`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch centres" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching centres:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/online/deities/:sevaTypeId", async (req, res) => {
+    try {
+      const { sevaTypeId } = req.params;
+      const response = await fetch(`${SRINGERI_API_URL}/api/online/deities/${sevaTypeId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch deities" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching deities:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/online/deitySevas/:sannidhiId/:sevaTypeId", async (req, res) => {
+    try {
+      const { sannidhiId, sevaTypeId } = req.params;
+      const response = await fetch(`${SRINGERI_API_URL}/api/online/deitySevas/${sannidhiId}/${sevaTypeId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch deity sevas" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching deity sevas:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/online/sevaAvailability/:dsId", async (req, res) => {
+    try {
+      const { dsId } = req.params;
+      const response = await fetch(`${SRINGERI_API_URL}/api/online/sevaAvailability/${dsId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch seva availability" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching seva availability:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/onlineFrequentSevas", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/onlineFrequentSevas`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch frequent sevas" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching frequent sevas:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/rashis", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/rashis`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch rashis" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching rashis:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/postageOptions", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/postageOptions`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch postage options" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching postage options:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/recurrenceTypes", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/recurrenceTypes`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch recurrence types" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching recurrence types:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/recurranceCount/:calendarType/:fromDate/:toDate/:type/:weekdayId/:specificDate/:weekdayRepeatId/:monthId/:fromTithiId/:fromNakshatraId/:masaId", async (req, res) => {
+    try {
+      const { calendarType, fromDate, toDate, type, weekdayId, specificDate, weekdayRepeatId, monthId, fromTithiId, fromNakshatraId, masaId } = req.params;
+      const response = await fetch(`${SRINGERI_API_URL}/api/recurranceCount/${calendarType}/${fromDate}/${toDate}/${type}/${weekdayId}/${specificDate}/${weekdayRepeatId}/${monthId}/${fromTithiId}/${fromNakshatraId}/${masaId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch recurrence count" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching recurrence count:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/online/fl", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/online/fl`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to submit seva booking" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('{');
+        if (jsonStart !== -1) {
+          data = JSON.parse(text.substring(jsonStart));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error submitting seva booking:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/chat", async (req, res) => {
     try {
       const { message } = req.body;

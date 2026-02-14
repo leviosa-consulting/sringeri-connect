@@ -311,6 +311,7 @@ export default function Home() {
                   onClick={() => {
                     if (service.id === "accommodation") setLocation("/accommodation");
                     if (service.id === "donate") setLocation("/donation");
+                    if (service.id === "seva") setLocation("/seva");
                   }}
                 />
               ))}

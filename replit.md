@@ -69,9 +69,12 @@ Preferred communication style: Simple, everyday language.
 ### Sringeri External API
 - Base URL configured via `VITE_SRINGERI_API_URL` (defaults to `https://dsspv2.lcpl.in`)
 - Optional API key via `SRINGERI_API_KEY`
-- Backend proxies requests to fetch user profiles, devotee data, accommodation inventory/booking, and donation data/payment
+- Backend proxies requests to fetch user profiles, devotee data, accommodation inventory/booking, donation data/payment, and seva booking data
 - Donation flow uses `/api/makeDonation` endpoint with CCAvenue payment gateway (fallback to Razorpay if orderId returned)
 - Donation APIs: donationHeading, donationCategory, donationSubCategory, postageOptionsDonation, calendarTypes, tithis, chandraMasas, souraMasas, nakshatras, devoteeKarta, devoteeAddress
+- Seva Booking APIs: centres, online/deities/:sevaTypeId, online/deitySevas/:sannidhiId/:sevaTypeId, online/sevaAvailability/:dsId, onlineFrequentSevas, rashis, postageOptions, recurrenceTypes, recurranceCount (multi-param), online/fl (POST for payment)
+- Seva flow uses `/api/online/fl` POST endpoint with Razorpay payment gateway
+- Three seva types: Fastline (id=1, today's sevas), One-time (id=2, future date with calendar), Recurring/Puduvattu (id=3, recurring with calendar type and recurrence patterns)
 
 ### Chatbot (Sringeri Sahayak)
 - Rule-based chatbot — no AI/LLM, only verified data from Sringeri APIs
