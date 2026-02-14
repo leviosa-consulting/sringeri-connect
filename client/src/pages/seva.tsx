@@ -216,6 +216,7 @@ export default function Seva() {
   const [sannidhiSearch, setSannidhiSearch] = useState("");
   const [sevaSearch, setSevaSearch] = useState("");
   const [selectedCentre, setSelectedCentre] = useState<{ id: number; name: string } | null>(null);
+  const [activeCalendarMonthIdx, setActiveCalendarMonthIdx] = useState(0);
   const [upcomingSevasOpen, setUpcomingSevasOpen] = useState(false);
   const [showSannidhiDropdown, setShowSannidhiDropdown] = useState(false);
   const [showSevaDropdown, setShowSevaDropdown] = useState(false);
@@ -494,6 +495,7 @@ export default function Seva() {
     }
 
     setCalendarMonths(months);
+    setActiveCalendarMonthIdx(0);
   }
 
   function selectCalendarDate(monthIdx: number, dayIdx: number) {
@@ -1767,34 +1769,66 @@ export default function Seva() {
                 {calendarMonths.length === 0 ? (
                   <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
                 ) : (
-                  calendarMonths.map((mo, mi) => (
-                    <div key={mi} className="mb-4">
-                      <p className="text-xs font-semibold text-center mb-2">{mo.name}</p>
-                      <div className="grid grid-cols-7 gap-1 text-center text-[10px]">
-                        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-                          <span key={d} className="font-semibold text-muted-foreground py-1">{d}</span>
+                  <>
+                    <div className="flex gap-1 bg-muted rounded-lg p-1" data-testid="seva-month-tabs">
+                      {calendarMonths.map((mo, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setActiveCalendarMonthIdx(idx)}
+                          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                            activeCalendarMonthIdx === idx
+                              ? "bg-card text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                          data-testid={`button-seva-month-${idx}`}
+                        >
+                          {mo.name.split(" ")[0]?.substring(0, 3)} {mo.name.split(" ")[1]}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div>
+                      <div className="grid grid-cols-7 gap-1 mb-2">
+                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                          <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
                         ))}
-                        {mo.days.map((day, di) => (
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {calendarMonths[activeCalendarMonthIdx]?.days.map((day, di) => (
                           <button key={di}
-                            onClick={() => selectCalendarDate(mi, di)}
-                            disabled={day.disabled}
-                            className={`py-1.5 rounded text-xs ${
+                            onClick={() => selectCalendarDate(activeCalendarMonthIdx, di)}
+                            disabled={day.disabled || day.available <= 0}
+                            className={`relative py-2.5 rounded-lg text-sm transition-all text-center ${
                               day.date === "" ? "" :
-                              day.selected ? "bg-green-600 text-white font-bold" :
+                              day.selected ? "bg-primary text-white font-bold" :
                               day.disabled ? "text-gray-300" :
                               day.available > 0 ? "bg-white border border-border hover:bg-primary/10 cursor-pointer" :
                               "text-gray-300 cursor-not-allowed"
                             }`}
-                            data-testid={`button-date-${day.dbDate}`}
+                            data-testid={day.dbDate ? `button-date-${day.dbDate}` : undefined}
                           >
                             {day.date || ""}
+                            {day.date !== "" && !day.disabled && day.available > 0 && !day.selected && (
+                              <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-green-500" />
+                            )}
                           </button>
                         ))}
                       </div>
                     </div>
-                  ))
+
+                    <div className="flex items-center justify-center gap-4 pt-2 border-t">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className="text-[10px] text-muted-foreground">Available</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-primary" />
+                        <span className="text-[10px] text-muted-foreground">Selected</span>
+                      </div>
+                    </div>
+                  </>
                 )}
-                {sevaDate && <p className="text-xs text-primary font-medium text-center">Selected: {formatDate(sevaDate)}</p>}
+                {sevaDate && <p className="text-xs text-primary font-medium text-center mt-1">Selected: {formatDate(sevaDate)}</p>}
               </CardContent>
             </Card>
           )}
