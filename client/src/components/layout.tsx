@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Home, Bell, Users, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,10 @@ import { useMedia } from "react-use";
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const isDesktop = useMedia('(min-width: 768px)', false);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location]);
 
   const navItems = [
     { icon: Home, label: "Home", path: "/home" },
