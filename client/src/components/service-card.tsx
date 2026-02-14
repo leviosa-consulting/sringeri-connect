@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon, ExternalLink } from "lucide-react";
-import { useInAppBrowser } from "@/contexts/in-app-browser-context";
 
 interface ServiceCardProps {
   title: string;
@@ -12,10 +11,9 @@ interface ServiceCardProps {
 }
 
 export default function ServiceCard({ title, description, icon: Icon, color, isExternal, onClick, url }: ServiceCardProps & { url?: string }) {
-  const { openUrl } = useInAppBrowser();
   const handleClick = () => {
     if (url) {
-      openUrl(url);
+      window.open(url, "_blank");
     } else if (onClick) {
       onClick();
     }
@@ -41,7 +39,6 @@ export default function ServiceCard({ title, description, icon: Icon, color, isE
         </div>
       </div>
       
-      {/* Decorative accent */}
       <div className="absolute top-0 right-0 -mt-2 -mr-2 w-16 h-16 bg-gradient-to-br from-primary/5 to-transparent rounded-full blur-xl group-hover:from-primary/10 transition-colors" />
     </div>
   );

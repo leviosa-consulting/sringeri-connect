@@ -8,7 +8,7 @@ import { Info, Megaphone, Play } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
-import { useInAppBrowser } from "@/contexts/in-app-browser-context";
+
 import FontSizeToggle from "@/components/font-size-toggle";
 import guruBanner from "@/assets/guru-banner.png";
 import calendarBg from "@assets/background-writing-web_1770978468122.jpg";
@@ -66,7 +66,7 @@ export default function Home() {
   const isDesktop = useMedia('(min-width: 768px)', false);
   const [_, setLocation] = useLocation();
   const { profile, user } = useAuth();
-  const { openUrl } = useInAppBrowser();
+
   const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
   const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
   const [sringeriEvents, setSringeriEvents] = useState<SringeriEvent[]>([]);
@@ -280,7 +280,7 @@ export default function Home() {
           <div className="pt-2 border-t border-foreground/10 flex items-center justify-between">
             <div className="text-xs font-semibold text-foreground" data-testid="text-today-date">{formatTodayDate()}</div>
             <div 
-              onClick={() => openUrl("https://sandhyakala.vercel.app")}
+              onClick={() => window.open("https://sandhyakala.vercel.app", "_blank")}
               className="text-xs text-foreground hover:underline font-medium cursor-pointer"
               data-testid="link-detailed-panchanga"
             >
@@ -367,7 +367,7 @@ export default function Home() {
                         <div 
                           key={item.id} 
                           className="w-[280px] shrink-0 overflow-hidden border border-border/50 bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => item.url && openUrl(item.url)}
+                          onClick={() => item.url && window.open(item.url, "_blank")}
                           data-testid={`card-event-${item.id}`}
                         >
                           {item.featuredImage && (
@@ -409,7 +409,7 @@ export default function Home() {
                         <div
                           key={item.id}
                           className="w-[300px] shrink-0 overflow-hidden border border-border/50 bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => item.url && openUrl(item.url)}
+                          onClick={() => item.url && window.open(item.url, "_blank")}
                           data-testid={`card-event-desktop-${item.id}`}
                         >
                           {item.featuredImage && (
@@ -480,7 +480,7 @@ export default function Home() {
                         <div className="px-4 pb-4">
                           <button
                             className="text-xs font-bold text-white bg-[#B4A597] hover:bg-[#a39487] px-4 py-1.5 rounded-[3px] transition-colors"
-                            onClick={() => item.url && openUrl(item.url)}
+                            onClick={() => item.url && window.open(item.url, "_blank")}
                             data-testid={`button-learn-more-${item.id}`}
                           >LEARN MORE</button>
                         </div>
@@ -512,7 +512,7 @@ export default function Home() {
                         <div className="px-5 pb-4">
                           <button
                             className="text-xs font-bold text-white bg-[#B4A597] hover:bg-[#a39487] px-4 py-1.5 rounded-[3px] transition-colors"
-                            onClick={() => item.url && openUrl(item.url)}
+                            onClick={() => item.url && window.open(item.url, "_blank")}
                             data-testid={`button-learn-more-desktop-${item.id}`}
                           >LEARN MORE</button>
                         </div>
@@ -534,7 +534,7 @@ export default function Home() {
                   <Play className="w-5 h-5 text-red-600" />
                   <h2 className="text-lg font-bold font-serif" data-testid="text-youtube-heading">Latest Videos</h2>
                 </div>
-                <span onClick={() => openUrl("https://www.youtube.com/@SharadaPeetham")} className="text-xs text-primary font-medium cursor-pointer" data-testid="link-youtube-channel">View Channel</span>
+                <span onClick={() => window.open("https://www.youtube.com/@SharadaPeetham", "_blank")} className="text-xs text-primary font-medium cursor-pointer" data-testid="link-youtube-channel">View Channel</span>
               </div>
 
               <div className="md:hidden">
@@ -544,7 +544,7 @@ export default function Home() {
                       <div
                         key={video.videoId}
                         className="w-[260px] shrink-0 rounded-xl border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => openUrl(video.url)}
+                        onClick={() => window.open(video.url, "_blank")}
                         data-testid={`card-video-${video.videoId}`}
                       >
                         <div className="relative">
@@ -571,7 +571,7 @@ export default function Home() {
                   <div
                     key={video.videoId}
                     className="rounded-xl border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => openUrl(video.url)}
+                    onClick={() => window.open(video.url, "_blank")}
                     data-testid={`card-video-desktop-${video.videoId}`}
                   >
                     <div className="relative">

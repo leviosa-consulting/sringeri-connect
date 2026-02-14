@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Landmark, BookOpen, Mic, Trophy, Medal, Star } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useInAppBrowser } from "@/contexts/in-app-browser-context";
 
 interface Article {
   id: string;
@@ -67,7 +66,7 @@ function useFetchItem<T>(apiPath: string, responseKey: string) {
 }
 
 export default function DevoteeCorner() {
-  const { openUrl } = useInAppBrowser();
+
   const { item: article, loading: articleLoading, fetchItem: fetchArticle } = useFetchItem<Article>("/api/article-of-the-day", "article");
   const { item: stotra, loading: stotraLoading, fetchItem: fetchStotra } = useFetchItem<Stotra>("/api/stotra-of-the-day", "stotra");
   const { item: discourse, loading: discourseLoading, fetchItem: fetchDiscourse } = useFetchItem<Discourse>("/api/jagadguru-anugraha", "discourse");
@@ -90,7 +89,7 @@ export default function DevoteeCorner() {
         </CardHeader>
         <CardContent className="pb-0">
           {article ? (
-            <div onClick={() => openUrl(article.url)} className="block group cursor-pointer" data-testid="link-peetham-article">
+            <div onClick={() => window.open(article.url, "_blank")} className="block group cursor-pointer" data-testid="link-peetham-article">
               <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors" data-testid="text-article-title">{article.title}</h3>
               {article.description && (
                 <p className="text-muted-foreground line-clamp-3 mb-3" data-testid="text-article-description">{article.description}...</p>
@@ -128,7 +127,7 @@ export default function DevoteeCorner() {
         </CardHeader>
         <CardContent className="pb-0">
           {stotra ? (
-            <div onClick={() => openUrl(stotra.url)} className="block group cursor-pointer" data-testid="link-stotra">
+            <div onClick={() => window.open(stotra.url, "_blank")} className="block group cursor-pointer" data-testid="link-stotra">
               <h3 className="font-bold text-lg mb-1 group-hover:text-primary transition-colors font-serif" data-testid="text-stotra-title">{stotra.title}</h3>
               {stotra.titleEn && stotra.titleEn !== stotra.title && (
                 <p className="text-sm text-muted-foreground italic mb-2" data-testid="text-stotra-title-en">{stotra.titleEn}</p>
@@ -175,7 +174,7 @@ export default function DevoteeCorner() {
         </CardHeader>
         <CardContent className="pb-0">
           {discourse ? (
-            <div role="link" tabIndex={0} onClick={() => openUrl(discourse.url)} onKeyDown={(e) => { if (e.key === "Enter") openUrl(discourse.url); }} className="block group cursor-pointer" data-testid="link-discourse">
+            <div role="link" tabIndex={0} onClick={() => window.open(discourse.url, "_blank")} onKeyDown={(e) => { if (e.key === "Enter") window.open(discourse.url, "_blank"); }} className="block group cursor-pointer" data-testid="link-discourse">
               <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors" data-testid="text-discourse-title">{discourse.title}</h3>
               {discourse.description && (
                 <p className="text-muted-foreground line-clamp-3 mb-2" data-testid="text-discourse-description">{discourse.description}...</p>

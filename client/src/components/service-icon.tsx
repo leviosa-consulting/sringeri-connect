@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon, ExternalLink } from "lucide-react";
-import { useInAppBrowser } from "@/contexts/in-app-browser-context";
 
 interface ServiceIconProps {
   title: string;
@@ -12,10 +11,9 @@ interface ServiceIconProps {
 }
 
 export default function ServiceIcon({ title, icon: Icon, color, isExternal, url, onClick }: ServiceIconProps) {
-  const { openUrl } = useInAppBrowser();
   const handleClick = () => {
     if (url) {
-      openUrl(url);
+      window.open(url, "_blank");
     } else if (onClick) {
       onClick();
     }

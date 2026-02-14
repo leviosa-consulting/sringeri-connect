@@ -13,7 +13,7 @@ import Accommodation from "@/pages/accommodation";
 import Donation from "@/pages/donation";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { FontSizeProvider } from "@/contexts/font-size-context";
-import { InAppBrowserProvider } from "@/contexts/in-app-browser-context";
+
 import { Loader2 } from "lucide-react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -55,12 +55,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <FontSizeProvider>
-        <InAppBrowserProvider>
-          <AuthProvider>
-            <Toaster />
-            <Router />
-          </AuthProvider>
-        </InAppBrowserProvider>
+        <AuthProvider>
+          <Toaster />
+          <Router />
+        </AuthProvider>
       </FontSizeProvider>
     </QueryClientProvider>
   );

@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
 import { Loader2, Calendar, Megaphone, Play, Filter } from "lucide-react";
-import { useInAppBrowser } from "@/contexts/in-app-browser-context";
 
 interface UpdateItem {
   id: string;
@@ -62,7 +61,7 @@ function normalizeVideos(videos: any[]): UpdateItem[] {
 }
 
 export default function Updates() {
-  const { openUrl } = useInAppBrowser();
+
   const [items, setItems] = useState<UpdateItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -194,7 +193,7 @@ export default function Updates() {
                 return (
                   <div
                     key={item.id}
-                    onClick={() => item.url && openUrl(item.url)}
+                    onClick={() => item.url && window.open(item.url, "_blank")}
                     className="flex items-start gap-2.5 group py-1.5 cursor-pointer"
                     data-testid={`link-update-${item.id}`}
                   >

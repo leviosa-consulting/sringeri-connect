@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLocation } from "wouter";
-import { useInAppBrowser } from "@/contexts/in-app-browser-context";
 
 interface SuggestedAction {
   label: string;
@@ -20,7 +19,7 @@ interface ChatMessage {
   isLoading?: boolean;
 }
 
-function renderMarkdown(text: string, openUrl?: (url: string) => void) {
+function renderMarkdown(text: string) {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
 
@@ -69,7 +68,7 @@ function renderMarkdown(text: string, openUrl?: (url: string) => void) {
       if (firstMatch.type === "link") {
         const linkUrl = firstMatch.url!;
         parts.push(
-          <span key={partKey++} role="link" tabIndex={0} className="text-primary underline hover:text-primary/80 cursor-pointer" onClick={() => openUrl ? openUrl(linkUrl) : window.open(linkUrl, "_blank")} onKeyDown={(e) => { if (e.key === "Enter") { openUrl ? openUrl(linkUrl) : window.open(linkUrl, "_blank"); } }}>
+          <span key={partKey++} role="link" tabIndex={0} className="text-primary underline hover:text-primary/80 cursor-pointer" onClick={() => window.open(linkUrl, "_blank")} onKeyDown={(e) => { if (e.key === "Enter") window.open(linkUrl, "_blank"); }}>
             {firstMatch.content}
           </span>
         );
@@ -122,7 +121,6 @@ export default function ChatbotWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [, setLocation] = useLocation();
-  const { openUrl } = useInAppBrowser();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -274,7 +272,7 @@ export default function ChatbotWidget() {
                             <span className="text-muted-foreground">Looking up information...</span>
                           </div>
                         ) : msg.role === "bot" ? (
-                          renderMarkdown(msg.content, openUrl)
+                          renderMarkdown(msg.content)
                         ) : (
                           msg.content
                         )}
