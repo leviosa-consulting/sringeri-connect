@@ -161,6 +161,13 @@ const SEVA_TYPES: SevaType[] = [
   },
 ];
 
+const SEVA_CENTRES = [
+  { id: 1, name: "Sringeri" },
+  { id: 2, name: "Bengaluru" },
+  { id: 3, name: "Coimbatore" },
+  { id: 4, name: "Gurugram" },
+];
+
 const WEEKDAYS = [
   { id: 1, name: "Sunday" },
   { id: 2, name: "Monday" },
@@ -208,6 +215,7 @@ export default function Seva() {
   const [selectedSeva, setSelectedSeva] = useState<DeitySeva | null>(null);
   const [sannidhiSearch, setSannidhiSearch] = useState("");
   const [sevaSearch, setSevaSearch] = useState("");
+  const [selectedCentre, setSelectedCentre] = useState<{ id: number; name: string } | null>(null);
   const [upcomingSevasOpen, setUpcomingSevasOpen] = useState(false);
   const [showSannidhiDropdown, setShowSannidhiDropdown] = useState(false);
   const [showSevaDropdown, setShowSevaDropdown] = useState(false);
@@ -2013,74 +2021,100 @@ export default function Seva() {
       </div>
 
       <div className="px-4 mt-4 space-y-4">
-        {frequentSevas.length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <button
-                onClick={() => setUpcomingSevasOpen(!upcomingSevasOpen)}
-                className="w-full flex items-center justify-between"
-                data-testid="button-toggle-upcoming-sevas"
-              >
-                <h3 className="text-sm font-semibold flex items-center gap-1">
-                  <Star className="h-4 w-4 text-amber-500" />
-                  Upcoming Special Sevas ({frequentSevas.length})
-                </h3>
-                {upcomingSevasOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-              </button>
-              {upcomingSevasOpen && (
-                <div className="space-y-2 mt-3">
-                  {[...frequentSevas].sort((a, b) => (a.orderId ?? 0) - (b.orderId ?? 0)).map((fs) => (
-                    <button
-                      key={fs.dsId}
-                      onClick={() => handleFrequentSeva(String(fs.dsId))}
-                      className="w-full flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-4 py-3 transition-all hover:shadow-md hover:border-amber-300 cursor-pointer active:scale-[0.99] text-left"
-                      data-testid={`button-frequent-seva-${fs.dsId}`}
-                    >
-                      <div className="bg-amber-100 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
-                        <Star className="h-5 w-5 text-amber-700" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-semibold text-foreground leading-tight block">{fs.deityName} - {fs.sevaName}</span>
-                        <span className="text-xs text-amber-700 font-medium">₹{formatNumber(fs.price)}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         <div>
-          <h3 className="font-serif font-bold text-sm px-1 mb-3">Choose Seva Type</h3>
-          <div className="grid grid-cols-3 gap-3">
-            {SEVA_TYPES.map((type) => {
-              const icons = { fl: Zap, otfs: CalendarDays, ps: RefreshCw };
-              const Icon = icons[type.short as keyof typeof icons];
-              const colors = {
-                fl: "from-amber-500 to-orange-500",
-                otfs: "from-blue-500 to-indigo-500",
-                ps: "from-emerald-500 to-teal-500",
-              };
-              return (
-                <button key={type.id}
-                  onClick={() => selectSevaType(type)}
-                  className="flex flex-col items-center"
-                  data-testid={`button-seva-type-${type.short}`}
-                >
-                  <Card className="w-full hover:shadow-lg transition-shadow">
-                    <CardContent className="p-3 flex flex-col items-center gap-2">
-                      <div className={`bg-gradient-to-br ${colors[type.short as keyof typeof colors]} rounded-xl w-12 h-12 flex items-center justify-center`}>
-                        <Icon className="h-6 w-6 text-white" />
-                      </div>
-                      <span className="text-xs font-semibold text-center leading-tight">{type.name}</span>
-                    </CardContent>
-                  </Card>
-                </button>
-              );
-            })}
+          <h3 className="font-serif font-bold text-sm px-1 mb-3">Select Seva Location</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {SEVA_CENTRES.map((centre) => (
+              <button key={centre.id}
+                onClick={() => setSelectedCentre(selectedCentre?.id === centre.id ? null : centre)}
+                className="flex flex-col items-center"
+                data-testid={`button-centre-${centre.id}`}
+              >
+                <Card className={`w-full transition-shadow ${selectedCentre?.id === centre.id ? "ring-2 ring-primary shadow-lg" : "hover:shadow-md"}`}>
+                  <CardContent className="p-4 flex flex-col items-center gap-2">
+                    <div className={`rounded-xl w-12 h-12 flex items-center justify-center ${selectedCentre?.id === centre.id ? "bg-primary" : "bg-gradient-to-br from-[#8B4513] to-[#A0522D]"}`}>
+                      <MapPin className="h-6 w-6 text-white" />
+                    </div>
+                    <span className={`text-sm font-semibold text-center ${selectedCentre?.id === centre.id ? "text-primary" : ""}`}>{centre.name}</span>
+                  </CardContent>
+                </Card>
+              </button>
+            ))}
           </div>
         </div>
+
+        {selectedCentre && (
+          <>
+            {frequentSevas.length > 0 && (
+              <Card>
+                <CardContent className="p-4">
+                  <button
+                    onClick={() => setUpcomingSevasOpen(!upcomingSevasOpen)}
+                    className="w-full flex items-center justify-between"
+                    data-testid="button-toggle-upcoming-sevas"
+                  >
+                    <h3 className="text-sm font-semibold flex items-center gap-1">
+                      <Star className="h-4 w-4 text-amber-500" />
+                      Upcoming Special Sevas ({frequentSevas.length})
+                    </h3>
+                    {upcomingSevasOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                  </button>
+                  {upcomingSevasOpen && (
+                    <div className="space-y-2 mt-3">
+                      {[...frequentSevas].sort((a, b) => (a.orderId ?? 0) - (b.orderId ?? 0)).map((fs) => (
+                        <button
+                          key={fs.dsId}
+                          onClick={() => handleFrequentSeva(String(fs.dsId))}
+                          className="w-full flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-4 py-3 transition-all hover:shadow-md hover:border-amber-300 cursor-pointer active:scale-[0.99] text-left"
+                          data-testid={`button-frequent-seva-${fs.dsId}`}
+                        >
+                          <div className="bg-amber-100 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
+                            <Star className="h-5 w-5 text-amber-700" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-semibold text-foreground leading-tight block">{fs.deityName} - {fs.sevaName}</span>
+                            <span className="text-xs text-amber-700 font-medium">₹{formatNumber(fs.price)}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            <div>
+              <h3 className="font-serif font-bold text-sm px-1 mb-3">Choose Seva Type</h3>
+              <div className="grid grid-cols-3 gap-3">
+                {SEVA_TYPES.map((type) => {
+                  const icons = { fl: Zap, otfs: CalendarDays, ps: RefreshCw };
+                  const Icon = icons[type.short as keyof typeof icons];
+                  const colors = {
+                    fl: "from-amber-500 to-orange-500",
+                    otfs: "from-blue-500 to-indigo-500",
+                    ps: "from-emerald-500 to-teal-500",
+                  };
+                  return (
+                    <button key={type.id}
+                      onClick={() => selectSevaType(type)}
+                      className="flex flex-col items-center"
+                      data-testid={`button-seva-type-${type.short}`}
+                    >
+                      <Card className="w-full hover:shadow-lg transition-shadow">
+                        <CardContent className="p-3 flex flex-col items-center gap-2">
+                          <div className={`bg-gradient-to-br ${colors[type.short as keyof typeof colors]} rounded-xl w-12 h-12 flex items-center justify-center`}>
+                            <Icon className="h-6 w-6 text-white" />
+                          </div>
+                          <span className="text-xs font-semibold text-center leading-tight">{type.name}</span>
+                        </CardContent>
+                      </Card>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
