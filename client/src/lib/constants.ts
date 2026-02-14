@@ -17,7 +17,7 @@ export const ONLINE_SERVICES = [
   },
   {
     id: "accommodation",
-    title: "Accommodation",
+    title: "Rooms (Stay)",
     description: "Book your stay at Yatri Nivas",
     icon: Hotel,
     color: "bg-blue-100 text-blue-600",
