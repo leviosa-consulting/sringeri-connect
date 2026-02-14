@@ -1078,6 +1078,54 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/centreSevas", async (req, res) => {
+    try {
+      const endpoint = req.query.endpoint as string;
+      if (!endpoint) {
+        return res.status(400).json({ error: "Endpoint URL is required" });
+      }
+      try {
+        const parsedUrl = new URL(endpoint);
+        const allowedHost = new URL(SRINGERI_API_URL).hostname;
+        if (parsedUrl.hostname !== allowedHost) {
+          return res.status(403).json({ error: "Endpoint not allowed" });
+        }
+      } catch {
+        return res.status(400).json({ error: "Invalid endpoint URL" });
+      }
+      const response = await fetch(endpoint, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch centre sevas" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('[');
+        const jsonStartObj = text.indexOf('{');
+        const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching centre sevas:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/online/deities/:sevaTypeId", async (req, res) => {
     try {
       const { sevaTypeId } = req.params;

@@ -276,6 +276,9 @@ export default function Seva() {
   const [sevaCount, setSevaCount] = useState(1);
 
   const [flDeity, setFlDeity] = useState<Sannidhi | null>(null);
+  const [flCentre, setFlCentre] = useState<any>(null);
+  const [flCentreSevas, setFlCentreSevas] = useState<any[]>([]);
+  const [flCentreSevasLoading, setFlCentreSevasLoading] = useState(false);
   const [flSelectedSevas, setFlSelectedSevas] = useState<Set<number>>(new Set());
 
   const sannidhiRef = useRef<HTMLDivElement>(null);
@@ -561,6 +564,8 @@ export default function Seva() {
     setCalendarMonths([]);
     setSevaCount(1);
     setFlDeity(null);
+    setFlCentre(null);
+    setFlCentreSevas([]);
     setFlSelectedSevas(new Set());
     setValidationErrors([]);
   }
@@ -848,13 +853,30 @@ export default function Seva() {
     setSubmitting(false);
   }
 
+  async function selectFlCentre(centre: any) {
+    setFlCentre(centre);
+    setFlSelectedSevas(new Set());
+    setFlCentreSevas([]);
+    setFlCentreSevasLoading(true);
+    try {
+      const res = await fetch(`/api/centreSevas?endpoint=${encodeURIComponent(centre.endpoint)}`);
+      if (!res.ok) throw new Error("Failed to fetch sevas");
+      const sevas = await res.json();
+      setFlCentreSevas(sevas.map((s: any) => ({ ...s, selected: false })));
+    } catch (err) {
+      console.error("Error fetching centre sevas:", err);
+      setFlCentreSevas([]);
+    }
+    setFlCentreSevasLoading(false);
+  }
+
   async function submitFastline() {
     if (flSelectedSevas.size === 0) {
       setValidationErrors(["Please select at least one seva."]);
       return;
     }
-    if (!flDeity) {
-      setValidationErrors(["Please select a deity."]);
+    if (!flCentre) {
+      setValidationErrors(["Please select a location."]);
       return;
     }
     if (!kartaName.trim()) {
@@ -866,14 +888,14 @@ export default function Seva() {
     setErrorMessage("");
     setValidationErrors([]);
 
-    const selectedSevasList = deitySevas.filter((s) => flSelectedSevas.has(s.id));
+    const selectedSevasList = flCentreSevas.filter((s) => flSelectedSevas.has(s.id));
     const total = selectedSevasList.reduce((sum, s) => sum + s.price, 0);
 
     const obj = {
       name: kartaName,
       mobile: payeeMobile,
       city: kartaCity,
-      deityId: flDeity.id,
+      deityId: flCentre.id,
       nakshatraId: kartaNakshatraId,
       rashiId: kartaRashiId,
       inAbsentia: inAbsentia || "",
@@ -1395,7 +1417,7 @@ export default function Seva() {
 
   // ========== FASTLINE (Today) SELECT ==========
   if (step === "select" && selectedSevaType?.id === 1) {
-    const flTotal = deitySevas.filter((s) => flSelectedSevas.has(s.id)).reduce((sum, s) => sum + s.price, 0);
+    const flTotal = flCentreSevas.filter((s) => flSelectedSevas.has(s.id)).reduce((sum, s) => sum + s.price, 0);
 
     return (
       <div className="min-h-screen bg-[#F7F2EC] pb-24" data-testid="seva-fastline">
@@ -1432,27 +1454,27 @@ export default function Seva() {
 
             <div className="mt-6">
               <p className="text-sm text-primary ml-1 mb-3">Choose a Location</p>
-              {sannidhisLoading ? (
+              {centres.length === 0 ? (
                 <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
               ) : (
                 <div className="grid grid-cols-1 gap-3">
-                  {sannidhis.map((s) => (
-                    <button key={s.id}
-                      onClick={() => { setFlDeity(s); setSelectedSannidhi(s); setFlSelectedSevas(new Set()); }}
+                  {centres.map((c: any) => (
+                    <button key={c.id}
+                      onClick={() => selectFlCentre(c)}
                       className={`w-full border rounded-md py-3.5 text-sm font-semibold leading-tight transition-all ${
-                        flDeity?.id === s.id
+                        flCentre?.id === c.id
                           ? "bg-primary text-white border-primary"
                           : "text-primary border-primary/30 hover:bg-primary/5 hover:border-primary"
                       }`}
-                      data-testid={`button-fl-deity-${s.id}`}
-                      dangerouslySetInnerHTML={{ __html: s.name }}
+                      data-testid={`button-fl-centre-${c.id}`}
+                      dangerouslySetInnerHTML={{ __html: c.name }}
                     />
                   ))}
                 </div>
               )}
             </div>
 
-            {flDeity && flDeity.id !== 1 && (
+            {flCentre && flCentre.id !== 1 && (
               <div className="mt-6">
                 <select value={kartaNakshatraId} onChange={(e) => setKartaNakshatraId(e.target.value)}
                   className="w-full text-sm text-primary bg-transparent border-0 border-b border-primary/30 focus:border-primary px-1 py-2.5 focus:outline-none focus:ring-0 appearance-none"
@@ -1470,7 +1492,7 @@ export default function Seva() {
               </div>
             )}
 
-            {flDeity && flDeity.id === 1 && (
+            {flCentre && flCentre.id === 1 && (
               <div className="mt-6">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-primary/60">Seva Performed</span>
@@ -1494,16 +1516,16 @@ export default function Seva() {
               </div>
             )}
 
-            {flDeity && (
+            {flCentre && (
               <div className="mt-6">
                 <p className="text-sm text-primary ml-1 mb-2">Select seva</p>
-                {sevasLoading ? (
+                {flCentreSevasLoading ? (
                   <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-                ) : deitySevas.length === 0 ? (
+                ) : flCentreSevas.length === 0 ? (
                   <p className="text-sm text-muted-foreground ml-1">No sevas available for today.</p>
                 ) : (
                   <div className="mx-2">
-                    {deitySevas.map((seva) => {
+                    {flCentreSevas.map((seva: any) => {
                       const isSelected = flSelectedSevas.has(seva.id);
                       return (
                         <div key={seva.id}>
@@ -1519,7 +1541,7 @@ export default function Seva() {
                                 className="w-4 h-4 accent-primary shrink-0" />
                               <span className="text-sm text-primary truncate">{seva.name}</span>
                             </label>
-                            {(seva as any).isFixedPrice !== false ? (
+                            {seva.isFixedPrice !== false ? (
                               <span className="text-sm text-primary font-medium ml-2 shrink-0">₹{formatNumber(seva.price)}</span>
                             ) : (
                               <input type="number" value={seva.price || ""} onChange={(e) => {
