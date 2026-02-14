@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useLocation } from "wouter";
 import {
   ArrowLeft,
+  ArrowRight,
   Check,
   ChevronDown,
   ChevronUp,
@@ -1412,165 +1413,162 @@ export default function Seva() {
           </div>
         </div>
 
-        <div className="px-4 mt-4 space-y-4">
-          <Card>
-            <CardContent className="p-5 space-y-4">
-              <h3 className="font-serif font-bold text-base">Your Details</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Name *</label>
-                  <input type="text" value={kartaName} onChange={(e) => setKartaName(e.target.value)}
-                    className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                    data-testid="input-fl-name" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Mobile</label>
-                    <input type="text" value={payeeMobile} onChange={(e) => setPayeeMobile(e.target.value)}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                      data-testid="input-fl-mobile" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">City</label>
-                    <input type="text" value={kartaCity} onChange={(e) => setKartaCity(e.target.value)}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                      data-testid="input-fl-city" />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="px-4 mt-4">
+          <div className="bg-white rounded-lg shadow-md px-5 py-6">
+            <input type="text" value={kartaName} onChange={(e) => setKartaName(e.target.value)}
+              placeholder="Karta's Name"
+              className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 focus:outline-none focus:ring-0 transition-colors"
+              data-testid="input-fl-name" />
 
-          <Card>
-            <CardContent className="p-5 space-y-4">
-              <h3 className="font-serif font-bold text-base">Select Deity</h3>
+            <input type="text" value={payeeMobile} onChange={(e) => setPayeeMobile(e.target.value)}
+              placeholder="Karta's Mobile Number"
+              className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 mt-4 focus:outline-none focus:ring-0 transition-colors"
+              data-testid="input-fl-mobile" />
+
+            <input type="text" value={kartaCity} onChange={(e) => setKartaCity(e.target.value)}
+              placeholder="Karta's City"
+              className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 mt-4 focus:outline-none focus:ring-0 transition-colors"
+              data-testid="input-fl-city" />
+
+            <div className="mt-6">
+              <p className="text-sm text-primary ml-1 mb-3">Choose a Location</p>
               {sannidhisLoading ? (
-                <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-3">
                   {sannidhis.map((s) => (
                     <button key={s.id}
                       onClick={() => { setFlDeity(s); setSelectedSannidhi(s); setFlSelectedSevas(new Set()); }}
-                      className={`text-left rounded-lg p-3 transition-all text-sm ${
+                      className={`w-full border rounded-md py-3.5 text-sm font-semibold leading-tight transition-all ${
                         flDeity?.id === s.id
-                          ? "bg-primary text-white shadow-md"
-                          : "bg-white border border-border hover:border-primary/50"
+                          ? "bg-primary text-white border-primary"
+                          : "text-primary border-primary/30 hover:bg-primary/5 hover:border-primary"
                       }`}
                       data-testid={`button-fl-deity-${s.id}`}
-                    >
-                      {s.name}
-                    </button>
+                      dangerouslySetInnerHTML={{ __html: s.name }}
+                    />
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-          {flDeity && flDeity.id !== 1 && (
-            <Card>
-              <CardContent className="p-5 space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Nakshatra</label>
-                    <select value={kartaNakshatraId} onChange={(e) => setKartaNakshatraId(e.target.value)}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                      data-testid="select-fl-nakshatra">
-                      <option value="">Select</option>
-                      {nakshatras.map((n: any) => <option key={n.id} value={n.id}>{n.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Rashi</label>
-                    <select value={kartaRashiId} onChange={(e) => setKartaRashiId(e.target.value)}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                      data-testid="select-fl-rashi">
-                      <option value="">Select</option>
-                      {rashis.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </select>
+            {flDeity && flDeity.id !== 1 && (
+              <div className="mt-6">
+                <select value={kartaNakshatraId} onChange={(e) => setKartaNakshatraId(e.target.value)}
+                  className="w-full text-sm text-primary bg-transparent border-0 border-b border-primary/30 focus:border-primary px-1 py-2.5 focus:outline-none focus:ring-0 appearance-none"
+                  data-testid="select-fl-nakshatra">
+                  <option value="">Select a Nakshatra</option>
+                  {nakshatras.map((n: any) => <option key={n.id} value={n.id}>{n.name}</option>)}
+                </select>
+
+                <select value={kartaRashiId} onChange={(e) => setKartaRashiId(e.target.value)}
+                  className="w-full text-sm text-primary bg-transparent border-0 border-b border-primary/30 focus:border-primary px-1 py-2.5 mt-4 focus:outline-none focus:ring-0 appearance-none"
+                  data-testid="select-fl-rashi">
+                  <option value="">Select a Rashi</option>
+                  {rashis.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {flDeity && flDeity.id === 1 && (
+              <div className="mt-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-primary/60">Seva Performed</span>
+                  <div className="flex gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer" data-testid="button-fl-absentia">
+                      <input type="radio" name="fl-absentia" checked={inAbsentia === "1"} onChange={() => setInAbsentia("1")}
+                        className="w-3.5 h-3.5 accent-primary" />
+                      <span className="text-sm text-primary">In Absentia</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer" data-testid="button-fl-in-person">
+                      <input type="radio" name="fl-absentia" checked={inAbsentia === "0"} onChange={() => setInAbsentia("0")}
+                        className="w-3.5 h-3.5 accent-primary" />
+                      <span className="text-sm text-primary">In Person</span>
+                    </label>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                <div className="border-b border-primary/30 mt-1" />
+                {inAbsentia === "1" && (
+                  <p className="text-red-500 text-sm mt-2">Seva will be performed but Prasadam will not be sent.</p>
+                )}
+              </div>
+            )}
 
-          {flDeity && flDeity.id === 1 && (
-            <Card>
-              <CardContent className="p-5">
-                <label className="text-xs text-muted-foreground mb-2 block">Attending in</label>
-                <div className="flex gap-2">
-                  <button onClick={() => setInAbsentia("0")}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium ${inAbsentia === "0" ? "bg-primary text-white" : "bg-white border border-border"}`}
-                    data-testid="button-fl-in-person">
-                    In Person
-                  </button>
-                  <button onClick={() => setInAbsentia("1")}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium ${inAbsentia === "1" ? "bg-primary text-white" : "bg-white border border-border"}`}
-                    data-testid="button-fl-absentia">
-                    In Absentia
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {flDeity && (
-            <Card>
-              <CardContent className="p-5 space-y-3">
-                <h3 className="font-serif font-bold text-base">Select Sevas</h3>
+            {flDeity && (
+              <div className="mt-6">
+                <p className="text-sm text-primary ml-1 mb-2">Select seva</p>
                 {sevasLoading ? (
-                  <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                  <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
                 ) : deitySevas.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No sevas available for today.</p>
+                  <p className="text-sm text-muted-foreground ml-1">No sevas available for today.</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="mx-2">
                     {deitySevas.map((seva) => {
                       const isSelected = flSelectedSevas.has(seva.id);
                       return (
-                        <button key={seva.id}
-                          onClick={() => {
-                            const next = new Set(flSelectedSevas);
-                            if (isSelected) next.delete(seva.id);
-                            else next.add(seva.id);
-                            setFlSelectedSevas(next);
-                          }}
-                          className={`w-full text-left rounded-lg p-3 transition-all ${
-                            isSelected ? "bg-primary text-white shadow-md" : "bg-white border border-border hover:border-primary/50"
-                          }`}
-                          data-testid={`button-fl-seva-${seva.id}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{seva.name}</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-bold">₹{formatNumber(seva.price)}</span>
-                              {isSelected && <Check className="h-4 w-4" />}
-                            </div>
+                        <div key={seva.id}>
+                          <div className="flex items-center justify-between py-2.5">
+                            <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0" data-testid={`button-fl-seva-${seva.id}`}>
+                              <input type="checkbox" checked={isSelected}
+                                onChange={() => {
+                                  const next = new Set(flSelectedSevas);
+                                  if (isSelected) next.delete(seva.id);
+                                  else next.add(seva.id);
+                                  setFlSelectedSevas(next);
+                                }}
+                                className="w-4 h-4 accent-primary shrink-0" />
+                              <span className="text-sm text-primary truncate">{seva.name}</span>
+                            </label>
+                            {(seva as any).isFixedPrice !== false ? (
+                              <span className="text-sm text-primary font-medium ml-2 shrink-0">₹{formatNumber(seva.price)}</span>
+                            ) : (
+                              <input type="number" value={seva.price || ""} onChange={(e) => {
+                                const val = parseInt(e.target.value) || 0;
+                                seva.price = val;
+                              }}
+                                className="border border-primary/30 rounded-md text-right p-1 w-20 text-sm text-primary ml-2 shrink-0" />
+                            )}
                           </div>
-                        </button>
+                          <div className="border-b border-primary/20" />
+                        </div>
                       );
                     })}
+
+                    {flSelectedSevas.size > 0 && (
+                      <div className="mt-4 text-right">
+                        <span className="text-sm font-semibold text-primary">Total amount</span>
+                        <span className="text-sm font-semibold text-primary ml-8">₹{formatNumber(flTotal)}</span>
+                      </div>
+                    )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            )}
 
-          {validationErrors.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-3">
-              {validationErrors.map((err, i) => <p key={i} className="text-red-600 text-xs">{err}</p>)}
-            </div>
-          )}
+            {validationErrors.length > 0 && (
+              <div className="mt-6 text-center">
+                {validationErrors.map((err, i) => <p key={i} className="text-red-500 text-sm">{err}</p>)}
+              </div>
+            )}
 
-          {errorMessage && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-3">
-              <p className="text-red-600 text-sm">{errorMessage}</p>
-            </div>
-          )}
+            {errorMessage && (
+              <div className="mt-6 text-center">
+                <p className="text-red-500 text-sm">{errorMessage}</p>
+              </div>
+            )}
 
-          {flSelectedSevas.size > 0 && (
-            <Button className="w-full h-12" onClick={submitFastline} disabled={submitting} data-testid="button-fl-pay">
-              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : `Pay ₹${formatNumber(flTotal)}`}
-            </Button>
-          )}
+            {flSelectedSevas.size > 0 && (
+              <div className="flex justify-center mt-8">
+                <button onClick={submitFastline} disabled={submitting}
+                  className="uppercase font-medium rounded-md bg-[#3d2000] text-white w-2/3 py-3 text-sm flex items-center justify-center gap-2 hover:bg-[#5a3510] transition-colors disabled:opacity-50"
+                  data-testid="button-fl-pay">
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                    <>Make Payment <ArrowRight className="h-4 w-4" /></>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
