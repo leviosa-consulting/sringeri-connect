@@ -1109,6 +1109,16 @@ export default function Seva() {
             </Card>
           ))}
 
+          <Button
+            variant="outline"
+            className="w-full h-11 border-dashed border-2 border-primary/40 text-primary font-medium"
+            onClick={() => { setStep("select"); setValidationErrors([]); }}
+            data-testid="button-add-more-sevas"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add More Sevas
+          </Button>
+
           <Button className="w-full h-12" onClick={goToPayee} data-testid="button-proceed-payee">
             Proceed to Payment — ₹{formatNumber(totalSevaAmount)}
           </Button>
