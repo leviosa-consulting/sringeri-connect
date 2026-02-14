@@ -221,6 +221,7 @@ export default function Seva() {
   const [upcomingSevasOpen, setUpcomingSevasOpen] = useState(false);
   const [showSannidhiDropdown, setShowSannidhiDropdown] = useState(false);
   const [showSevaDropdown, setShowSevaDropdown] = useState(false);
+  const [showFastlineConfirm, setShowFastlineConfirm] = useState(false);
 
   const [sevaDate, setSevaDate] = useState("");
   const [inAbsentia, setInAbsentia] = useState<string>("");
@@ -518,9 +519,23 @@ export default function Seva() {
   }
 
   function selectSevaType(type: SevaType) {
+    if (type.id === 1) {
+      setShowFastlineConfirm(true);
+      return;
+    }
     setSelectedSevaType(type);
     setStep("select");
     resetSevaForm();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function confirmFastline() {
+    setShowFastlineConfirm(false);
+    const flType = SEVA_TYPES.find((t) => t.id === 1)!;
+    setSelectedSevaType(flType);
+    setStep("select");
+    resetSevaForm();
+    setInAbsentia("0");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -1492,29 +1507,6 @@ export default function Seva() {
               </div>
             )}
 
-            {flCentre && flCentre.id === 1 && (
-              <div className="mt-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-primary/60">Seva Performed</span>
-                  <div className="flex gap-6">
-                    <label className="flex items-center gap-2 cursor-pointer" data-testid="button-fl-absentia">
-                      <input type="radio" name="fl-absentia" checked={inAbsentia === "1"} onChange={() => setInAbsentia("1")}
-                        className="w-3.5 h-3.5 accent-primary" />
-                      <span className="text-sm text-primary">In Absentia</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer" data-testid="button-fl-in-person">
-                      <input type="radio" name="fl-absentia" checked={inAbsentia === "0"} onChange={() => setInAbsentia("0")}
-                        className="w-3.5 h-3.5 accent-primary" />
-                      <span className="text-sm text-primary">In Person</span>
-                    </label>
-                  </div>
-                </div>
-                <div className="border-b border-primary/30 mt-1" />
-                {inAbsentia === "1" && (
-                  <p className="text-red-500 text-sm mt-2">Seva will be performed but Prasadam will not be sent.</p>
-                )}
-              </div>
-            )}
 
             {flCentre && (
               <div className="mt-6">
@@ -2191,6 +2183,25 @@ export default function Seva() {
           </>
         )}
       </div>
+
+      <AlertDialog open={showFastlineConfirm} onOpenChange={setShowFastlineConfirm}>
+        <AlertDialogContent className="max-w-sm mx-auto rounded-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-center text-lg font-serif">Today's Seva</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-sm">
+              This is only in-person seva if you are in Sringeri today.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex gap-3 sm:justify-center">
+            <AlertDialogCancel className="flex-1" data-testid="button-fl-cancel">Cancel</AlertDialogCancel>
+            <button onClick={confirmFastline}
+              className="flex-1 inline-flex items-center justify-center rounded-md bg-primary text-white text-sm font-medium h-10 px-4 hover:bg-primary/90"
+              data-testid="button-fl-continue">
+              Continue
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
