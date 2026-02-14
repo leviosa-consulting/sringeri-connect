@@ -141,22 +141,22 @@ const SEVA_TYPES: SevaType[] = [
   {
     id: 1,
     short: "fl",
-    name: "Fastline — Seva for Today",
-    description: "Book live sevas for today and print your receipt at the kiosk if you are attending in person",
+    name: "Today",
+    description: "",
     hasCart: false,
   },
   {
     id: 2,
     short: "otfs",
-    name: "One-time Seva (incl. Fastline)",
-    description: "Book sevas for a specific date for attending in person or in absentia and get Prasadam delivered to your home",
+    name: "Future Date (One Time)",
+    description: "",
     hasCart: true,
   },
   {
     id: 3,
     short: "ps",
-    name: "Recurring Seva (Puduvattu)",
-    description: "Book puduvattu seva that is performed on a recurring basis either for Hindu Calendar or English Calendar",
+    name: "Recurring (Puduvattu)",
+    description: "",
     hasCart: true,
   },
 ];
@@ -2051,38 +2051,35 @@ export default function Seva() {
           </Card>
         )}
 
-        <div className="space-y-3">
-          <h3 className="font-serif font-bold text-sm px-1">Choose Seva Type</h3>
-          {SEVA_TYPES.map((type) => {
-            const icons = { fl: Zap, otfs: CalendarDays, ps: RefreshCw };
-            const Icon = icons[type.short as keyof typeof icons];
-            const colors = {
-              fl: "from-amber-500 to-orange-500",
-              otfs: "from-blue-500 to-indigo-500",
-              ps: "from-emerald-500 to-teal-500",
-            };
-            return (
-              <button key={type.id}
-                onClick={() => selectSevaType(type)}
-                className="w-full text-left"
-                data-testid={`button-seva-type-${type.short}`}
-              >
-                <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <CardContent className="p-0">
-                    <div className="flex items-stretch">
-                      <div className={`bg-gradient-to-br ${colors[type.short as keyof typeof colors]} p-4 flex items-center justify-center`}>
-                        <Icon className="h-8 w-8 text-white" />
+        <div>
+          <h3 className="font-serif font-bold text-sm px-1 mb-3">Choose Seva Type</h3>
+          <div className="grid grid-cols-3 gap-3">
+            {SEVA_TYPES.map((type) => {
+              const icons = { fl: Zap, otfs: CalendarDays, ps: RefreshCw };
+              const Icon = icons[type.short as keyof typeof icons];
+              const colors = {
+                fl: "from-amber-500 to-orange-500",
+                otfs: "from-blue-500 to-indigo-500",
+                ps: "from-emerald-500 to-teal-500",
+              };
+              return (
+                <button key={type.id}
+                  onClick={() => selectSevaType(type)}
+                  className="flex flex-col items-center"
+                  data-testid={`button-seva-type-${type.short}`}
+                >
+                  <Card className="w-full hover:shadow-lg transition-shadow">
+                    <CardContent className="p-3 flex flex-col items-center gap-2">
+                      <div className={`bg-gradient-to-br ${colors[type.short as keyof typeof colors]} rounded-xl w-12 h-12 flex items-center justify-center`}>
+                        <Icon className="h-6 w-6 text-white" />
                       </div>
-                      <div className="p-4 flex-1">
-                        <h4 className="font-serif font-bold text-sm">{type.name}</h4>
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{type.description}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </button>
-            );
-          })}
+                      <span className="text-xs font-semibold text-center leading-tight">{type.name}</span>
+                    </CardContent>
+                  </Card>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
