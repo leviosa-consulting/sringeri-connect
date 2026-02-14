@@ -2021,30 +2021,46 @@ export default function Seva() {
       </div>
 
       <div className="px-4 mt-4 space-y-4">
-        <div>
-          <h3 className="font-serif font-bold text-sm px-1 mb-3">Select Seva Location</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {SEVA_CENTRES.map((centre) => (
-              <button key={centre.id}
-                onClick={() => setSelectedCentre(selectedCentre?.id === centre.id ? null : centre)}
-                className="flex flex-col items-center"
-                data-testid={`button-centre-${centre.id}`}
-              >
-                <Card className={`w-full transition-shadow ${selectedCentre?.id === centre.id ? "ring-2 ring-primary shadow-lg" : "hover:shadow-md"}`}>
-                  <CardContent className="p-4 flex flex-col items-center gap-2">
-                    <div className={`rounded-xl w-12 h-12 flex items-center justify-center ${selectedCentre?.id === centre.id ? "bg-primary" : "bg-gradient-to-br from-[#8B4513] to-[#A0522D]"}`}>
-                      <MapPin className="h-6 w-6 text-white" />
-                    </div>
-                    <span className={`text-sm font-semibold text-center ${selectedCentre?.id === centre.id ? "text-primary" : ""}`}>{centre.name}</span>
-                  </CardContent>
-                </Card>
-              </button>
-            ))}
+        {!selectedCentre && (
+          <div>
+            <h3 className="font-serif font-bold text-sm px-1 mb-3">Select Seva Location</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {SEVA_CENTRES.map((centre) => (
+                <button key={centre.id}
+                  onClick={() => setSelectedCentre(centre)}
+                  className="flex flex-col items-center"
+                  data-testid={`button-centre-${centre.id}`}
+                >
+                  <Card className="w-full hover:shadow-md transition-shadow">
+                    <CardContent className="p-4 flex flex-col items-center gap-2">
+                      <div className="rounded-xl w-12 h-12 flex items-center justify-center bg-gradient-to-br from-[#8B4513] to-[#A0522D]">
+                        <MapPin className="h-6 w-6 text-white" />
+                      </div>
+                      <span className="text-sm font-semibold text-center">{centre.name}</span>
+                    </CardContent>
+                  </Card>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {selectedCentre && (
           <>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelectedCentre(null)}
+                className="flex items-center gap-1 text-sm text-primary font-medium"
+                data-testid="button-back-location"
+              >
+                <ArrowLeft className="h-4 w-4" /> Change Location
+              </button>
+            </div>
+            <div className="flex items-center gap-2 px-1">
+              <MapPin className="h-5 w-5 text-primary shrink-0" />
+              <h3 className="font-serif font-bold text-base">Booking sevas for {selectedCentre.name}</h3>
+            </div>
+
             {frequentSevas.length > 0 && (
               <Card>
                 <CardContent className="p-4">
