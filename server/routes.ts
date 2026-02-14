@@ -1084,8 +1084,12 @@ export async function registerRoutes(
       if (!endpoint) {
         return res.status(400).json({ error: "Endpoint URL is required" });
       }
+      let fullUrl = endpoint;
+      if (endpoint.startsWith("/")) {
+        fullUrl = `${SRINGERI_API_URL}${endpoint}`;
+      }
       try {
-        const parsedUrl = new URL(endpoint);
+        const parsedUrl = new URL(fullUrl);
         const allowedHost = new URL(SRINGERI_API_URL).hostname;
         if (parsedUrl.hostname !== allowedHost) {
           return res.status(403).json({ error: "Endpoint not allowed" });
@@ -1093,7 +1097,7 @@ export async function registerRoutes(
       } catch {
         return res.status(400).json({ error: "Invalid endpoint URL" });
       }
-      const response = await fetch(endpoint, {
+      const response = await fetch(fullUrl, {
         headers: {
           "Content-Type": "application/json",
           ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
