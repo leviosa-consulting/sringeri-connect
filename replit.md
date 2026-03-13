@@ -79,7 +79,13 @@ Preferred communication style: Simple, everyday language.
 - Donation flow uses `/api/makeDonation` endpoint with CCAvenue payment gateway (fallback to Razorpay if orderId returned)
 - Donation APIs: donationHeading, donationCategory, donationSubCategory, postageOptionsDonation, calendarTypes, tithis, chandraMasas, souraMasas, nakshatras, devoteeKarta, devoteeAddress
 - Seva Booking APIs: centres, online/deities/:sevaTypeId, online/deitySevas/:sannidhiId/:sevaTypeId, online/sevaAvailability/:dsId, onlineFrequentSevas, rashis, postageOptions, recurrenceTypes, recurranceCount (multi-param), online/fl (POST for payment)
-- Seva flow uses `/api/online/fl` POST endpoint with Razorpay payment gateway
+- Fastline seva flow uses Paytm JS Checkout:
+  1. `/api/initiatePaytmTransaction` POST — generates FL_ orderId, calls Paytm Initiate Transaction API, returns txnToken
+  2. `/api/newReceiptFl` POST — creates DB receipt with form data (devoteeName, devoteeNameK, totalAmount, paymentModeId=6, mobile, city, cityK, receiptTypeId, inAbsentia, branchId, addedAt, status=8, paymentRef=orderId, selectedSevas)
+  3. Paytm JS Checkout opens inline for payment
+  4. `/api/paymentAck` POST — forwards Paytm response (uppercase keys: BANKNAME, BANKTXNID, CURRENCY, PAYMENTMODE, ORDERID, RESPCODE, RESPMSG, STATUS, TXNDATE, TXNID, TXNAMOUNT) to Sringeri API
+- Requires `PAYTM_MID` and `PAYTM_MERCHANT_KEY` environment secrets
+- Other seva types (One-time, Recurring) still use `/api/online/fl` POST with Razorpay
 - Three seva types: Fastline (id=1, today's sevas), One-time (id=2, future date with calendar), Recurring/Puduvattu (id=3, recurring with calendar type and recurrence patterns)
 
 ### Chatbot (Sringeri Sahayak)

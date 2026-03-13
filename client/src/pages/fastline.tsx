@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -38,6 +38,8 @@ export default function Fastline() {
   const [errorMessage, setErrorMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showWarning, setShowWarning] = useState(true);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [ackData, setAckData] = useState<{ txnId: string; orderId: string; amount: string; sevaNames: string[] } | null>(null);
 
   const [kannadaName, setKannadaName] = useState("");
   const [kannadaCity, setKannadaCity] = useState("");
@@ -118,6 +120,22 @@ export default function Fastline() {
     setFlCentreSevasLoading(false);
   }
 
+  function loadPaytmScript(mid: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if ((window as any).Paytm?.CheckoutJS) { resolve(); return; }
+      const existing = document.getElementById("paytm-checkout-js");
+      if (existing) existing.remove();
+      const script = document.createElement("script");
+      script.id = "paytm-checkout-js";
+      script.type = "application/javascript";
+      script.crossOrigin = "anonymous";
+      script.src = `https://securegw.paytm.in/merchantpgpui/checkoutjs/merchants/${mid}.js`;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Failed to load Paytm SDK"));
+      document.head.appendChild(script);
+    });
+  }
+
   async function submitFastline() {
     if (flSelectedSevas.size === 0) {
       setValidationErrors(["Please select at least one seva."]);
@@ -147,76 +165,200 @@ export default function Fastline() {
 
     const selectedSevasList = flCentreSevas.filter((s) => flSelectedSevas.has(s.id));
     const total = selectedSevasList.reduce((sum, s) => sum + s.price, 0);
-
-    const obj = {
-      name: kartaName,
-      mobile: kartaMobile,
-      city: kartaCity,
-      deityId: flCentre.id,
-      nakshatraId: kartaNakshatraId,
-      rashiId: kartaRashiId,
-      inAbsentia: "0",
-      totalAmount: total,
-      sevaTypeId: 1,
-      selectedSevas: selectedSevasList,
-      uid: "",
-    };
+    const firstSeva = selectedSevasList[0];
 
     try {
-      const res = await fetch("/api/online/fl", {
+      const initRes = await fetch("/api/initiatePaytmTransaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(obj),
+        body: JSON.stringify({ amount: total, mobile: kartaMobile }),
       });
 
-      if (!res.ok) {
-        setErrorMessage("Failed to submit. Please try again.");
+      if (!initRes.ok) {
+        const errData = await initRes.json().catch(() => ({}));
+        setErrorMessage(errData.details || "Failed to initiate payment. Please try again.");
         setSubmitting(false);
         return;
       }
 
-      const data = await res.json();
+      const { txnToken, orderId, mid, amount } = await initRes.json();
 
-      if (data.orderId) {
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = "https://api.razorpay.com/v1/checkout/embedded";
-        form.style.display = "none";
+      const now = new Date();
+      const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
 
-        const fields: Record<string, string> = {
-          key_id: data.key_id || "",
-          name: "Sri Sringeri Sharada Peetham",
-          description: "Payment for Sevas",
-          order_id: data.orderId,
-          amount: String(data.amount),
-          currency: "INR",
-          callback_url: data.callback_url || "https://donate.sringeri.net/rpg/onlinesevaresponse",
-          cancel_url: data.cancel_url || "https://donate.sringeri.net/sevas-gnr",
-          "prefill[name]": kartaName,
-          "prefill[contact]": `${countryCode}${kartaMobile}`,
-        };
+      const receiptBody = {
+        devoteeName: kartaName,
+        devoteeNameK: kannadaName,
+        totalAmount: total,
+        paymentModeId: 6,
+        mobile: kartaMobile,
+        city: kartaCity,
+        cityK: kannadaCity,
+        receiptTypeId: firstSeva?.receiptTypeId || 1,
+        inAbsentia: "0",
+        branchId: firstSeva?.branchId || 1,
+        addedAt,
+        status: 8,
+        paymentRef: orderId,
+        selectedSevas: selectedSevasList,
+      };
 
-        for (const [key, value] of Object.entries(fields)) {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = value;
-          form.appendChild(input);
-        }
+      const receiptRes = await fetch("/api/newReceiptFl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(receiptBody),
+      });
 
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-      } else {
-        setErrorMessage("Payment could not be initiated. Please try again later.");
+      if (!receiptRes.ok) {
+        setErrorMessage("Failed to create booking record. Please try again.");
+        setSubmitting(false);
+        return;
       }
-    } catch {
-      setErrorMessage("Something went wrong. Please try again.");
+
+      await loadPaytmScript(mid);
+
+      const config = {
+        root: "",
+        flow: "DEFAULT",
+        data: {
+          orderId: orderId,
+          token: txnToken,
+          tokenType: "TXN_TOKEN",
+          amount: amount,
+        },
+        handler: {
+          transactionStatus: async (paytmResponse: any) => {
+            try {
+              const ackBody: Record<string, string> = {};
+              if (paytmResponse.BANKNAME) ackBody.BANKNAME = paytmResponse.BANKNAME;
+              if (paytmResponse.BANKTXNID) ackBody.BANKTXNID = paytmResponse.BANKTXNID;
+              if (paytmResponse.CURRENCY) ackBody.CURRENCY = paytmResponse.CURRENCY;
+              if (paytmResponse.PAYMENTMODE) ackBody.PAYMENTMODE = paytmResponse.PAYMENTMODE;
+              if (paytmResponse.ORDERID) ackBody.ORDERID = paytmResponse.ORDERID;
+              if (paytmResponse.RESPCODE) ackBody.RESPCODE = paytmResponse.RESPCODE;
+              if (paytmResponse.RESPMSG) ackBody.RESPMSG = paytmResponse.RESPMSG;
+              if (paytmResponse.STATUS) ackBody.STATUS = paytmResponse.STATUS;
+              if (paytmResponse.TXNDATE) ackBody.TXNDATE = paytmResponse.TXNDATE;
+              if (paytmResponse.TXNID) ackBody.TXNID = paytmResponse.TXNID;
+              if (paytmResponse.TXNAMOUNT) ackBody.TXNAMOUNT = paytmResponse.TXNAMOUNT;
+
+              await fetch("/api/paymentAck", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(ackBody),
+              });
+
+              if (paytmResponse.STATUS === "TXN_SUCCESS") {
+                setAckData({
+                  txnId: paytmResponse.TXNID || "",
+                  orderId: paytmResponse.ORDERID || orderId,
+                  amount: paytmResponse.TXNAMOUNT || amount,
+                  sevaNames: selectedSevasList.map((s: any) => s.name),
+                });
+                setPaymentSuccess(true);
+              } else {
+                setErrorMessage(paytmResponse.RESPMSG || "Payment was not successful. Please try again.");
+              }
+            } catch {
+              setErrorMessage("Payment completed but acknowledgment failed. Please contact support.");
+            }
+            setSubmitting(false);
+          },
+          notifyMerchant: (eventName: string, data: any) => {
+            console.log("Paytm notifyMerchant:", eventName, data);
+          },
+        },
+        merchant: {
+          mid: mid,
+          redirect: false,
+        },
+      };
+
+      const checkoutJS = (window as any).Paytm.CheckoutJS;
+      await checkoutJS.init(config);
+      checkoutJS.invoke();
+
+    } catch (err: any) {
+      console.error("Payment error:", err);
+      setErrorMessage(err.message || "Something went wrong. Please try again.");
+      setSubmitting(false);
     }
-    setSubmitting(false);
+  }
+
+  function resetForm() {
+    setKartaName("");
+    setKartaMobile("");
+    setKartaCity("");
+    setKartaNakshatraId("");
+    setKartaRashiId("");
+    setFlCentre(null);
+    setFlCentreSevas([]);
+    setFlSelectedSevas(new Set());
+    setKannadaName("");
+    setKannadaCity("");
+    setPaymentSuccess(false);
+    setAckData(null);
+    setErrorMessage("");
+    setValidationErrors([]);
   }
 
   const flTotal = flCentreSevas.filter((s) => flSelectedSevas.has(s.id)).reduce((sum, s) => sum + s.price, 0);
+
+  if (paymentSuccess && ackData) {
+    return (
+      <div className="min-h-screen bg-[#F7F2EC]" data-testid="fastline-ack">
+        <div className="px-4 pt-6 pb-4">
+          <div className="max-w-2xl mx-auto flex justify-center">
+            <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
+          </div>
+        </div>
+        <div className="px-4 mt-4 pb-12">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white rounded-lg shadow-md px-6 py-8 text-center">
+              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h2 className="text-xl font-serif font-bold text-primary mb-2" data-testid="text-ack-title">Payment Successful</h2>
+              <p className="text-sm text-muted-foreground mb-6">Your seva booking has been confirmed.</p>
+
+              <div className="text-left bg-[#F7F2EC] rounded-lg p-4 mb-6">
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Transaction ID</span>
+                  <span className="text-xs font-medium text-primary" data-testid="text-ack-txnid">{ackData.txnId}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Order ID</span>
+                  <span className="text-xs font-medium text-primary" data-testid="text-ack-orderid">{ackData.orderId}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Amount Paid</span>
+                  <span className="text-sm font-semibold text-primary" data-testid="text-ack-amount">₹{ackData.amount}</span>
+                </div>
+                <div className="py-2">
+                  <span className="text-xs text-muted-foreground">Sevas Booked</span>
+                  <ul className="mt-1">
+                    {ackData.sevaNames.map((name, i) => (
+                      <li key={i} className="text-xs text-primary py-0.5" data-testid={`text-ack-seva-${i}`}>• {name}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <button onClick={resetForm}
+                className="uppercase font-medium rounded-md bg-[#3d2000] text-white px-8 py-3 text-sm hover:bg-[#5a3510] transition-colors"
+                data-testid="button-ack-new-booking">
+                Book Another Seva
+              </button>
+            </div>
+
+            <div className="mt-6 text-center">
+              <p className="text-xs text-muted-foreground">
+                Sri Sringeri Sharada Peetham — Online Seva Booking
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F2EC]" data-testid="fastline-public">
