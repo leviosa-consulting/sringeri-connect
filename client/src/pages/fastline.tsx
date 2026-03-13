@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Loader2, Zap } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -190,18 +190,9 @@ export default function Fastline() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-3">
-            <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-12 w-auto object-contain" />
-            <div className="flex-1">
-              <h1 className="text-xl font-serif font-bold flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                Fastline — Today's Seva
-              </h1>
-              <p className="text-sm opacity-80">Book live in-person sevas at Sringeri today</p>
-            </div>
-          </div>
+      <div className="px-4 pt-6 pb-4">
+        <div className="max-w-2xl mx-auto flex justify-center">
+          <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
         </div>
       </div>
 
