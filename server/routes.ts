@@ -615,35 +615,143 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/onlineReservationRzp", async (req, res) => {
+  app.post("/api/onlineReservationPtm", async (req, res) => {
     try {
-      const response = await fetch(`${SRINGERI_API_URL}/api/onlineReservationRzp`, {
+      const PAYTM_MID_VAL = process.env.PAYTM_MID;
+      const PAYTM_KEY_VAL = process.env.PAYTM_MERCHANT_KEY;
+
+      if (!PAYTM_MID_VAL || !PAYTM_KEY_VAL) {
+        return res.status(500).json({ error: "Paytm credentials not configured" });
+      }
+
+      const { reservedDate, mobileNumber, email, occupantName1, occupantAge1,
+              occupantIdType1, occupantIdNumber1, occupantName2, occupantAge2,
+              occupantIdType2, occupantIdNumber2, roomCount, rent, deposit,
+              inventoryId, uid, filter } = req.body;
+
+      const totalAmount = Number(rent || 0) + Number(deposit || 0);
+      if (!totalAmount || totalAmount <= 0) {
+        return res.status(400).json({ error: "Valid amount is required" });
+      }
+
+      const now = new Date();
+      const ts = now.getFullYear().toString() +
+        String(now.getMonth() + 1).padStart(2, "0") +
+        String(now.getDate()).padStart(2, "0") +
+        String(now.getHours()).padStart(2, "0") +
+        String(now.getMinutes()).padStart(2, "0") +
+        String(now.getSeconds()).padStart(2, "0");
+      const rand = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
+      const orderId = `YATRI_${ts}_${rand}`;
+
+      const paytmParams: Record<string, any> = {
+        body: {
+          requestType: "Payment",
+          mid: PAYTM_MID_VAL,
+          websiteName: "DEFAULT",
+          orderId: orderId,
+          txnAmount: {
+            value: String(Number(totalAmount).toFixed(2)),
+            currency: "INR",
+          },
+          userInfo: {
+            custId: uid || mobileNumber || "GUEST",
+          },
+          callbackUrl: `https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=${orderId}`,
+        },
+      };
+
+      const checksum = await PaytmChecksum.generateSignature(
+        JSON.stringify(paytmParams.body),
+        PAYTM_KEY_VAL
+      );
+      paytmParams.head = { signature: checksum };
+
+      const paytmRes = await fetch(
+        `https://securegw.paytm.in/theia/api/v1/initiateTransaction?mid=${PAYTM_MID_VAL}&orderId=${orderId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(paytmParams),
+        }
+      );
+
+      const paytmData = await paytmRes.json();
+
+      if (!(paytmData.body?.resultInfo?.resultStatus === "S" && paytmData.body?.txnToken)) {
+        console.error("Paytm initiate failed for reservation:", JSON.stringify(paytmData));
+        return res.status(500).json({
+          error: "Failed to initiate payment",
+          details: paytmData.body?.resultInfo?.resultMsg || "Unknown error",
+        });
+      }
+
+      const txnToken = paytmData.body.txnToken;
+
+      const reservationPayload = {
+        reservedDate: reservedDate || "",
+        mobileNumber: mobileNumber || "",
+        email: email || "",
+        occupantName1: occupantName1 || "",
+        occupantAge1: occupantAge1 || "",
+        occupantIdType1: occupantIdType1 || 1,
+        occupantIdNumber1: occupantIdNumber1 || "",
+        occupantName2: occupantName2 || "",
+        occupantAge2: occupantAge2 || "",
+        occupantIdType2: occupantIdType2 || 1,
+        occupantIdNumber2: occupantIdNumber2 || "",
+        roomCount: roomCount || 1,
+        rent: rent || 0,
+        deposit: deposit || 0,
+        inventoryId: inventoryId,
+        uid: uid || "",
+        filter: filter || {},
+        orderId: orderId,
+      };
+
+      console.log("Sending reservation to Sringeri:", JSON.stringify({
+        orderId, inventoryId, reservedDate, rent, deposit, totalAmount,
+        roomCount: reservationPayload.roomCount, uid: reservationPayload.uid,
+      }));
+
+      const sringeriRes = await fetch(`${SRINGERI_API_URL}/api/onlineReservationPtm`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
         },
-        body: JSON.stringify(req.body),
+        body: JSON.stringify(reservationPayload),
       });
 
-      if (!response.ok) {
-        return res.status(response.status).json({ error: "Failed to submit reservation" });
+      const sringeriResText = await sringeriRes.text().catch(() => "");
+      console.log("Sringeri onlineReservationPtm response:", sringeriRes.status, sringeriResText);
+
+      if (!sringeriRes.ok) {
+        console.error("Sringeri onlineReservationPtm failed:", sringeriRes.status, sringeriResText);
+        return res.status(502).json({ error: "Reservation registration failed", details: "Could not register reservation with the server. Please try again." });
       }
 
-      const text = await response.text();
-      let data;
+      let sringeriData: any = null;
       try {
-        const jsonStart = text.indexOf('{');
+        const jsonStart = sringeriResText.indexOf("{");
         if (jsonStart !== -1) {
-          data = JSON.parse(text.substring(jsonStart));
+          sringeriData = JSON.parse(sringeriResText.substring(jsonStart));
         } else {
-          data = JSON.parse(text);
+          sringeriData = JSON.parse(sringeriResText);
         }
-      } catch (parseError) {
-        return res.status(500).json({ error: "Invalid API response" });
+      } catch {}
+
+      if (sringeriData && (sringeriData.error || sringeriData.status === "Failed" || sringeriData.status === "Error")) {
+        console.error("Sringeri onlineReservationPtm returned error in body:", JSON.stringify(sringeriData));
+        return res.status(502).json({ error: "Reservation registration failed", details: sringeriData.message || sringeriData.error || "Server rejected the reservation." });
       }
 
-      res.json(data);
+      res.json({
+        txnToken: txnToken,
+        orderId: orderId,
+        mid: PAYTM_MID_VAL,
+        amount: String(Number(totalAmount).toFixed(2)),
+      });
     } catch (error) {
       console.error("Error submitting reservation:", error);
       res.status(500).json({ error: "Internal server error" });

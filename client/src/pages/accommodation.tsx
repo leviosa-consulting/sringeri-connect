@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Hotel,
@@ -93,6 +94,8 @@ export default function Accommodation() {
   const [submitting, setSubmitting] = useState(false);
   const [showLocationConfirm, setShowLocationConfirm] = useState(false);
   const [showTermsConfirm, setShowTermsConfirm] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [ackData, setAckData] = useState<{ txnId: string; orderId: string; amount: string; roomName: string; reservedDate: string } | null>(null);
 
   const roomSectionRef = useRef<HTMLDivElement>(null);
 
@@ -237,6 +240,35 @@ export default function Accommodation() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  function loadPaytmScript(mid: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const existing = document.getElementById("paytm-checkout-js");
+      if (existing) existing.remove();
+      (window as any).Paytm = undefined;
+      const script = document.createElement("script");
+      script.id = "paytm-checkout-js";
+      script.type = "application/javascript";
+      script.crossOrigin = "anonymous";
+      script.src = `https://securegw.paytm.in/merchantpgpui/checkoutjs/merchants/${mid}.js`;
+      script.onload = () => {
+        let attempts = 0;
+        const poll = setInterval(() => {
+          attempts++;
+          const sdk = (window as any).Paytm?.CheckoutJS;
+          if (sdk && typeof sdk.init === "function") {
+            clearInterval(poll);
+            resolve();
+          } else if (attempts > 50) {
+            clearInterval(poll);
+            reject(new Error("Paytm SDK failed to initialize"));
+          }
+        }, 100);
+      };
+      script.onerror = () => reject(new Error("Failed to load Paytm SDK"));
+      document.head.appendChild(script);
+    });
+  }
+
   const handleSubmit = async () => {
     if (!selectedRoom || !selectedDate || !user) return;
     setSubmitting(true);
@@ -263,7 +295,7 @@ export default function Accommodation() {
         filter: {},
       };
 
-      const res = await fetch("/api/onlineReservationRzp", {
+      const res = await fetch("/api/onlineReservationPtm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(reservationData),
@@ -271,50 +303,147 @@ export default function Accommodation() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        setErrorMessage(errData.error || "Failed to submit reservation. Please try again.");
+        setErrorMessage(errData.details || errData.error || "Failed to submit reservation. Please try again.");
         setSubmitting(false);
         return;
       }
 
-      const data = await res.json();
+      const { txnToken, orderId, mid, amount } = await res.json();
 
-      if (data.orderId) {
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = "https://api.razorpay.com/v1/checkout/embedded";
-        form.style.display = "none";
-
-        const fields: Record<string, string> = {
-          key_id: data.key_id || "",
-          name: "Sri Sringeri Sharada Peetham",
-          description: "Payment for Accommodation",
-          order_id: data.orderId,
-          amount: String(data.amount),
-          currency: "INR",
-          callback_url: data.callback_url || "https://yatri.sringeri.net/rpg/onlinesevaresponse",
-          cancel_url: data.cancel_url || "https://yatri.sringeri.net/rpg/onlinesevaresponse",
-          "prefill[name]": occupant1.name,
-          "prefill[contact]": mobile,
-        };
-
-        for (const [key, value] of Object.entries(fields)) {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = value;
-          form.appendChild(input);
-        }
-
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-      } else {
+      if (!txnToken || !orderId || !mid) {
         setErrorMessage("Reservation submitted but payment details are missing. Please contact support.");
+        setSubmitting(false);
+        return;
       }
-    } catch (err) {
-      setErrorMessage("Something went wrong. Please try again.");
+
+      await loadPaytmScript(mid);
+
+      const roomName = selectedRoom.dispName;
+      const reservedDateDisp = selectedDate.dispDate || selectedDate.dbDate;
+
+      const config = {
+        root: "",
+        flow: "DEFAULT",
+        data: {
+          orderId: orderId,
+          token: txnToken,
+          tokenType: "TXN_TOKEN",
+          amount: amount,
+        },
+        handler: {
+          transactionStatus: async (paytmResponse: any) => {
+            console.log("Paytm accommodation transactionStatus:", JSON.stringify(paytmResponse));
+            try {
+              const ackBody: Record<string, string> = {};
+              if (paytmResponse.BANKNAME) ackBody.BANKNAME = paytmResponse.BANKNAME;
+              if (paytmResponse.BANKTXNID) ackBody.BANKTXNID = paytmResponse.BANKTXNID;
+              if (paytmResponse.CURRENCY) ackBody.CURRENCY = paytmResponse.CURRENCY;
+              if (paytmResponse.PAYMENTMODE) ackBody.PAYMENTMODE = paytmResponse.PAYMENTMODE;
+              if (paytmResponse.ORDERID) ackBody.ORDERID = paytmResponse.ORDERID;
+              if (paytmResponse.RESPCODE) ackBody.RESPCODE = paytmResponse.RESPCODE;
+              if (paytmResponse.RESPMSG) ackBody.RESPMSG = paytmResponse.RESPMSG;
+              if (paytmResponse.STATUS) ackBody.STATUS = paytmResponse.STATUS;
+              if (paytmResponse.TXNDATE) ackBody.TXNDATE = paytmResponse.TXNDATE;
+              if (paytmResponse.TXNID) ackBody.TXNID = paytmResponse.TXNID;
+              if (paytmResponse.TXNAMOUNT) ackBody.TXNAMOUNT = paytmResponse.TXNAMOUNT;
+
+              fetch("/api/paymentAck", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(ackBody),
+              }).catch(() => {});
+
+              const clientStatus =
+                paytmResponse.STATUS ||
+                paytmResponse.status ||
+                paytmResponse.body?.resultInfo?.resultStatus ||
+                "";
+
+              const isSuccess =
+                clientStatus === "TXN_SUCCESS" || clientStatus === "S";
+
+              const resolvedOrderId = paytmResponse.ORDERID || paytmResponse.orderId || orderId;
+
+              if (isSuccess) {
+                setAckData({
+                  txnId: paytmResponse.TXNID || "",
+                  orderId: resolvedOrderId,
+                  amount: paytmResponse.TXNAMOUNT || amount,
+                  roomName: roomName,
+                  reservedDate: reservedDateDisp,
+                });
+                setPaymentSuccess(true);
+
+                try {
+                  const verifyRes = await fetch("/api/verifyPaytmTransaction", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ orderId: resolvedOrderId }),
+                  });
+                  if (verifyRes.ok) {
+                    const verifyData = await verifyRes.json();
+                    console.log("Accommodation server-side verification:", JSON.stringify(verifyData));
+                  }
+                } catch (verifyErr) {
+                  console.error("Verification call failed (non-blocking):", verifyErr);
+                }
+              } else {
+                const errorMsg =
+                  paytmResponse.RESPMSG ||
+                  paytmResponse.body?.resultInfo?.resultMsg ||
+                  "Payment was not successful. Please try again.";
+                setErrorMessage(errorMsg);
+              }
+            } catch {
+              setErrorMessage("Payment completed but acknowledgment failed. Please contact support.");
+            }
+
+            try {
+              const checkout = (window as any).Paytm?.CheckoutJS;
+              if (checkout && typeof checkout.close === "function") {
+                checkout.close();
+              }
+            } catch {}
+            setSubmitting(false);
+          },
+          notifyMerchant: (eventName: string, data: any) => {
+            console.log("Paytm notifyMerchant:", eventName, data);
+            if (
+              eventName === "APP_CLOSED" ||
+              eventName === "PAYMENT_ERROR" ||
+              eventName === "SESSION_EXPIRED"
+            ) {
+              setErrorMessage(
+                eventName === "APP_CLOSED"
+                  ? "Payment was cancelled. Please try again."
+                  : eventName === "SESSION_EXPIRED"
+                  ? "Payment session expired. Please try again."
+                  : "A payment error occurred. Please try again."
+              );
+              try {
+                const checkout = (window as any).Paytm?.CheckoutJS;
+                if (checkout && typeof checkout.close === "function") {
+                  checkout.close();
+                }
+              } catch {}
+              setSubmitting(false);
+            }
+          },
+        },
+        merchant: {
+          mid: mid,
+          redirect: false,
+        },
+      };
+
+      const checkoutJS = (window as any).Paytm.CheckoutJS;
+      await checkoutJS.init(config);
+      checkoutJS.invoke();
+    } catch (err: any) {
+      console.error("Payment error:", err);
+      setErrorMessage(err.message || "Something went wrong. Please try again.");
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const formatCurrency = (amount: number) => {
@@ -333,6 +462,87 @@ export default function Accommodation() {
     if (day.available > 0) return "text-foreground hover:bg-primary/10 cursor-pointer font-bold";
     return "";
   };
+
+  if (paymentSuccess && ackData) {
+    return (
+      <div className="pb-24 md:pb-8">
+        <div className="bg-primary pt-8 pb-6 px-6 text-primary-foreground relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/10" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-3">
+              <Hotel className="h-7 w-7" />
+              <div>
+                <h1 className="text-xl font-serif font-bold">Booking Confirmed</h1>
+                <p className="text-sm opacity-80">Yatri Nivas, Sringeri</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 mt-6">
+          <Card>
+            <CardContent className="p-6 text-center">
+              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h2 className="text-xl font-serif font-bold text-primary mb-2" data-testid="text-ack-title">Payment Successful</h2>
+              <p className="text-sm text-muted-foreground mb-6">Your accommodation has been booked successfully.</p>
+
+              <div className="text-left bg-muted/50 rounded-lg p-4 mb-6">
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Transaction ID</span>
+                  <span className="text-xs font-medium text-primary" data-testid="text-ack-txnid">{ackData.txnId}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Order ID</span>
+                  <span className="text-xs font-medium text-primary" data-testid="text-ack-orderid">{ackData.orderId}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Amount Paid</span>
+                  <span className="text-sm font-semibold text-primary" data-testid="text-ack-amount">₹{ackData.amount}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Room</span>
+                  <span className="text-xs font-medium text-primary" data-testid="text-ack-room">{ackData.roomName}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-xs text-muted-foreground">Reserved Date</span>
+                  <span className="text-xs font-medium text-primary" data-testid="text-ack-date">{ackData.reservedDate}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setPaymentSuccess(false);
+                    setAckData(null);
+                    setCurrentStep(1);
+                    setSelectedDate(null);
+                    setSelectedRoom(null);
+                    setOccupant1({ name: "", age: "", idNumber: "" });
+                    setOccupant2({ name: "", age: "", idNumber: "" });
+                    setMobile("");
+                    setEmail("");
+                    setErrorMessage("");
+                  }}
+                  data-testid="button-ack-new-booking"
+                >
+                  Book Another Room
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setLocation("/home")}
+                  data-testid="button-ack-home"
+                >
+                  Go to Home
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   // Terms and conditions screen
   if (!termsAccepted) {

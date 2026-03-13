@@ -82,6 +82,12 @@ Preferred communication style: Simple, everyday language.
   2. Frontend loads Paytm SDK dynamically using returned `mid`, opens inline checkout
   3. `/api/paymentAck` POST — forwards Paytm response to Sringeri API
   4. `/api/verifyPaytmTransaction` POST — server-side verification with conditional SPCT/regular credentials based on `is80G` flag
+- Accommodation APIs: onlineInventory, govtIdTypes, checkReservationAadhaar/:aadhaar/:date
+- Accommodation booking flow uses Paytm JS Checkout:
+  1. `/api/onlineReservationPtm` POST — generates YATRI_ orderId, uses regular Paytm credentials, calls Paytm Initiate Transaction API, forwards reservation data (with orderId) to Sringeri `onlineReservationPtm`, returns `{txnToken, orderId, mid, amount}` where amount = rent + deposit
+  2. Frontend loads Paytm SDK dynamically, opens inline checkout
+  3. `/api/paymentAck` POST — forwards Paytm response to Sringeri API
+  4. `/api/verifyPaytmTransaction` POST — server-side verification with regular credentials
 - Seva Booking APIs: centres, online/deities/:sevaTypeId, online/deitySevas/:sannidhiId/:sevaTypeId, online/sevaAvailability/:dsId, onlineFrequentSevas, rashis, postageOptions, recurrenceTypes, recurranceCount (multi-param), online/fl (POST for payment)
 - Fastline seva flow uses Paytm JS Checkout:
   1. `/api/initiatePaytmTransaction` POST — generates FL_ orderId, calls Paytm Initiate Transaction API, returns txnToken
