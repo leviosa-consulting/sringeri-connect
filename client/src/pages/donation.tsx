@@ -782,6 +782,8 @@ export default function Donation() {
               if (paytmResponse.TXNID) ackBody.TXNID = paytmResponse.TXNID;
               if (paytmResponse.TXNAMOUNT) ackBody.TXNAMOUNT = paytmResponse.TXNAMOUNT;
 
+              if (!ackBody.ORDERID) ackBody.ORDERID = resolvedOrderId;
+
               await fetch("/api/paymentAck", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
