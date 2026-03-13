@@ -732,7 +732,13 @@ export async function registerRoutes(
       if (!catResponse.ok) {
         return res.status(catResponse.status).json({ error: "Failed to fetch categories" });
       }
-      const categories = await catResponse.json();
+      const catText = await catResponse.text();
+      let categories;
+      try {
+        const catStart = catText.indexOf('[');
+        categories = catStart !== -1 ? JSON.parse(catText.substring(catStart)) : JSON.parse(catText);
+      } catch { return res.json([]); }
+      if (!Array.isArray(categories)) return res.json([]);
 
       const headingResponse = await fetch(`${SRINGERI_API_URL}/api/donationHeading`, {
         headers: {
@@ -740,18 +746,26 @@ export async function registerRoutes(
           ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
         },
       });
-      const headings = headingResponse.ok ? await headingResponse.json() : [];
+      let headings: any[] = [];
+      if (headingResponse.ok) {
+        try {
+          const hText = await headingResponse.text();
+          const hStart = hText.indexOf('[');
+          headings = hStart !== -1 ? JSON.parse(hText.substring(hStart)) : JSON.parse(hText);
+          if (!Array.isArray(headings)) headings = [];
+        } catch { headings = []; }
+      }
 
       const featured: any[] = [];
-      for (const cat of categories) {
-        try {
+      const subResults = await Promise.allSettled(
+        categories.map(async (cat: any) => {
           const subRes = await fetch(`${SRINGERI_API_URL}/api/donationSubCategory/${cat.id}`, {
             headers: {
               "Content-Type": "application/json",
               ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
             },
           });
-          if (!subRes.ok) continue;
+          if (!subRes.ok) return { cat, subs: [] };
           const text = await subRes.text();
           let subs;
           try {
@@ -759,19 +773,23 @@ export async function registerRoutes(
             const jsonStartObj = text.indexOf('{');
             const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
             subs = start !== -1 ? JSON.parse(text.substring(start)) : JSON.parse(text);
-          } catch { continue; }
-          if (!Array.isArray(subs)) continue;
-          for (const sub of subs) {
-            if (sub.isFeatured === 1 || sub.isFeatured === "1") {
-              const heading = headings.find((h: any) => h.id === cat.donationHeadingId);
-              featured.push({
-                subcategory: sub,
-                category: { id: cat.id, name: cat.name, donationHeadingId: cat.donationHeadingId },
-                heading: heading || null,
-              });
-            }
+          } catch { return { cat, subs: [] }; }
+          return { cat, subs: Array.isArray(subs) ? subs : [] };
+        })
+      );
+      for (const result of subResults) {
+        if (result.status !== "fulfilled") continue;
+        const { cat, subs } = result.value;
+        for (const sub of subs) {
+          if (sub.isFeatured === 1 || sub.isFeatured === "1") {
+            const heading = headings.find((h: any) => h.id === cat.donationHeadingId);
+            featured.push({
+              subcategory: sub,
+              category: { id: cat.id, name: cat.name, donationHeadingId: cat.donationHeadingId },
+              heading: heading || null,
+            });
           }
-        } catch { continue; }
+        }
       }
 
       res.json(featured);
