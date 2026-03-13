@@ -1,0 +1,41 @@
+$arr_insert = array();
+			$arr_insert["payeeName"] = $data["donorName"];
+			$arr_insert["mobileNumber"] = $data["mobileNumber"];
+			$arr_insert["email"] = $data["email"];
+			$arr_insert["postageCharges"] = $data["postageCharges"];
+			$arr_insert["totalAmount"] = $data["totalAmount"];
+			$arr_insert["requireTaxReceipt"] = $data["claim80G"];
+			$arr_insert["postageId"] = $data["postageId"];
+			isset($data["pan"])?$arr_insert["pan"] = $data["pan"]:"";
+			$arr_insert["addressLine1"] = $data["addressLine1"];
+			isset($data["addressLine2"])?$arr_insert["addressLine2"] = $data["addressLine2"]:"";
+// 			$arr_insert["landmark"] = $data["landmark"];
+			$arr_insert["city"] = $data["city"];
+			$arr_insert["paymentRef"] = $data["orderId"];
+			$arr_insert["state"] = $data["state"];
+			$arr_insert["pincode"] = $data["pincode"];
+			$arr_insert["country"] = $data["country"];
+			$arr_insert["addedBy"] = $data["uid"];
+			$arr_insert["addedAt"] = date('Y-m-d H:i:s');
+			$arr_insert["status"] = 8;
+			$insert_id = db_insert('donation_master',$arr_insert);
+
+			$totalAmount = 0;
+			foreach($data["selectedDonations"] AS $ds){
+				$arr_insert_detail = array();
+				$arr_insert_detail["donationMasterId"] = $insert_id;
+				$arr_insert_detail["subCategoryId"] = $ds["subCategoryId"];
+				$arr_insert_detail["donationAmount"] = $ds["donationAmount"];
+				$arr_insert_detail["donationInTheNameOf"] = $ds["donationInTheNameOf"];
+				($ds["imagePath"]!="")?$arr_insert_detail["imagePath"] = $ds["imagePath"]:"";
+				($ds["donationRemarks"]!="")?$arr_insert_detail["donationRemarks"] = $ds["donationRemarks"]:"";
+				($ds["calendarType"]!="")?$arr_insert_detail["calendarType"] = $ds["calendarType"]:"";
+				($ds["monthId"]!="")?$arr_insert_detail["monthId"] = $ds["monthId"]:"";
+				($ds["fromChandraMasaId"]!="")?$arr_insert_detail["fromChandraMasaId"] = $ds["fromChandraMasaId"]:"";
+				($ds["fromSouraMasaId"]!="")?$arr_insert_detail["fromSouraMasaId"] = $ds["fromSouraMasaId"]:"";
+				($ds["specificDate"]!="")?$arr_insert_detail["specificDate"] = $ds["specificDate"]:"";
+				($ds["fromTithiId"]!="")?$arr_insert_detail["fromTithiId"] = $ds["fromTithiId"]:"";
+				($ds["fromNakshatraId"]!="")?$arr_insert_detail["fromNakshatraId"] = $ds["fromNakshatraId"]:"";
+				$arr_insert_detail["status"] = 1;
+				$insert_detail_id = db_insert('donation_detail',$arr_insert_detail);
+			}	
