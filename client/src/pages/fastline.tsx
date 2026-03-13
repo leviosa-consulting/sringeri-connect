@@ -137,6 +137,7 @@ export default function Fastline() {
           const sdk = (window as any).Paytm?.CheckoutJS;
           if (sdk && typeof sdk.init === "function") {
             clearInterval(poll);
+            console.log("Paytm SDK ready", sdk);
             resolve();
           } else if (attempts > 50) {
             clearInterval(poll);
