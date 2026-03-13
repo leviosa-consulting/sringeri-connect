@@ -359,7 +359,6 @@ export default function Fastline() {
                                   }}
                                   className="border border-primary/30 rounded-md text-right p-1 w-24 text-sm text-primary"
                                   data-testid={`input-fl-seva-price-${seva.id}`} />
-                                {seva.price > 20000 && <span className="text-xs text-red-500 mt-0.5">Max ₹20,000</span>}
                               </div>
                             ) : (
                               <span className="text-sm text-primary font-medium ml-2 shrink-0">₹{formatNumber(seva.price)}</span>
