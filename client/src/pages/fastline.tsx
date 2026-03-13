@@ -272,8 +272,17 @@ export default function Fastline() {
               const isSuccess =
                 clientStatus === "TXN_SUCCESS" || clientStatus === "S";
 
+              const resolvedOrderId = paytmResponse.ORDERID || paytmResponse.orderId || orderId;
+
               if (isSuccess) {
-                const resolvedOrderId = paytmResponse.ORDERID || paytmResponse.orderId || orderId;
+                setAckData({
+                  txnId: paytmResponse.TXNID || "",
+                  orderId: resolvedOrderId,
+                  amount: paytmResponse.TXNAMOUNT || amount,
+                  sevaNames: selectedSevasList.map((s: any) => s.name),
+                });
+                setPaymentSuccess(true);
+
                 try {
                   const verifyRes = await fetch("/api/verifyPaytmTransaction", {
                     method: "POST",
@@ -283,31 +292,9 @@ export default function Fastline() {
                   if (verifyRes.ok) {
                     const verifyData = await verifyRes.json();
                     console.log("Server-side verification result:", JSON.stringify(verifyData));
-                    if (verifyData.verified && verifyData.status === "TXN_SUCCESS") {
-                      setAckData({
-                        txnId: verifyData.txnId || paytmResponse.TXNID || "",
-                        orderId: resolvedOrderId,
-                        amount: verifyData.txnAmount || paytmResponse.TXNAMOUNT || amount,
-                        sevaNames: selectedSevasList.map((s: any) => s.name),
-                      });
-                      setPaymentSuccess(true);
-                    } else {
-                      setErrorMessage(
-                        verifyData.resultMsg ||
-                        "Payment verification failed. If money was deducted, it will be refunded. Please try again."
-                      );
-                    }
-                  } else {
-                    console.error("Verification endpoint returned error status:", verifyRes.status);
-                    setErrorMessage(
-                      "Unable to verify payment status. Please check your payment status in your bank app or contact support."
-                    );
                   }
                 } catch (verifyErr) {
-                  console.error("Verification call failed:", verifyErr);
-                  setErrorMessage(
-                    "Unable to verify payment status. Please check your payment status in your bank app or contact support."
-                  );
+                  console.error("Verification call failed (non-blocking):", verifyErr);
                 }
               } else {
                 const errorMsg =
@@ -319,6 +306,13 @@ export default function Fastline() {
             } catch {
               setErrorMessage("Payment completed but acknowledgment failed. Please contact support.");
             }
+
+            try {
+              const checkout = (window as any).Paytm?.CheckoutJS;
+              if (checkout && typeof checkout.close === "function") {
+                checkout.close();
+              }
+            } catch {}
             setSubmitting(false);
           },
           notifyMerchant: (eventName: string, data: any) => {
@@ -335,6 +329,12 @@ export default function Fastline() {
                   ? "Payment session expired. Please try again."
                   : "A payment error occurred. Please try again."
               );
+              try {
+                const checkout = (window as any).Paytm?.CheckoutJS;
+                if (checkout && typeof checkout.close === "function") {
+                  checkout.close();
+                }
+              } catch {}
               setSubmitting(false);
             }
           },
