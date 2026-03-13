@@ -1593,6 +1593,76 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/verifyPaytmTransaction", async (req, res) => {
+    try {
+      const PAYTM_MID = process.env.PAYTM_MID;
+      const PAYTM_MERCHANT_KEY = process.env.PAYTM_MERCHANT_KEY;
+      if (!PAYTM_MID || !PAYTM_MERCHANT_KEY) {
+        return res.status(500).json({ error: "Paytm credentials not configured" });
+      }
+
+      const { orderId } = req.body;
+      if (!orderId) {
+        return res.status(400).json({ error: "orderId is required" });
+      }
+
+      const paytmParams: Record<string, any> = {
+        body: {
+          mid: PAYTM_MID,
+          orderId: orderId,
+        },
+      };
+
+      const checksum = await PaytmChecksum.generateSignature(
+        JSON.stringify(paytmParams.body),
+        PAYTM_MERCHANT_KEY
+      );
+      paytmParams.head = { signature: checksum };
+
+      const statusRes = await fetch(
+        `https://securegw.paytm.in/v3/order/status`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(paytmParams),
+        }
+      );
+
+      const statusData = await statusRes.json();
+      console.log("Paytm verification response for", orderId, ":", JSON.stringify(statusData));
+
+      const resultStatus = statusData.body?.resultInfo?.resultStatus;
+      const txnStatus =
+        statusData.body?.txnInfo?.STATUS ||
+        statusData.body?.status ||
+        statusData.body?.txnStatus ||
+        resultStatus ||
+        "";
+
+      const isVerifiedSuccess =
+        txnStatus === "TXN_SUCCESS" || resultStatus === "TXN_SUCCESS";
+
+      if (isVerifiedSuccess) {
+        res.json({
+          verified: true,
+          status: "TXN_SUCCESS",
+          txnId: statusData.body?.txnId || statusData.body?.txnInfo?.TXNID || "",
+          txnAmount: statusData.body?.txnAmount || statusData.body?.txnInfo?.TXNAMOUNT || "",
+          resultMsg: statusData.body?.resultInfo?.resultMsg || "Success",
+        });
+      } else {
+        res.json({
+          verified: false,
+          status: txnStatus || "UNKNOWN",
+          resultMsg: statusData.body?.resultInfo?.resultMsg || "Payment was not successful",
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying Paytm transaction:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/newReceiptFl", async (req, res) => {
     try {
       const response = await fetch(`${SRINGERI_API_URL}/api/newReceiptFl`, {

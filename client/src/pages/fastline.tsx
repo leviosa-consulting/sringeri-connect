@@ -242,6 +242,7 @@ export default function Fastline() {
         },
         handler: {
           transactionStatus: async (paytmResponse: any) => {
+            console.log("Paytm transactionStatus full response:", JSON.stringify(paytmResponse));
             try {
               const ackBody: Record<string, string> = {};
               if (paytmResponse.BANKNAME) ackBody.BANKNAME = paytmResponse.BANKNAME;
@@ -262,16 +263,58 @@ export default function Fastline() {
                 body: JSON.stringify(ackBody),
               });
 
-              if (paytmResponse.STATUS === "TXN_SUCCESS") {
-                setAckData({
-                  txnId: paytmResponse.TXNID || "",
-                  orderId: paytmResponse.ORDERID || orderId,
-                  amount: paytmResponse.TXNAMOUNT || amount,
-                  sevaNames: selectedSevasList.map((s: any) => s.name),
-                });
-                setPaymentSuccess(true);
+              const clientStatus =
+                paytmResponse.STATUS ||
+                paytmResponse.status ||
+                paytmResponse.body?.resultInfo?.resultStatus ||
+                "";
+
+              const isSuccess =
+                clientStatus === "TXN_SUCCESS" || clientStatus === "S";
+
+              if (isSuccess) {
+                const resolvedOrderId = paytmResponse.ORDERID || paytmResponse.orderId || orderId;
+                try {
+                  const verifyRes = await fetch("/api/verifyPaytmTransaction", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ orderId: resolvedOrderId }),
+                  });
+                  if (verifyRes.ok) {
+                    const verifyData = await verifyRes.json();
+                    console.log("Server-side verification result:", JSON.stringify(verifyData));
+                    if (verifyData.verified && verifyData.status === "TXN_SUCCESS") {
+                      setAckData({
+                        txnId: verifyData.txnId || paytmResponse.TXNID || "",
+                        orderId: resolvedOrderId,
+                        amount: verifyData.txnAmount || paytmResponse.TXNAMOUNT || amount,
+                        sevaNames: selectedSevasList.map((s: any) => s.name),
+                      });
+                      setPaymentSuccess(true);
+                    } else {
+                      setErrorMessage(
+                        verifyData.resultMsg ||
+                        "Payment verification failed. If money was deducted, it will be refunded. Please try again."
+                      );
+                    }
+                  } else {
+                    console.error("Verification endpoint returned error status:", verifyRes.status);
+                    setErrorMessage(
+                      "Unable to verify payment status. Please check your payment status in your bank app or contact support."
+                    );
+                  }
+                } catch (verifyErr) {
+                  console.error("Verification call failed:", verifyErr);
+                  setErrorMessage(
+                    "Unable to verify payment status. Please check your payment status in your bank app or contact support."
+                  );
+                }
               } else {
-                setErrorMessage(paytmResponse.RESPMSG || "Payment was not successful. Please try again.");
+                const errorMsg =
+                  paytmResponse.RESPMSG ||
+                  paytmResponse.body?.resultInfo?.resultMsg ||
+                  "Payment was not successful. Please try again.";
+                setErrorMessage(errorMsg);
               }
             } catch {
               setErrorMessage("Payment completed but acknowledgment failed. Please contact support.");
@@ -280,6 +323,20 @@ export default function Fastline() {
           },
           notifyMerchant: (eventName: string, data: any) => {
             console.log("Paytm notifyMerchant:", eventName, data);
+            if (
+              eventName === "APP_CLOSED" ||
+              eventName === "PAYMENT_ERROR" ||
+              eventName === "SESSION_EXPIRED"
+            ) {
+              setErrorMessage(
+                eventName === "APP_CLOSED"
+                  ? "Payment was cancelled. Please try again."
+                  : eventName === "SESSION_EXPIRED"
+                  ? "Payment session expired. Please try again."
+                  : "A payment error occurred. Please try again."
+              );
+              setSubmitting(false);
+            }
           },
         },
         merchant: {
