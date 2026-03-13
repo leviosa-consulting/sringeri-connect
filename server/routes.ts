@@ -1351,6 +1351,27 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/transliterate", async (req, res) => {
+    try {
+      const text = (req.query.text as string || "").trim();
+      const lang = (req.query.lang as string || "kn");
+      if (!text) return res.json({ transliteration: "" });
+
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(text)}`;
+      const response = await fetch(url);
+      if (!response.ok) return res.json({ transliteration: "" });
+
+      const data = await response.json();
+      const translated = Array.isArray(data) && Array.isArray(data[0])
+        ? data[0].map((s: any) => (Array.isArray(s) ? s[0] : "")).join("")
+        : "";
+      res.json({ transliteration: translated });
+    } catch (error) {
+      console.error("Transliteration error:", error);
+      res.json({ transliteration: "" });
+    }
+  });
+
   app.get("/api/postageOptions", async (req, res) => {
     try {
       const response = await fetch(`${SRINGERI_API_URL}/api/postageOptions`, {

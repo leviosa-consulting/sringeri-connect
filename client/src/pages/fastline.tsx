@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Loader2 } from "lucide-react";
 import {
@@ -38,6 +38,34 @@ export default function Fastline() {
   const [errorMessage, setErrorMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showWarning, setShowWarning] = useState(true);
+
+  const [kannadaName, setKannadaName] = useState("");
+  const [kannadaCity, setKannadaCity] = useState("");
+  const nameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const transliterate = useCallback(async (text: string, setter: (v: string) => void) => {
+    if (!text.trim()) { setter(""); return; }
+    try {
+      const res = await fetch(`/api/transliterate?text=${encodeURIComponent(text)}&lang=kn`);
+      if (res.ok) {
+        const data = await res.json();
+        setter(data.transliteration || "");
+      }
+    } catch { setter(""); }
+  }, []);
+
+  useEffect(() => {
+    if (nameTimerRef.current) clearTimeout(nameTimerRef.current);
+    nameTimerRef.current = setTimeout(() => transliterate(kartaName, setKannadaName), 400);
+    return () => { if (nameTimerRef.current) clearTimeout(nameTimerRef.current); };
+  }, [kartaName, transliterate]);
+
+  useEffect(() => {
+    if (cityTimerRef.current) clearTimeout(cityTimerRef.current);
+    cityTimerRef.current = setTimeout(() => transliterate(kartaCity, setKannadaCity), 400);
+    return () => { if (cityTimerRef.current) clearTimeout(cityTimerRef.current); };
+  }, [kartaCity, transliterate]);
 
   const { data: centres = [] } = useQuery<any[]>({
     queryKey: ["centres"],
@@ -209,20 +237,34 @@ export default function Fastline() {
           <div className="bg-white rounded-lg shadow-md px-5 py-6">
             <h2 className="text-sm font-semibold text-primary mb-4">Devotee Details</h2>
 
-            <input type="text" value={kartaName} onChange={(e) => setKartaName(e.target.value)}
-              placeholder="Karta's Name *"
-              className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 focus:outline-none focus:ring-0 transition-colors"
-              data-testid="input-fl-name" />
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-primary/70">Name</label>
+                {kannadaName && <span className="text-xs font-medium text-orange-500" data-testid="text-fl-kannada-name">{kannadaName}</span>}
+              </div>
+              <input type="text" value={kartaName} onChange={(e) => setKartaName(e.target.value)}
+                placeholder="Karta's Name *"
+                className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 focus:outline-none focus:ring-0 transition-colors"
+                data-testid="input-fl-name" />
+            </div>
 
-            <input type="text" value={kartaMobile} onChange={(e) => setKartaMobile(e.target.value)}
-              placeholder="Mobile Number"
-              className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 mt-4 focus:outline-none focus:ring-0 transition-colors"
-              data-testid="input-fl-mobile" />
+            <div className="mt-4">
+              <input type="text" value={kartaMobile} onChange={(e) => setKartaMobile(e.target.value)}
+                placeholder="Mobile Number"
+                className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 focus:outline-none focus:ring-0 transition-colors"
+                data-testid="input-fl-mobile" />
+            </div>
 
-            <input type="text" value={kartaCity} onChange={(e) => setKartaCity(e.target.value)}
-              placeholder="City"
-              className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 mt-4 focus:outline-none focus:ring-0 transition-colors"
-              data-testid="input-fl-city" />
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-primary/70">City</label>
+                {kannadaCity && <span className="text-xs font-medium text-orange-500" data-testid="text-fl-kannada-city">{kannadaCity}</span>}
+              </div>
+              <input type="text" value={kartaCity} onChange={(e) => setKartaCity(e.target.value)}
+                placeholder="City"
+                className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 focus:outline-none focus:ring-0 transition-colors"
+                data-testid="input-fl-city" />
+            </div>
 
             <div className="mt-6">
               <p className="text-sm text-primary ml-1 mb-3">Choose a Location</p>
