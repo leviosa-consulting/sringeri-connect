@@ -157,11 +157,11 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-8 pb-24 md:pb-8 w-full overflow-hidden">
       {/* Guru Banner - Mobile */}
-      <div className="md:hidden px-4 pt-4">
+      <div className="md:hidden w-screen relative left-1/2 -translate-x-1/2 h-[120px] overflow-hidden">
         <img 
           src={guruBanner} 
           alt="Sri Sharada Devi and Jagadgurus" 
-          className="w-full h-auto"
+          className="w-full h-full object-cover object-center"
           data-testid="img-guru-banner"
         />
       </div>
@@ -186,11 +186,11 @@ export default function Home() {
       </div>
 
       {/* Desktop Welcome Banner */}
-      <div className="hidden md:block px-4 pt-4">
+      <div className="hidden md:block w-screen relative left-1/2 -translate-x-1/2 h-[200px] overflow-hidden">
         <img 
           src={guruBanner} 
           alt="Sri Sharada Devi and Jagadgurus" 
-          className="w-full h-auto"
+          className="w-full h-full object-cover object-center"
           data-testid="img-guru-banner-desktop"
         />
       </div>
