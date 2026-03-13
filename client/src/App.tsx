@@ -12,6 +12,7 @@ import Profile from "@/pages/profile";
 import Accommodation from "@/pages/accommodation";
 import Donation from "@/pages/donation";
 import Seva from "@/pages/seva";
+import Fastline from "@/pages/fastline";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { FontSizeProvider } from "@/contexts/font-size-context";
 import { Loader2 } from "lucide-react";
@@ -46,6 +47,7 @@ function Router() {
         <Route path="/accommodation">{() => <ProtectedRoute component={Accommodation} />}</Route>
         <Route path="/donation">{() => <ProtectedRoute component={Donation} />}</Route>
         <Route path="/seva">{() => <ProtectedRoute component={Seva} />}</Route>
+        <Route path="/fastline" component={Fastline} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

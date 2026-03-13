@@ -21,8 +21,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { icon: User, label: "Account", path: "/profile" },
   ];
 
-  // Hide nav on login page
-  if (location === "/") return <>{children}</>;
+  if (location === "/" || location === "/fastline") return <>{children}</>;
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative w-full overflow-x-hidden">

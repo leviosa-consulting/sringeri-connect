@@ -22,6 +22,14 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+app.use((req, res, next) => {
+  const host = req.hostname || req.headers.host || "";
+  if (host.startsWith("fastline.") && !req.path.startsWith("/api") && !req.path.startsWith("/fastline") && !req.path.startsWith("/assets")) {
+    return res.redirect(301, "/fastline");
+  }
+  next();
+});
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",

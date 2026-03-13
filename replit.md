@@ -28,6 +28,12 @@ Preferred communication style: Simple, everyday language.
 - **Methods**: Email/password and Google OAuth sign-in
 - **Token Flow**: Firebase ID tokens passed to backend, then forwarded to external Sringeri API
 - **Session Management**: Client-side via Firebase Auth state observer
+- **Public Pages**: `/fastline` accessible without login (standalone Fastline seva booking)
+
+### Subdomain Routing
+- **Fastline Subdomain**: Requests with `Host: fastline.*` are redirected to `/fastline`
+- Middleware in `server/index.ts` handles detection; API and asset paths pass through
+- Enables future custom domain support (e.g., `fastline.sringeri.net`)
 
 ### Data Storage
 - **ORM**: Drizzle ORM with PostgreSQL dialect
