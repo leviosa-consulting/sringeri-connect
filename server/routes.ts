@@ -721,8 +721,15 @@ export async function registerRoutes(
     }
   });
 
+  const featuredCache: { data: any[]; timestamp: number } = { data: [], timestamp: 0 };
+  const FEATURED_CACHE_TTL = 30 * 60 * 1000;
+
   app.get("/api/featuredDonations", async (req, res) => {
     try {
+      if (featuredCache.data.length > 0 && Date.now() - featuredCache.timestamp < FEATURED_CACHE_TTL) {
+        return res.json(featuredCache.data);
+      }
+
       const catResponse = await fetch(`${SRINGERI_API_URL}/api/donationCategory`, {
         headers: {
           "Content-Type": "application/json",
@@ -792,6 +799,8 @@ export async function registerRoutes(
         }
       }
 
+      featuredCache.data = featured;
+      featuredCache.timestamp = Date.now();
       res.json(featured);
     } catch (error) {
       console.error("Error fetching featured donations:", error);
