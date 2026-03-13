@@ -186,13 +186,13 @@ export default function Home() {
       </div>
 
       {/* Desktop Welcome Banner */}
-      <div className="hidden md:flex relative h-[300px] w-full rounded-2xl overflow-hidden bg-primary/5 border border-primary/10 items-center px-12 justify-between">
-         <div className="space-y-4 z-10 max-w-lg">
-           <h1 className="text-5xl font-serif font-bold text-primary">Sri Sringeri Sharada Peetham</h1>
-           <p className="text-xl text-muted-foreground">Official Digital Services Portal for Devotees</p>
-           {/* Search hidden for now */}
-         </div>
-         <div className="absolute right-0 top-0 h-full w-2/3 bg-[url('/assets/temple-hero.jpg')] bg-cover bg-center mask-linear-fade opacity-80" style={{maskImage: 'linear-gradient(to right, transparent, black)'}} />
+      <div className="hidden md:block px-4 pt-4">
+        <img 
+          src={guruBanner} 
+          alt="Sri Sharada Devi and Jagadgurus" 
+          className="w-full h-auto"
+          data-testid="img-guru-banner-desktop"
+        />
       </div>
 
       {/* Hindu Calendar Strip */}
