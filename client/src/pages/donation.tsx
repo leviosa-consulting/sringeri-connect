@@ -57,6 +57,7 @@ import {
   Wheat,
   Brush,
   Sparkles,
+  CheckCircle2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -340,6 +341,8 @@ export default function Donation() {
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [ackData, setAckData] = useState<{ txnId: string; orderId: string; amount: string; donationNames: string[] } | null>(null);
   const [showKartaList, setShowKartaList] = useState(false);
   const [showAddressList, setShowAddressList] = useState(false);
   const [show80GWarning, setShow80GWarning] = useState(false);
@@ -508,6 +511,35 @@ export default function Donation() {
     setValidationErrors([]);
   };
 
+  function loadPaytmScript(mid: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const existing = document.getElementById("paytm-checkout-js");
+      if (existing) existing.remove();
+      (window as any).Paytm = undefined;
+      const script = document.createElement("script");
+      script.id = "paytm-checkout-js";
+      script.type = "application/javascript";
+      script.crossOrigin = "anonymous";
+      script.src = `https://securegw.paytm.in/merchantpgpui/checkoutjs/merchants/${mid}.js`;
+      script.onload = () => {
+        let attempts = 0;
+        const poll = setInterval(() => {
+          attempts++;
+          const sdk = (window as any).Paytm?.CheckoutJS;
+          if (sdk && typeof sdk.init === "function") {
+            clearInterval(poll);
+            resolve();
+          } else if (attempts > 50) {
+            clearInterval(poll);
+            reject(new Error("Paytm SDK failed to initialize"));
+          }
+        }, 100);
+      };
+      script.onerror = () => reject(new Error("Failed to load Paytm SDK"));
+      document.head.appendChild(script);
+    });
+  }
+
   const handleFeaturedDonation = (featured: FeaturedDonationItem) => {
     if (featured.heading) {
       const heading = headings.find((h) => h.id === featured.heading!.id);
@@ -674,86 +706,226 @@ export default function Donation() {
         uid: user?.uid || "",
       };
 
-      const res = await fetch("/api/makeDonation", {
+      const initRes = await fetch("/api/makeDonation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        setErrorMessage(errData.error || "Failed to submit donation. Please try again.");
+      if (!initRes.ok) {
+        const errData = await initRes.json().catch(() => ({}));
+        setErrorMessage(errData.details || errData.error || "Failed to initiate payment. Please try again.");
         setSubmitting(false);
         return;
       }
 
-      const data = await res.json();
+      const { txnToken, orderId, mid, amount } = await initRes.json();
 
-      if (data.status === "Successful" && data.encRequest && data.access_code) {
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = "https://secure.ccavenue.com/transaction/transaction.do?command=initiateTransaction";
-        form.style.display = "none";
-
-        const params: Record<string, string> = {
-          encRequest: data.encRequest,
-          access_code: data.access_code,
-        };
-
-        for (const [key, value] of Object.entries(params)) {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = value;
-          form.appendChild(input);
-        }
-
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-      } else if (data.orderId) {
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = "https://api.razorpay.com/v1/checkout/embedded";
-        form.style.display = "none";
-
-        const fields: Record<string, string> = {
-          key_id: data.key_id || "",
-          name: "Sri Sringeri Sharada Peetham",
-          description: "Donation",
-          order_id: data.orderId,
-          amount: String(data.amount),
-          currency: "INR",
-          callback_url: data.callback_url || "https://donate.sringeri.net/rpg/onlinesevaresponse",
-          cancel_url: data.cancel_url || "https://donate.sringeri.net/rpg/onlinesevaresponse",
-          "prefill[name]": donationForm.donorName,
-          "prefill[email]": donationForm.email,
-          "prefill[contact]": `${donationForm.countryCode}${donationForm.mobileNumber}`,
-        };
-
-        for (const [key, value] of Object.entries(fields)) {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = value;
-          form.appendChild(input);
-        }
-
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-      } else {
+      if (!txnToken || !orderId || !mid) {
         setErrorMessage("We could not complete the payment at this moment. Please try after sometime.");
+        setSubmitting(false);
+        return;
       }
-    } catch {
-      setErrorMessage("Something went wrong. Please try again.");
+
+      await loadPaytmScript(mid);
+
+      const is80GFlag = donationForm.claim80G === 1;
+
+      const config = {
+        root: "",
+        flow: "DEFAULT",
+        data: {
+          orderId: orderId,
+          token: txnToken,
+          tokenType: "TXN_TOKEN",
+          amount: amount,
+        },
+        handler: {
+          transactionStatus: async (paytmResponse: any) => {
+            console.log("Paytm donation transactionStatus:", JSON.stringify(paytmResponse));
+            try {
+              const ackBody: Record<string, string> = {};
+              if (paytmResponse.BANKNAME) ackBody.BANKNAME = paytmResponse.BANKNAME;
+              if (paytmResponse.BANKTXNID) ackBody.BANKTXNID = paytmResponse.BANKTXNID;
+              if (paytmResponse.CURRENCY) ackBody.CURRENCY = paytmResponse.CURRENCY;
+              if (paytmResponse.PAYMENTMODE) ackBody.PAYMENTMODE = paytmResponse.PAYMENTMODE;
+              if (paytmResponse.ORDERID) ackBody.ORDERID = paytmResponse.ORDERID;
+              if (paytmResponse.RESPCODE) ackBody.RESPCODE = paytmResponse.RESPCODE;
+              if (paytmResponse.RESPMSG) ackBody.RESPMSG = paytmResponse.RESPMSG;
+              if (paytmResponse.STATUS) ackBody.STATUS = paytmResponse.STATUS;
+              if (paytmResponse.TXNDATE) ackBody.TXNDATE = paytmResponse.TXNDATE;
+              if (paytmResponse.TXNID) ackBody.TXNID = paytmResponse.TXNID;
+              if (paytmResponse.TXNAMOUNT) ackBody.TXNAMOUNT = paytmResponse.TXNAMOUNT;
+
+              await fetch("/api/paymentAck", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(ackBody),
+              });
+
+              const clientStatus =
+                paytmResponse.STATUS ||
+                paytmResponse.status ||
+                paytmResponse.body?.resultInfo?.resultStatus ||
+                "";
+
+              const isSuccess = clientStatus === "TXN_SUCCESS" || clientStatus === "S";
+              const resolvedOrderId = paytmResponse.ORDERID || paytmResponse.orderId || orderId;
+
+              if (isSuccess) {
+                setAckData({
+                  txnId: paytmResponse.TXNID || "",
+                  orderId: resolvedOrderId,
+                  amount: paytmResponse.TXNAMOUNT || amount,
+                  donationNames: cart.map((d) => d.subcategoryName || d.donationName),
+                });
+                setPaymentSuccess(true);
+
+                try {
+                  const verifyRes = await fetch("/api/verifyPaytmTransaction", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ orderId: resolvedOrderId, is80G: is80GFlag }),
+                  });
+                  if (verifyRes.ok) {
+                    const verifyData = await verifyRes.json();
+                    console.log("Donation server-side verification:", JSON.stringify(verifyData));
+                  }
+                } catch (verifyErr) {
+                  console.error("Verification call failed (non-blocking):", verifyErr);
+                }
+              } else {
+                const errorMsg =
+                  paytmResponse.RESPMSG ||
+                  paytmResponse.body?.resultInfo?.resultMsg ||
+                  "Payment was not successful. Please try again.";
+                setErrorMessage(errorMsg);
+              }
+            } catch {
+              setErrorMessage("Payment completed but acknowledgment failed. Please contact support.");
+            }
+
+            try {
+              const checkout = (window as any).Paytm?.CheckoutJS;
+              if (checkout && typeof checkout.close === "function") {
+                checkout.close();
+              }
+            } catch {}
+            setSubmitting(false);
+          },
+          notifyMerchant: (eventName: string, data: any) => {
+            console.log("Paytm donation notifyMerchant:", eventName, data);
+            if (
+              eventName === "APP_CLOSED" ||
+              eventName === "PAYMENT_ERROR" ||
+              eventName === "SESSION_EXPIRED"
+            ) {
+              setErrorMessage(
+                eventName === "APP_CLOSED"
+                  ? "Payment was cancelled. Please try again."
+                  : eventName === "SESSION_EXPIRED"
+                  ? "Payment session expired. Please try again."
+                  : "A payment error occurred. Please try again."
+              );
+              try {
+                const checkout = (window as any).Paytm?.CheckoutJS;
+                if (checkout && typeof checkout.close === "function") {
+                  checkout.close();
+                }
+              } catch {}
+              setSubmitting(false);
+            }
+          },
+        },
+        merchant: {
+          mid: mid,
+          redirect: false,
+        },
+      };
+
+      const checkoutJS = (window as any).Paytm.CheckoutJS;
+      await checkoutJS.init(config);
+      checkoutJS.invoke();
+    } catch (err: any) {
+      console.error("Donation payment error:", err);
+      setErrorMessage(err.message || "Something went wrong. Please try again.");
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const updatePayeeField = (field: keyof DonationForm, value: any) => {
     setDonationForm((prev) => ({ ...prev, [field]: value }));
   };
+
+  if (paymentSuccess && ackData) {
+    return (
+      <div className="min-h-screen bg-[#F7F2EC]" data-testid="donation-ack">
+        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+          <div className="max-w-2xl mx-auto flex justify-center">
+            <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
+          </div>
+        </div>
+        <div className="px-4 mt-6 pb-12">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white rounded-lg shadow-md px-6 py-8 text-center">
+              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h2 className="text-xl font-serif font-bold text-primary mb-2" data-testid="text-ack-title">Payment Successful</h2>
+              <p className="text-sm text-muted-foreground mb-6">Your donation has been received. Thank you for your generosity.</p>
+
+              <div className="text-left bg-[#F7F2EC] rounded-lg p-4 mb-6">
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Transaction ID</span>
+                  <span className="text-xs font-medium text-primary" data-testid="text-ack-txnid">{ackData.txnId}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Order ID</span>
+                  <span className="text-xs font-medium text-primary" data-testid="text-ack-orderid">{ackData.orderId}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Amount Paid</span>
+                  <span className="text-sm font-semibold text-primary" data-testid="text-ack-amount">₹{ackData.amount}</span>
+                </div>
+                <div className="py-2">
+                  <span className="text-xs text-muted-foreground">Donations</span>
+                  <ul className="mt-1">
+                    {ackData.donationNames.map((name, i) => (
+                      <li key={i} className="text-xs text-primary py-0.5" data-testid={`text-ack-donation-${i}`}>• {name}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-center">
+                <button onClick={() => {
+                  setPaymentSuccess(false);
+                  setAckData(null);
+                  setCart([]);
+                  setStep("select");
+                  setDonationForm((prev) => ({ ...prev, confirmInfo: false }));
+                  setErrorMessage("");
+                }}
+                  className="uppercase font-medium rounded-md bg-[#3d2000] text-white px-6 py-3 text-sm hover:bg-[#5a3510] transition-colors"
+                  data-testid="button-ack-new-donation">
+                  Make Another Donation
+                </button>
+                <button onClick={() => navigate("/home")}
+                  className="uppercase font-medium rounded-md border border-[#3d2000] text-[#3d2000] px-6 py-3 text-sm hover:bg-[#F7F2EC] transition-colors"
+                  data-testid="button-ack-go-home">
+                  Go Home
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 text-center">
+              <p className="text-xs text-muted-foreground">
+                Sri Sringeri Sharada Peetham — Online Donations
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (step === "payee") {
     return (

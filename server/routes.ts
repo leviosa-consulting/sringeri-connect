@@ -1165,33 +1165,130 @@ export async function registerRoutes(
 
   app.post("/api/makeDonation", async (req, res) => {
     try {
-      const response = await fetch(`${SRINGERI_API_URL}/api/makeDonation`, {
+      const { claim80G, totalAmount, mobileNumber, donorName, email,
+              postageCharges, postageId, pan, addressLine1, addressLine2,
+              city, state, pincode, country, uid, selectedDonations } = req.body;
+
+      const is80G = claim80G === 1 || claim80G === "1" || claim80G === "Yes";
+      const PAYTM_MID_VAL = is80G ? process.env.PAYTM_MID_SPCT : process.env.PAYTM_MID;
+      const PAYTM_KEY_VAL = is80G ? process.env.PAYTM_MERCHANT_KEY_SPCT : process.env.PAYTM_MERCHANT_KEY;
+
+      if (!PAYTM_MID_VAL || !PAYTM_KEY_VAL) {
+        return res.status(500).json({ error: "Paytm credentials not configured" });
+      }
+
+      if (!totalAmount || totalAmount <= 0) {
+        return res.status(400).json({ error: "Valid amount is required" });
+      }
+
+      const now = new Date();
+      const ts = now.getFullYear().toString() +
+        String(now.getMonth() + 1).padStart(2, "0") +
+        String(now.getDate()).padStart(2, "0") +
+        String(now.getHours()).padStart(2, "0") +
+        String(now.getMinutes()).padStart(2, "0") +
+        String(now.getSeconds()).padStart(2, "0");
+      const rand = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
+      const orderId = `DON_${ts}_${rand}`;
+
+      const paytmParams: Record<string, any> = {
+        body: {
+          requestType: "Payment",
+          mid: PAYTM_MID_VAL,
+          websiteName: "DEFAULT",
+          orderId: orderId,
+          txnAmount: {
+            value: String(Number(totalAmount).toFixed(2)),
+            currency: "INR",
+          },
+          userInfo: {
+            custId: uid || mobileNumber || "GUEST",
+          },
+          callbackUrl: `https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=${orderId}`,
+        },
+      };
+
+      const checksum = await PaytmChecksum.generateSignature(
+        JSON.stringify(paytmParams.body),
+        PAYTM_KEY_VAL
+      );
+      paytmParams.head = { signature: checksum };
+
+      const paytmRes = await fetch(
+        `https://securegw.paytm.in/theia/api/v1/initiateTransaction?mid=${PAYTM_MID_VAL}&orderId=${orderId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(paytmParams),
+        }
+      );
+
+      const paytmData = await paytmRes.json();
+
+      if (!(paytmData.body?.resultInfo?.resultStatus === "S" && paytmData.body?.txnToken)) {
+        console.error("Paytm initiate failed for donation:", JSON.stringify(paytmData));
+        return res.status(500).json({
+          error: "Failed to initiate payment",
+          details: paytmData.body?.resultInfo?.resultMsg || "Unknown error",
+        });
+      }
+
+      const txnToken = paytmData.body.txnToken;
+
+      const donationPayload = {
+        donorName: donorName || "",
+        mobileNumber: mobileNumber || "",
+        email: email || "",
+        postageCharges: postageCharges || 0,
+        totalAmount: totalAmount,
+        claim80G: is80G ? "Yes" : "No",
+        postageId: postageId || "",
+        pan: pan || "",
+        addressLine1: addressLine1 || "",
+        addressLine2: addressLine2 || "",
+        city: city || "",
+        state: state || "",
+        pincode: pincode || "",
+        country: country || "",
+        orderId: orderId,
+        uid: uid || "",
+        selectedDonations: (selectedDonations || []).map((d: any) => ({
+          subCategoryId: d.subCategoryId,
+          donationAmount: d.donationAmount,
+          donationInTheNameOf: d.donationInTheNameOf || "",
+          imagePath: d.imagePath || "",
+          donationRemarks: d.donationRemarks || "",
+          calendarType: d.calendarType || "",
+          monthId: d.monthId || "",
+          fromChandraMasaId: d.fromChandraMasaId || "",
+          fromSouraMasaId: d.fromSouraMasaId || "",
+          specificDate: d.specificDate || "",
+          fromTithiId: d.fromTithiId || "",
+          fromNakshatraId: d.fromNakshatraId || "",
+        })),
+      };
+
+      const sringeriRes = await fetch(`${SRINGERI_API_URL}/api/makeDonation`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
         },
-        body: JSON.stringify(req.body),
+        body: JSON.stringify(donationPayload),
       });
 
-      if (!response.ok) {
-        return res.status(response.status).json({ error: "Failed to submit donation" });
+      if (!sringeriRes.ok) {
+        const sringeriErr = await sringeriRes.text().catch(() => "");
+        console.error("Sringeri makeDonation failed:", sringeriRes.status, sringeriErr);
+        return res.status(502).json({ error: "Donation registration failed", details: "Could not register donation with the server. Please try again." });
       }
 
-      const text = await response.text();
-      let data;
-      try {
-        const jsonStart = text.indexOf('{');
-        if (jsonStart !== -1) {
-          data = JSON.parse(text.substring(jsonStart));
-        } else {
-          data = JSON.parse(text);
-        }
-      } catch (parseError) {
-        return res.status(500).json({ error: "Invalid API response" });
-      }
-
-      res.json(data);
+      res.json({
+        txnToken: txnToken,
+        orderId: orderId,
+        mid: PAYTM_MID_VAL,
+        amount: String(Number(totalAmount).toFixed(2)),
+      });
     } catch (error) {
       console.error("Error submitting donation:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -1705,27 +1802,30 @@ export async function registerRoutes(
 
   app.post("/api/verifyPaytmTransaction", async (req, res) => {
     try {
-      const PAYTM_MID = process.env.PAYTM_MID;
-      const PAYTM_MERCHANT_KEY = process.env.PAYTM_MERCHANT_KEY;
-      if (!PAYTM_MID || !PAYTM_MERCHANT_KEY) {
-        return res.status(500).json({ error: "Paytm credentials not configured" });
-      }
-
-      const { orderId } = req.body;
+      const { orderId, is80G } = req.body;
       if (!orderId) {
         return res.status(400).json({ error: "orderId is required" });
       }
 
+      const useSPCT = is80G === true || is80G === 1 || is80G === "1" ||
+        (typeof orderId === "string" && orderId.startsWith("DON_") && is80G !== false && is80G !== 0 && is80G !== "0");
+      const PAYTM_MID_VAL = (useSPCT && process.env.PAYTM_MID_SPCT) ? process.env.PAYTM_MID_SPCT : process.env.PAYTM_MID;
+      const PAYTM_KEY_VAL = (useSPCT && process.env.PAYTM_MERCHANT_KEY_SPCT) ? process.env.PAYTM_MERCHANT_KEY_SPCT : process.env.PAYTM_MERCHANT_KEY;
+
+      if (!PAYTM_MID_VAL || !PAYTM_KEY_VAL) {
+        return res.status(500).json({ error: "Paytm credentials not configured" });
+      }
+
       const paytmParams: Record<string, any> = {
         body: {
-          mid: PAYTM_MID,
+          mid: PAYTM_MID_VAL,
           orderId: orderId,
         },
       };
 
       const checksum = await PaytmChecksum.generateSignature(
         JSON.stringify(paytmParams.body),
-        PAYTM_MERCHANT_KEY
+        PAYTM_KEY_VAL
       );
       paytmParams.head = { signature: checksum };
 

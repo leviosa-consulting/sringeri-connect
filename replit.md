@@ -76,15 +76,19 @@ Preferred communication style: Simple, everyday language.
 - Base URL configured via `VITE_SRINGERI_API_URL` (defaults to `https://dsspv2.lcpl.in`)
 - Optional API key via `SRINGERI_API_KEY`
 - Backend proxies requests to fetch user profiles, devotee data, accommodation inventory/booking, donation data/payment, and seva booking data
-- Donation flow uses `/api/makeDonation` endpoint with CCAvenue payment gateway (fallback to Razorpay if orderId returned)
 - Donation APIs: donationHeading, donationCategory, donationSubCategory, postageOptionsDonation, calendarTypes, tithis, chandraMasas, souraMasas, nakshatras, devoteeKarta, devoteeAddress
+- Donation flow uses Paytm JS Checkout (same as Fastline):
+  1. `/api/makeDonation` POST — generates DON_ orderId, picks Paytm credentials (SPCT for 80G, regular for non-80G), calls Paytm Initiate Transaction API, forwards to Sringeri API, returns `{txnToken, orderId, mid, amount}`
+  2. Frontend loads Paytm SDK dynamically using returned `mid`, opens inline checkout
+  3. `/api/paymentAck` POST — forwards Paytm response to Sringeri API
+  4. `/api/verifyPaytmTransaction` POST — server-side verification with conditional SPCT/regular credentials based on `is80G` flag
 - Seva Booking APIs: centres, online/deities/:sevaTypeId, online/deitySevas/:sannidhiId/:sevaTypeId, online/sevaAvailability/:dsId, onlineFrequentSevas, rashis, postageOptions, recurrenceTypes, recurranceCount (multi-param), online/fl (POST for payment)
 - Fastline seva flow uses Paytm JS Checkout:
   1. `/api/initiatePaytmTransaction` POST — generates FL_ orderId, calls Paytm Initiate Transaction API, returns txnToken
   2. `/api/newReceiptFl` POST — creates DB receipt with form data (devoteeName, devoteeNameK, totalAmount, paymentModeId=6, mobile, city, cityK, receiptTypeId, inAbsentia, branchId, addedAt, status=8, paymentRef=orderId, selectedSevas)
   3. Paytm JS Checkout opens inline for payment
   4. `/api/paymentAck` POST — forwards Paytm response (uppercase keys: BANKNAME, BANKTXNID, CURRENCY, PAYMENTMODE, ORDERID, RESPCODE, RESPMSG, STATUS, TXNDATE, TXNID, TXNAMOUNT) to Sringeri API
-- Requires `PAYTM_MID` and `PAYTM_MERCHANT_KEY` environment secrets
+- Requires `PAYTM_MID`, `PAYTM_MERCHANT_KEY` (regular) and `PAYTM_MID_SPCT`, `PAYTM_MERCHANT_KEY_SPCT` (80G donations) environment secrets
 - Other seva types (One-time, Recurring) still use `/api/online/fl` POST with Razorpay
 - Three seva types: Fastline (id=1, today's sevas), One-time (id=2, future date with calendar), Recurring/Puduvattu (id=3, recurring with calendar type and recurrence patterns)
 
