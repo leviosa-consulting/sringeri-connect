@@ -1189,7 +1189,8 @@ export async function registerRoutes(
         String(now.getMinutes()).padStart(2, "0") +
         String(now.getSeconds()).padStart(2, "0");
       const rand = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
-      const orderId = `DON_${ts}_${rand}`;
+      const typePrefix = claim80GVal === "Yes" ? "DON80G" : "DON";
+      const orderId = `${typePrefix}_${ts}_${rand}`;
 
       const paytmParams: Record<string, any> = {
         body: {
@@ -1808,7 +1809,7 @@ export async function registerRoutes(
       }
 
       const useSPCT = is80G === true || is80G === 1 || is80G === "1" ||
-        (typeof orderId === "string" && orderId.startsWith("DON_") && is80G !== false && is80G !== 0 && is80G !== "0");
+        (typeof orderId === "string" && orderId.startsWith("DON80G_"));
       const PAYTM_MID_VAL = (useSPCT && process.env.PAYTM_MID_SPCT) ? process.env.PAYTM_MID_SPCT : process.env.PAYTM_MID;
       const PAYTM_KEY_VAL = (useSPCT && process.env.PAYTM_MERCHANT_KEY_SPCT) ? process.env.PAYTM_MERCHANT_KEY_SPCT : process.env.PAYTM_MERCHANT_KEY;
 
