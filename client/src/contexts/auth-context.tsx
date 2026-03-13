@@ -71,10 +71,28 @@ interface PastDonation {
 interface PastAccommodation {
   id?: number;
   roomType?: string;
+  roomName?: string;
+  building?: string;
+  buildingName?: string;
   checkIn?: string;
   checkOut?: string;
+  reservedDate?: string;
+  reservationFor?: string;
+  bookingDate?: string;
+  addedAt?: string;
   guests?: number;
-  status?: string;
+  status?: number | string;
+  allotStatus?: number;
+  rent?: number | string;
+  deposit?: number | string;
+  totalAmount?: number | string;
+  orderId?: string;
+  paymentRef?: string;
+  ref?: string;
+  occupantName1?: string;
+  occupantName2?: string;
+  roomCount?: number;
+  [key: string]: any;
 }
 
 interface DevoteeData {
@@ -130,6 +148,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (response.ok) {
         const data = await response.json();
+        if (data.pastAccommodations) {
+          console.log("Raw pastAccommodations:", JSON.stringify(data.pastAccommodations));
+        }
         setDevoteeData(data);
         
         // Update profile with devotee data if available

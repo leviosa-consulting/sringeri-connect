@@ -86,7 +86,7 @@ export default function Profile() {
 
   const filteredAccommodations = useMemo(() => {
     const accommodations = devoteeData?.pastAccommodations || [];
-    return filterByDateRange(accommodations, a => a.checkIn, accomFromDate, accomToDate);
+    return filterByDateRange(accommodations, a => a.reservationFor || a.reservedDate || a.checkIn, accomFromDate, accomToDate);
   }, [devoteeData?.pastAccommodations, accomFromDate, accomToDate]);
 
   return (
@@ -117,31 +117,7 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="px-4 -mt-10 relative z-20 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="shadow-lg border-none bg-gradient-to-br from-orange-50 to-white" data-testid="card-seva-summary">
-            <CardContent className="p-4 text-center">
-              <History className="h-6 w-6 mx-auto text-primary mb-2" />
-              <div className="text-2xl font-bold text-primary" data-testid="text-total-sevas">{devoteeData?.sevaBookingSummary?.totalSeva || 0}</div>
-              <div className="text-xs text-muted-foreground">Total Sevas</div>
-              <div className="text-sm font-medium text-primary mt-1" data-testid="text-seva-amount">
-                {formatCurrency(devoteeData?.sevaBookingSummary?.totalSevaAmount || 0)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="shadow-lg border-none bg-gradient-to-br from-rose-50 to-white" data-testid="card-donation-summary">
-            <CardContent className="p-4 text-center">
-              <Heart className="h-6 w-6 mx-auto text-secondary mb-2" />
-              <div className="text-2xl font-bold text-secondary" data-testid="text-total-donations">{devoteeData?.donationBookingSummary?.totalDonation || 0}</div>
-              <div className="text-xs text-muted-foreground">Total Donations</div>
-              <div className="text-sm font-medium text-secondary mt-1" data-testid="text-donation-amount">
-                {formatCurrency(devoteeData?.donationBookingSummary?.totalDonationAmount || 0)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Tabs for History & Saved Info */}
         <Tabs defaultValue="history" className="w-full" data-testid="tabs-profile">
           <TabsList className="grid w-full grid-cols-2">
@@ -358,20 +334,46 @@ export default function Profile() {
                         </div>
                         {filteredAccommodations.length > 0 ? (
                           <div className="space-y-0">
-                            {filteredAccommodations.slice(0, accommodationsShown).map((booking, index) => (
-                              <div key={booking.id || index} className="flex justify-between items-center py-2 border-b last:border-0" data-testid={`row-accommodation-${booking.id || index}`}>
-                                <div>
-                                  <div className="font-medium text-sm">{booking.roomType || "Room"}</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {booking.checkIn} - {booking.checkOut}
+                            {filteredAccommodations.slice(0, accommodationsShown).map((booking, index) => {
+                              const bookedDate = booking.reservationFor || booking.reservedDate || booking.checkIn || "";
+                              const buildingLabel = booking.building || booking.buildingName || booking.roomName || booking.roomType || "Room";
+                              const amount = booking.totalAmount || booking.rent;
+                              const statusLabel = booking.allotStatus === 1 ? "Allotted" : booking.allotStatus === 0 ? "Pending" : (typeof booking.status === "string" ? booking.status : "Booked");
+                              const isPositiveStatus = statusLabel === "Allotted" || statusLabel === "Confirmed" || statusLabel === "Completed";
+                              return (
+                              <div key={booking.id || index} className="py-2 border-b last:border-0" data-testid={`row-accommodation-${booking.id || index}`}>
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1 min-w-0 pr-2">
+                                    <div className="font-medium text-sm">{buildingLabel}</div>
+                                    {bookedDate && (
+                                      <div className="text-xs text-muted-foreground">Booked for: {bookedDate}</div>
+                                    )}
+                                    {booking.occupantName1 && (
+                                      <div className="text-xs text-muted-foreground">{booking.occupantName1}{booking.occupantName2 ? `, ${booking.occupantName2}` : ""}</div>
+                                    )}
+                                    {(booking.orderId || booking.ref) && (
+                                      <div className="text-[10px] text-muted-foreground">Ref: {booking.ref || booking.orderId}</div>
+                                    )}
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    {amount != null && (
+                                      <div className="font-medium text-sm text-blue-600">
+                                        {formatCurrency(amount)}
+                                      </div>
+                                    )}
+                                    {booking.deposit != null && Number(booking.deposit) > 0 && (
+                                      <div className="text-[10px] text-muted-foreground">
+                                        Deposit: {formatCurrency(booking.deposit)}
+                                      </div>
+                                    )}
+                                    <div className={`text-xs ${isPositiveStatus ? "text-green-600" : "text-orange-600"}`}>
+                                      {statusLabel}
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="text-right">
-                                  <div className="font-medium text-sm">{booking.guests || 1} guests</div>
-                                  <div className="text-xs text-muted-foreground">{booking.status || "Completed"}</div>
-                                </div>
                               </div>
-                            ))}
+                              );
+                            })}
                             {accommodationsShown < filteredAccommodations.length && (
                               <Button
                                 variant="ghost"
