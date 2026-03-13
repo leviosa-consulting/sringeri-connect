@@ -1189,8 +1189,7 @@ export async function registerRoutes(
         String(now.getMinutes()).padStart(2, "0") +
         String(now.getSeconds()).padStart(2, "0");
       const rand = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
-      const typePrefix = is80G ? "DON80G" : "DON";
-      const orderId = `${typePrefix}_${ts}_${rand}`;
+      const orderId = `DON_${ts}_${rand}`;
 
       const paytmParams: Record<string, any> = {
         body: {
@@ -1808,8 +1807,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "orderId is required" });
       }
 
-      const useSPCT = is80G === true || is80G === 1 || is80G === "1" ||
-        (typeof orderId === "string" && orderId.startsWith("DON80G_"));
+      const useSPCT = is80G === true || is80G === 1 || is80G === "1";
       const PAYTM_MID_VAL = (useSPCT && process.env.PAYTM_MID_SPCT) ? process.env.PAYTM_MID_SPCT : process.env.PAYTM_MID;
       const PAYTM_KEY_VAL = (useSPCT && process.env.PAYTM_MERCHANT_KEY_SPCT) ? process.env.PAYTM_MERCHANT_KEY_SPCT : process.env.PAYTM_MERCHANT_KEY;
 
