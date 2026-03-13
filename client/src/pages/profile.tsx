@@ -338,10 +338,11 @@ export default function Profile() {
                               const bookedDate = booking.reservationFor || booking.reservedDate || booking.checkIn || "";
                               const buildingLabel = booking.building || booking.buildingName || booking.roomName || booking.roomType || "Room";
                               const amount = booking.totalAmount || booking.rent;
-                              const statusLabel = booking.allotStatus === 1 ? "Allotted" : booking.allotStatus === 0 ? "Pending" : (typeof booking.status === "string" ? booking.status : "Booked");
-                              const isPositiveStatus = statusLabel === "Allotted" || statusLabel === "Confirmed" || statusLabel === "Completed";
                               return (
                               <div key={booking.id || index} className="py-2 border-b last:border-0" data-testid={`row-accommodation-${booking.id || index}`}>
+                                {booking.id && (
+                                  <div className="font-semibold text-base text-primary mb-1" data-testid={`text-accom-id-${booking.id}`}>#{booking.id}</div>
+                                )}
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1 min-w-0 pr-2">
                                     <div className="font-medium text-sm">{buildingLabel}</div>
@@ -350,9 +351,6 @@ export default function Profile() {
                                     )}
                                     {booking.occupantName1 && (
                                       <div className="text-xs text-muted-foreground">{booking.occupantName1}{booking.occupantName2 ? `, ${booking.occupantName2}` : ""}</div>
-                                    )}
-                                    {(booking.orderId || booking.ref) && (
-                                      <div className="text-[10px] text-muted-foreground">Ref: {booking.ref || booking.orderId}</div>
                                     )}
                                   </div>
                                   <div className="text-right shrink-0">
@@ -366,9 +364,6 @@ export default function Profile() {
                                         Deposit: {formatCurrency(booking.deposit)}
                                       </div>
                                     )}
-                                    <div className={`text-xs ${isPositiveStatus ? "text-green-600" : "text-orange-600"}`}>
-                                      {statusLabel}
-                                    </div>
                                   </div>
                                 </div>
                               </div>
