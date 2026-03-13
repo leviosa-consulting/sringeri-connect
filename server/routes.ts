@@ -309,14 +309,24 @@ export async function registerRoutes(
     }
   });
 
+  const ytCache: { videos: any[]; timestamp: number } = { videos: [], timestamp: 0 };
+  const YT_CACHE_TTL = 10 * 60 * 1000;
+
   app.get("/api/youtube-videos", async (req, res) => {
     try {
+      if (ytCache.videos.length > 0 && Date.now() - ytCache.timestamp < YT_CACHE_TTL) {
+        return res.json({ videos: ytCache.videos });
+      }
+
       const channelId = "UCC7AKcYvtFdlubqwW6Ave2Q";
       let videos: any[] = [];
 
       const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
       try {
-        const response = await fetch(feedUrl);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(feedUrl, { signal: controller.signal });
+        clearTimeout(timeout);
         if (response.ok) {
           const xml = await response.text();
           const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
@@ -345,15 +355,18 @@ export async function registerRoutes(
 
       if (videos.length === 0) {
         try {
-          const pageRes = await fetch(`https://www.youtube.com/channel/${channelId}`, {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 10000);
+          const pageRes = await fetch(`https://www.youtube.com/@SharadaPeetham/videos`, {
             headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+            signal: controller.signal,
           });
+          clearTimeout(timeout);
           if (pageRes.ok) {
             const html = await pageRes.text();
             const dataMatch = html.match(/var ytInitialData = ({.*?});<\/script>/);
             if (dataMatch) {
               const data = JSON.parse(dataMatch[1]);
-              const homeTab = data?.contents?.twoColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
               const found: any[] = [];
               const seen = new Set<string>();
               const findVideos = (obj: any): void => {
@@ -367,7 +380,7 @@ export async function registerRoutes(
                 }
                 for (const v of Object.values(obj)) findVideos(v);
               };
-              findVideos(homeTab);
+              findVideos(data);
               for (const v of found.slice(0, 10)) {
                 videos.push({
                   videoId: v.videoId,
@@ -385,9 +398,19 @@ export async function registerRoutes(
         }
       }
 
+      if (videos.length > 0) {
+        ytCache.videos = videos;
+        ytCache.timestamp = Date.now();
+      } else if (ytCache.videos.length > 0) {
+        return res.json({ videos: ytCache.videos });
+      }
+
       res.json({ videos });
     } catch (error) {
       console.error("Error fetching YouTube videos:", error);
+      if (ytCache.videos.length > 0) {
+        return res.json({ videos: ytCache.videos });
+      }
       res.status(500).json({ error: "Failed to fetch YouTube videos" });
     }
   });
@@ -694,6 +717,66 @@ export async function registerRoutes(
       res.json(data);
     } catch (error) {
       console.error("Error fetching donation categories:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/featuredDonations", async (req, res) => {
+    try {
+      const catResponse = await fetch(`${SRINGERI_API_URL}/api/donationCategory`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      if (!catResponse.ok) {
+        return res.status(catResponse.status).json({ error: "Failed to fetch categories" });
+      }
+      const categories = await catResponse.json();
+
+      const headingResponse = await fetch(`${SRINGERI_API_URL}/api/donationHeading`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      const headings = headingResponse.ok ? await headingResponse.json() : [];
+
+      const featured: any[] = [];
+      for (const cat of categories) {
+        try {
+          const subRes = await fetch(`${SRINGERI_API_URL}/api/donationSubCategory/${cat.id}`, {
+            headers: {
+              "Content-Type": "application/json",
+              ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+            },
+          });
+          if (!subRes.ok) continue;
+          const text = await subRes.text();
+          let subs;
+          try {
+            const jsonStart = text.indexOf('[');
+            const jsonStartObj = text.indexOf('{');
+            const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+            subs = start !== -1 ? JSON.parse(text.substring(start)) : JSON.parse(text);
+          } catch { continue; }
+          if (!Array.isArray(subs)) continue;
+          for (const sub of subs) {
+            if (sub.isFeatured === 1 || sub.isFeatured === "1") {
+              const heading = headings.find((h: any) => h.id === cat.donationHeadingId);
+              featured.push({
+                subcategory: sub,
+                category: { id: cat.id, name: cat.name, donationHeadingId: cat.donationHeadingId },
+                heading: heading || null,
+              });
+            }
+          }
+        } catch { continue; }
+      }
+
+      res.json(featured);
+    } catch (error) {
+      console.error("Error fetching featured donations:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

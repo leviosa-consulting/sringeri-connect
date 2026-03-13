@@ -85,6 +85,13 @@ interface DonationSubCategory {
   hasDonationDate?: number;
   hasUpload?: number;
   donationCategoryId?: number;
+  isFeatured?: number;
+}
+
+interface FeaturedDonationItem {
+  subcategory: DonationSubCategory;
+  category: { id: number; name: string; donationHeadingId: number };
+  heading: DonationHeading | null;
 }
 
 interface CartDonation {
@@ -282,30 +289,6 @@ function getIconForName(name: string): LucideIcon {
   return Landmark;
 }
 
-interface FeaturedDonation {
-  label: string;
-  headingMatch: string;
-  categoryMatch: string;
-  subcategoryMatch: string;
-  description: string;
-}
-
-const FEATURED_DONATIONS: FeaturedDonation[] = [
-  {
-    label: "Sri Malahanikareshwara Temple, Sringeri",
-    headingMatch: "sringeri",
-    categoryMatch: "preservation",
-    subcategoryMatch: "malahanikareshwara",
-    description: "Contribute for the construction and development of a Grand Temple of Sri Malahanikareshwara, Sringeri.",
-  },
-  {
-    label: "Guru Kanike- Vajrotsava Bharati",
-    headingMatch: "sringeri",
-    categoryMatch: "kanike",
-    subcategoryMatch: "vajrotsava",
-    description: "Offer Guru Kanike for Vajrotsava Bharati",
-  },
-];
 
 export default function Donation() {
   const { user, devoteeData } = useAuth();
@@ -380,6 +363,15 @@ export default function Donation() {
     queryKey: ["donationCategories"],
     queryFn: async () => {
       const res = await fetch("/api/donationCategory");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const { data: featuredDonations = [] } = useQuery<FeaturedDonationItem[]>({
+    queryKey: ["featuredDonations"],
+    queryFn: async () => {
+      const res = await fetch("/api/featuredDonations");
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
@@ -518,27 +510,17 @@ export default function Donation() {
     setValidationErrors([]);
   };
 
-  const handleFeaturedDonation = (featured: FeaturedDonation) => {
-    const heading = headings.find((h) =>
-      featured.headingMatch && h.name.toLowerCase().includes(featured.headingMatch.toLowerCase())
-    );
-    const category = categories.find((c) =>
-      featured.categoryMatch && c.name.toLowerCase().includes(featured.categoryMatch.toLowerCase())
-    );
-
-    if (heading) {
-      setSelectedHeading(heading);
-    } else if (category) {
-      const parentHeading = headings.find((h) => h.id === category.donationHeadingId);
-      if (parentHeading) setSelectedHeading(parentHeading);
+  const handleFeaturedDonation = (featured: FeaturedDonationItem) => {
+    if (featured.heading) {
+      const heading = headings.find((h) => h.id === featured.heading!.id);
+      if (heading) setSelectedHeading(heading);
     }
 
+    const category = categories.find((c) => c.id === featured.category.id);
     if (category) {
       setSelectedCategory(category);
       resetSelection();
-      if (featured.subcategoryMatch) {
-        setPendingFocusSubcategory(featured.subcategoryMatch);
-      }
+      setPendingFocusSubcategory(featured.subcategory.name);
     }
   };
 
@@ -1225,48 +1207,52 @@ export default function Donation() {
       </div>
 
       <div className="px-4 mt-4 space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-donations-in-focus">
-            <Star className="h-4 w-4 inline-block mr-1 text-amber-500" />
-            Donations in Focus
-          </h3>
-          <div className="space-y-2">
-            {FEATURED_DONATIONS.map((featured, idx) => {
-              const Icon = getIconForName(featured.label);
-              return (
-                <div key={idx} className="relative">
-                  <div
-                    className={`w-full flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-4 py-3 transition-all hover:shadow-md hover:border-amber-300 ${headings.length === 0 || categories.length === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-[0.99]"}`}
-                  >
-                    <button
-                      onClick={() => handleFeaturedDonation(featured)}
-                      disabled={headings.length === 0 || categories.length === 0}
-                      className="flex items-center gap-3 flex-1 text-left min-w-0"
-                      data-testid={`button-featured-${idx}`}
+        {featuredDonations.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-donations-in-focus">
+              <Star className="h-4 w-4 inline-block mr-1 text-amber-500" />
+              Donations in Focus
+            </h3>
+            <div className="space-y-2">
+              {featuredDonations.map((featured, idx) => {
+                const Icon = getIconForName(featured.subcategory.name);
+                return (
+                  <div key={featured.subcategory.id} className="relative">
+                    <div
+                      className={`w-full flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-4 py-3 transition-all hover:shadow-md hover:border-amber-300 ${headings.length === 0 || categories.length === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-[0.99]"}`}
                     >
-                      <div className="bg-amber-100 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
-                        <Icon className="h-5 w-5 text-amber-700" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground flex-1 leading-tight">{featured.label}</span>
-                    </button>
-                    <button
-                      onClick={() => setShowFocusInfo(showFocusInfo === idx ? null : idx)}
-                      className="shrink-0 p-1 rounded-full hover:bg-amber-100 transition-colors"
-                      data-testid={`button-featured-info-${idx}`}
-                    >
-                      <Info className="h-4 w-4 text-amber-600" />
-                    </button>
-                  </div>
-                  {showFocusInfo === idx && featured.description && (
-                    <div className="mx-4 mt-1 mb-1 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg">
-                      <p className="text-xs text-muted-foreground leading-relaxed">{featured.description}</p>
+                      <button
+                        onClick={() => handleFeaturedDonation(featured)}
+                        disabled={headings.length === 0 || categories.length === 0}
+                        className="flex items-center gap-3 flex-1 text-left min-w-0"
+                        data-testid={`button-featured-${featured.subcategory.id}`}
+                      >
+                        <div className="bg-amber-100 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
+                          <Icon className="h-5 w-5 text-amber-700" />
+                        </div>
+                        <span className="text-sm font-semibold text-foreground flex-1 leading-tight">{featured.subcategory.name}</span>
+                      </button>
+                      {featured.subcategory.desc && (
+                        <button
+                          onClick={() => setShowFocusInfo(showFocusInfo === idx ? null : idx)}
+                          className="shrink-0 p-1 rounded-full hover:bg-amber-100 transition-colors"
+                          data-testid={`button-featured-info-${featured.subcategory.id}`}
+                        >
+                          <Info className="h-4 w-4 text-amber-600" />
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                    {showFocusInfo === idx && featured.subcategory.desc && (
+                      <div className="mx-4 mt-1 mb-1 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg">
+                        <p className="text-xs text-muted-foreground leading-relaxed">{featured.subcategory.desc}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         <div>
           <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-center">Choose Donation Center</h3>
