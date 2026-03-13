@@ -763,39 +763,36 @@ export async function registerRoutes(
         } catch { headings = []; }
       }
 
+      const subCatResponse = await fetch(`${SRINGERI_API_URL}/api/donationSubCategories`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      if (!subCatResponse.ok) {
+        return res.status(subCatResponse.status).json({ error: "Failed to fetch subcategories" });
+      }
+      const subCatText = await subCatResponse.text();
+      let allSubcategories: any[];
+      try {
+        const subStart = subCatText.indexOf('[');
+        const subStartObj = subCatText.indexOf('{');
+        const start = subStart !== -1 && (subStartObj === -1 || subStart < subStartObj) ? subStart : subStartObj;
+        allSubcategories = start !== -1 ? JSON.parse(subCatText.substring(start)) : JSON.parse(subCatText);
+      } catch { return res.json([]); }
+      if (!Array.isArray(allSubcategories)) return res.json([]);
+
       const featured: any[] = [];
-      const subResults = await Promise.allSettled(
-        categories.map(async (cat: any) => {
-          const subRes = await fetch(`${SRINGERI_API_URL}/api/donationSubCategory/${cat.id}`, {
-            headers: {
-              "Content-Type": "application/json",
-              ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
-            },
+      for (const sub of allSubcategories) {
+        if (sub.isFeatured === 1 || sub.isFeatured === "1") {
+          const cat = categories.find((c: any) => String(c.id) === String(sub.donationCategoryId));
+          if (!cat) continue;
+          const heading = headings.find((h: any) => String(h.id) === String(cat.donationHeadingId));
+          featured.push({
+            subcategory: sub,
+            category: { id: cat.id, name: cat.name, donationHeadingId: cat.donationHeadingId },
+            heading: heading || null,
           });
-          if (!subRes.ok) return { cat, subs: [] };
-          const text = await subRes.text();
-          let subs;
-          try {
-            const jsonStart = text.indexOf('[');
-            const jsonStartObj = text.indexOf('{');
-            const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
-            subs = start !== -1 ? JSON.parse(text.substring(start)) : JSON.parse(text);
-          } catch { return { cat, subs: [] }; }
-          return { cat, subs: Array.isArray(subs) ? subs : [] };
-        })
-      );
-      for (const result of subResults) {
-        if (result.status !== "fulfilled") continue;
-        const { cat, subs } = result.value;
-        for (const sub of subs) {
-          if (sub.isFeatured === 1 || sub.isFeatured === "1") {
-            const heading = headings.find((h: any) => h.id === cat.donationHeadingId);
-            featured.push({
-              subcategory: sub,
-              category: { id: cat.id, name: cat.name, donationHeadingId: cat.donationHeadingId },
-              heading: heading || null,
-            });
-          }
         }
       }
 
@@ -811,7 +808,7 @@ export async function registerRoutes(
   app.get("/api/donationSubCategory/:categoryId", async (req, res) => {
     try {
       const { categoryId } = req.params;
-      const response = await fetch(`${SRINGERI_API_URL}/api/donationSubCategory/${categoryId}`, {
+      const response = await fetch(`${SRINGERI_API_URL}/api/donationSubCategories`, {
         headers: {
           "Content-Type": "application/json",
           ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
@@ -823,21 +820,24 @@ export async function registerRoutes(
       }
 
       const text = await response.text();
-      let data;
+      let allSubs;
       try {
         const jsonStart = text.indexOf('[');
         const jsonStartObj = text.indexOf('{');
         const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
         if (start !== -1) {
-          data = JSON.parse(text.substring(start));
+          allSubs = JSON.parse(text.substring(start));
         } else {
-          data = JSON.parse(text);
+          allSubs = JSON.parse(text);
         }
       } catch (parseError) {
         return res.status(500).json({ error: "Invalid API response" });
       }
 
-      res.json(data);
+      const filtered = Array.isArray(allSubs)
+        ? allSubs.filter((sub: any) => String(sub.donationCategoryId) === String(categoryId))
+        : [];
+      res.json(filtered);
     } catch (error) {
       console.error("Error fetching donation subcategories:", error);
       res.status(500).json({ error: "Internal server error" });
