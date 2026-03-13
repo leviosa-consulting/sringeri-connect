@@ -1189,7 +1189,7 @@ export async function registerRoutes(
         String(now.getMinutes()).padStart(2, "0") +
         String(now.getSeconds()).padStart(2, "0");
       const rand = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
-      const typePrefix = claim80GVal === "Yes" ? "DON80G" : "DON";
+      const typePrefix = is80G ? "DON80G" : "DON";
       const orderId = `${typePrefix}_${ts}_${rand}`;
 
       const paytmParams: Record<string, any> = {
