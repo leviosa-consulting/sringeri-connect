@@ -1241,7 +1241,7 @@ export async function registerRoutes(
         email: email || "",
         postageCharges: postageCharges || 0,
         totalAmount: totalAmount,
-        claim80G: is80G ? "Yes" : "No",
+        claim80G: is80G ? 1 : 0,
         postageId: postageId || "",
         pan: pan || "",
         addressLine1: addressLine1 || "",
@@ -1268,6 +1268,8 @@ export async function registerRoutes(
         })),
       };
 
+      console.log("Sending donation payload to Sringeri:", JSON.stringify(donationPayload));
+
       const sringeriRes = await fetch(`${SRINGERI_API_URL}/api/makeDonation`, {
         method: "POST",
         headers: {
@@ -1277,10 +1279,27 @@ export async function registerRoutes(
         body: JSON.stringify(donationPayload),
       });
 
+      const sringeriResText = await sringeriRes.text().catch(() => "");
+      console.log("Sringeri makeDonation response:", sringeriRes.status, sringeriResText);
+
       if (!sringeriRes.ok) {
-        const sringeriErr = await sringeriRes.text().catch(() => "");
-        console.error("Sringeri makeDonation failed:", sringeriRes.status, sringeriErr);
+        console.error("Sringeri makeDonation failed:", sringeriRes.status, sringeriResText);
         return res.status(502).json({ error: "Donation registration failed", details: "Could not register donation with the server. Please try again." });
+      }
+
+      let sringeriData: any = null;
+      try {
+        const jsonStart = sringeriResText.indexOf("{");
+        if (jsonStart !== -1) {
+          sringeriData = JSON.parse(sringeriResText.substring(jsonStart));
+        } else {
+          sringeriData = JSON.parse(sringeriResText);
+        }
+      } catch {}
+
+      if (sringeriData && (sringeriData.error || sringeriData.status === "Failed" || sringeriData.status === "Error")) {
+        console.error("Sringeri makeDonation returned error in body:", JSON.stringify(sringeriData));
+        return res.status(502).json({ error: "Donation registration failed", details: sringeriData.message || sringeriData.error || "Server rejected the donation." });
       }
 
       res.json({
@@ -1911,6 +1930,8 @@ export async function registerRoutes(
 
   app.post("/api/paymentAck", async (req, res) => {
     try {
+      console.log("paymentAck request body:", JSON.stringify(req.body));
+
       const response = await fetch(`${SRINGERI_API_URL}/api/paymentAck`, {
         method: "POST",
         headers: {
@@ -1920,11 +1941,13 @@ export async function registerRoutes(
         body: JSON.stringify(req.body),
       });
 
+      const text = await response.text();
+      console.log("paymentAck Sringeri response:", response.status, text);
+
       if (!response.ok) {
         return res.status(response.status).json({ error: "Failed to acknowledge payment" });
       }
 
-      const text = await response.text();
       let data;
       try {
         const jsonStart = text.indexOf('{');
