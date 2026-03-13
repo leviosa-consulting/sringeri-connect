@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
 import FontSizeToggle from "@/components/font-size-toggle";
-import guruBanner from "@/assets/guru-banner.png";
+import guruBanner from "@assets/footer-collage-web_(1)_1773382448292.webp";
 import calendarBg from "@assets/background-writing-web_1770978468122.jpg";
 
 interface SringeriEvent {
