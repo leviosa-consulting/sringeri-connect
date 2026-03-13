@@ -54,3 +54,7 @@ VITE_FIREBASE_API_KEY = "AIzaSyCxUkrW_OBa7Pjy5dEoMJ1EgOOOvtwcK8I"
 VITE_FIREBASE_AUTH_DOMAIN = "dssp-online.firebaseapp.com"
 VITE_FIREBASE_PROJECT_ID = "dssp-online"
 VITE_SRINGERI_API_URL = "https://dsspv2.lcpl.in"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 60000
