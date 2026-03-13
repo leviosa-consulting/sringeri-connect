@@ -343,7 +343,7 @@ export default function Donation() {
   const [showKartaList, setShowKartaList] = useState(false);
   const [showAddressList, setShowAddressList] = useState(false);
   const [show80GWarning, setShow80GWarning] = useState(false);
-  const [pendingFocusSubcategory, setPendingFocusSubcategory] = useState<string>("");
+  const [pendingFocusSubcategoryId, setPendingFocusSubcategoryId] = useState<number | null>(null);
   const [expandedDescs, setExpandedDescs] = useState<Set<number>>(new Set());
   const [showFocusInfo, setShowFocusInfo] = useState<number | null>(null);
 
@@ -475,16 +475,14 @@ export default function Donation() {
   }, [user?.uid]);
 
   useEffect(() => {
-    if (pendingFocusSubcategory && subcategories.length > 0) {
-      const match = subcategories.find((s) =>
-        s.name.toLowerCase().includes(pendingFocusSubcategory.toLowerCase())
-      );
+    if (pendingFocusSubcategoryId !== null && subcategories.length > 0) {
+      const match = subcategories.find((s) => s.id === pendingFocusSubcategoryId);
       if (match) {
         handleSelectSubCategory(match);
       }
-      setPendingFocusSubcategory("");
+      setPendingFocusSubcategoryId(null);
     }
-  }, [subcategories, pendingFocusSubcategory]);
+  }, [subcategories, pendingFocusSubcategoryId]);
 
   const kartas = devoteeData?.kartas || [];
   const addresses = devoteeData?.addresses || [];
@@ -520,7 +518,7 @@ export default function Donation() {
     if (category) {
       setSelectedCategory(category);
       resetSelection();
-      setPendingFocusSubcategory(featured.subcategory.name);
+      setPendingFocusSubcategoryId(featured.subcategory.id);
     }
   };
 
