@@ -122,15 +122,28 @@ export default function Fastline() {
 
   function loadPaytmScript(mid: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      if ((window as any).Paytm?.CheckoutJS) { resolve(); return; }
       const existing = document.getElementById("paytm-checkout-js");
       if (existing) existing.remove();
+      (window as any).Paytm = undefined;
       const script = document.createElement("script");
       script.id = "paytm-checkout-js";
       script.type = "application/javascript";
       script.crossOrigin = "anonymous";
       script.src = `https://securegw.paytm.in/merchantpgpui/checkoutjs/merchants/${mid}.js`;
-      script.onload = () => resolve();
+      script.onload = () => {
+        let attempts = 0;
+        const poll = setInterval(() => {
+          attempts++;
+          const sdk = (window as any).Paytm?.CheckoutJS;
+          if (sdk && typeof sdk.init === "function") {
+            clearInterval(poll);
+            resolve();
+          } else if (attempts > 50) {
+            clearInterval(poll);
+            reject(new Error("Paytm SDK failed to initialize"));
+          }
+        }, 100);
+      };
       script.onerror = () => reject(new Error("Failed to load Paytm SDK"));
       document.head.appendChild(script);
     });
