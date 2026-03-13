@@ -24,7 +24,8 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
   const host = req.hostname || req.headers.host || "";
-  if (host.startsWith("fastline.") && !req.path.startsWith("/api") && !req.path.startsWith("/fastline") && !req.path.startsWith("/assets")) {
+  const skipPaths = ["/api", "/fastline", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules"];
+  if (host.startsWith("fastline.") && !skipPaths.some(p => req.path.startsWith(p))) {
     return res.redirect(301, "/fastline");
   }
   next();
