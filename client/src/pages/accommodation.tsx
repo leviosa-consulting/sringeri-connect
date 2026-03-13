@@ -334,25 +334,6 @@ export default function Accommodation() {
           transactionStatus: async (paytmResponse: any) => {
             console.log("Paytm accommodation transactionStatus:", JSON.stringify(paytmResponse));
             try {
-              const ackBody: Record<string, string> = {};
-              if (paytmResponse.BANKNAME) ackBody.BANKNAME = paytmResponse.BANKNAME;
-              if (paytmResponse.BANKTXNID) ackBody.BANKTXNID = paytmResponse.BANKTXNID;
-              if (paytmResponse.CURRENCY) ackBody.CURRENCY = paytmResponse.CURRENCY;
-              if (paytmResponse.PAYMENTMODE) ackBody.PAYMENTMODE = paytmResponse.PAYMENTMODE;
-              if (paytmResponse.ORDERID) ackBody.ORDERID = paytmResponse.ORDERID;
-              if (paytmResponse.RESPCODE) ackBody.RESPCODE = paytmResponse.RESPCODE;
-              if (paytmResponse.RESPMSG) ackBody.RESPMSG = paytmResponse.RESPMSG;
-              if (paytmResponse.STATUS) ackBody.STATUS = paytmResponse.STATUS;
-              if (paytmResponse.TXNDATE) ackBody.TXNDATE = paytmResponse.TXNDATE;
-              if (paytmResponse.TXNID) ackBody.TXNID = paytmResponse.TXNID;
-              if (paytmResponse.TXNAMOUNT) ackBody.TXNAMOUNT = paytmResponse.TXNAMOUNT;
-
-              fetch("/api/paymentAck", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(ackBody),
-              }).catch(() => {});
-
               const clientStatus =
                 paytmResponse.STATUS ||
                 paytmResponse.status ||
@@ -365,6 +346,27 @@ export default function Accommodation() {
               const resolvedOrderId = paytmResponse.ORDERID || paytmResponse.orderId || orderId;
 
               if (isSuccess) {
+                const ackBody: Record<string, string> = {};
+                if (paytmResponse.BANKNAME) ackBody.BANKNAME = paytmResponse.BANKNAME;
+                if (paytmResponse.BANKTXNID) ackBody.BANKTXNID = paytmResponse.BANKTXNID;
+                if (paytmResponse.CURRENCY) ackBody.CURRENCY = paytmResponse.CURRENCY;
+                if (paytmResponse.PAYMENTMODE) ackBody.PAYMENTMODE = paytmResponse.PAYMENTMODE;
+                ackBody.ORDERID = resolvedOrderId;
+                if (paytmResponse.RESPCODE) ackBody.RESPCODE = paytmResponse.RESPCODE;
+                if (paytmResponse.RESPMSG) ackBody.RESPMSG = paytmResponse.RESPMSG;
+                if (paytmResponse.STATUS) ackBody.STATUS = paytmResponse.STATUS;
+                if (paytmResponse.TXNDATE) ackBody.TXNDATE = paytmResponse.TXNDATE;
+                if (paytmResponse.TXNID) ackBody.TXNID = paytmResponse.TXNID;
+                if (paytmResponse.TXNAMOUNT) ackBody.TXNAMOUNT = paytmResponse.TXNAMOUNT;
+
+                try {
+                  await fetch("/api/paymentAck", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(ackBody),
+                  });
+                } catch {}
+
                 setAckData({
                   txnId: paytmResponse.TXNID || "",
                   orderId: resolvedOrderId,
