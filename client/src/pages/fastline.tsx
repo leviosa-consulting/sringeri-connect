@@ -110,7 +110,7 @@ export default function Fastline() {
       const res = await fetch(`/api/centreSevas?endpoint=${encodeURIComponent(centre.endpoint)}`);
       if (!res.ok) throw new Error("Failed to fetch sevas");
       const sevas = await res.json();
-      setFlCentreSevas(sevas.map((s: any) => ({ ...s, selected: false })));
+      setFlCentreSevas(sevas.map((s: any) => ({ ...s, selected: false, price: parseFloat(s.price) || 0 })));
     } catch (err) {
       console.error("Error fetching centre sevas:", err);
       setFlCentreSevas([]);
@@ -129,6 +129,15 @@ export default function Fastline() {
     }
     if (!kartaName.trim()) {
       setValidationErrors(["Please enter your name."]);
+      return;
+    }
+
+    const selectedSevasCheck = flCentreSevas.filter((s) => flSelectedSevas.has(s.id));
+    const variableWithNoAmount = selectedSevasCheck.find(
+      (s) => (s.isFixedPrice === 0 || s.isFixedPrice === "0" || s.isFixedPrice === false) && (!s.price || s.price <= 0)
+    );
+    if (variableWithNoAmount) {
+      setValidationErrors([`Please enter an amount for ${variableWithNoAmount.name}.`]);
       return;
     }
 
@@ -337,16 +346,23 @@ export default function Fastline() {
                                 className="w-4 h-4 accent-primary shrink-0" />
                               <span className="text-sm text-primary truncate">{seva.name}</span>
                             </label>
-                            {seva.isFixedPrice !== false ? (
-                              <span className="text-sm text-primary font-medium ml-2 shrink-0">₹{formatNumber(seva.price)}</span>
+                            {seva.isFixedPrice === 0 || seva.isFixedPrice === "0" || seva.isFixedPrice === false ? (
+                              <div className="ml-2 shrink-0 flex flex-col items-end">
+                                <input type="text" inputMode="numeric" pattern="[0-9]*"
+                                  value={seva.price || ""}
+                                  placeholder="₹ Amount"
+                                  onChange={(e) => {
+                                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                                    const val = raw === "" ? 0 : Math.min(parseInt(raw), 20000);
+                                    const updated = flCentreSevas.map((s) => s.id === seva.id ? { ...s, price: val } : s);
+                                    setFlCentreSevas(updated);
+                                  }}
+                                  className="border border-primary/30 rounded-md text-right p-1 w-24 text-sm text-primary"
+                                  data-testid={`input-fl-seva-price-${seva.id}`} />
+                                {seva.price > 20000 && <span className="text-xs text-red-500 mt-0.5">Max ₹20,000</span>}
+                              </div>
                             ) : (
-                              <input type="number" value={seva.price || ""} onChange={(e) => {
-                                const val = parseInt(e.target.value) || 0;
-                                const updated = flCentreSevas.map((s) => s.id === seva.id ? { ...s, price: val } : s);
-                                setFlCentreSevas(updated);
-                              }}
-                                className="border border-primary/30 rounded-md text-right p-1 w-20 text-sm text-primary ml-2 shrink-0"
-                                data-testid={`input-fl-seva-price-${seva.id}`} />
+                              <span className="text-sm text-primary font-medium ml-2 shrink-0">₹{formatNumber(seva.price)}</span>
                             )}
                           </div>
                           <div className="border-b border-primary/20" />
