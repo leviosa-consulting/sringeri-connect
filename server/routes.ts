@@ -1353,8 +1353,8 @@ export async function registerRoutes(
 
   app.get("/api/transliterate", async (req, res) => {
     try {
-      const text = (req.query.text as string || "").trim();
-      const lang = (req.query.lang as string || "kn");
+      const text = (req.query.text as string || "").trim().slice(0, 200);
+      const lang = "kn";
       if (!text) return res.json({ transliteration: "" });
 
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(text)}`;

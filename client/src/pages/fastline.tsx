@@ -43,27 +43,34 @@ export default function Fastline() {
   const [kannadaCity, setKannadaCity] = useState("");
   const nameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nameAbortRef = useRef<AbortController | null>(null);
+  const cityAbortRef = useRef<AbortController | null>(null);
 
-  const transliterate = useCallback(async (text: string, setter: (v: string) => void) => {
+  const transliterate = useCallback(async (text: string, setter: (v: string) => void, abortRef: React.MutableRefObject<AbortController | null>) => {
+    if (abortRef.current) abortRef.current.abort();
     if (!text.trim()) { setter(""); return; }
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const res = await fetch(`/api/transliterate?text=${encodeURIComponent(text)}&lang=kn`);
+      const res = await fetch(`/api/transliterate?text=${encodeURIComponent(text)}`, { signal: controller.signal });
       if (res.ok) {
         const data = await res.json();
         setter(data.transliteration || "");
-      }
-    } catch { setter(""); }
+      } else { setter(""); }
+    } catch (e: any) {
+      if (e?.name !== "AbortError") setter("");
+    }
   }, []);
 
   useEffect(() => {
     if (nameTimerRef.current) clearTimeout(nameTimerRef.current);
-    nameTimerRef.current = setTimeout(() => transliterate(kartaName, setKannadaName), 400);
+    nameTimerRef.current = setTimeout(() => transliterate(kartaName, setKannadaName, nameAbortRef), 400);
     return () => { if (nameTimerRef.current) clearTimeout(nameTimerRef.current); };
   }, [kartaName, transliterate]);
 
   useEffect(() => {
     if (cityTimerRef.current) clearTimeout(cityTimerRef.current);
-    cityTimerRef.current = setTimeout(() => transliterate(kartaCity, setKannadaCity), 400);
+    cityTimerRef.current = setTimeout(() => transliterate(kartaCity, setKannadaCity, cityAbortRef), 400);
     return () => { if (cityTimerRef.current) clearTimeout(cityTimerRef.current); };
   }, [kartaCity, transliterate]);
 
