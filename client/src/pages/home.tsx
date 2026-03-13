@@ -186,7 +186,7 @@ export default function Home() {
       </div>
 
       {/* Desktop Welcome Banner */}
-      <div className="hidden md:block w-screen relative left-1/2 -translate-x-1/2 h-[200px] overflow-hidden">
+      <div className="hidden md:block w-screen relative left-1/2 -translate-x-1/2 h-[300px] overflow-hidden">
         <img 
           src={guruBanner} 
           alt="Sri Sharada Devi and Jagadgurus" 
