@@ -198,8 +198,8 @@ export default function Home() {
       {/* Hindu Calendar Strip */}
       {todayDetails && (
         <div className="py-4 px-6 text-center space-y-2 bg-cover bg-center w-screen relative left-1/2 -translate-x-1/2" style={{ backgroundImage: `url(${calendarBg})` }} data-testid="card-today-calendar">
-          {/* Occasion if any */}
-          {(todayDetails.occasionK || todayDetails.occasion) && (
+          {/* Occasion - hidden for now */}
+          {/* {(todayDetails.occasionK || todayDetails.occasion) && (
             <div className="pb-2 border-b border-foreground/10">
               {todayDetails.occasionK && (
                 <div className="text-sm font-medium text-foreground" data-testid="text-occasion-kannada">{todayDetails.occasionK}</div>
@@ -208,7 +208,7 @@ export default function Home() {
                 <div className="text-xs text-foreground/70" data-testid="text-occasion-english">{todayDetails.occasion}</div>
               )}
             </div>
-          )}
+          )} */}
           
           {/* Combined Panchanga Text with Info Icon */}
           <div className="flex items-center justify-center gap-2">
