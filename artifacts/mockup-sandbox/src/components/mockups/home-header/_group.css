@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Serif+Kannada:wght@100..900&display=swap');
+
+:root {
+  --primary: 24 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 100% 27%;
+  --secondary-foreground: 0 0% 100%;
+  --accent: 38 100% 50%;
+  --accent-foreground: 0 0% 10%;
+  --background: 30 33% 95%;
+  --foreground: 30 16% 23%;
+  --card: 0 0% 100%;
+  --card-foreground: 30 16% 23%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 30 16% 23%;
+  --muted: 40 20% 90%;
+  --muted-foreground: 0 0% 40%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 40 20% 85%;
+  --input: 40 20% 85%;
+  --ring: 24 100% 50%;
+  --radius: 0.75rem;
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Merriweather', serif;
+}
