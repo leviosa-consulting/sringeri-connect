@@ -120,7 +120,10 @@ interface CartSeva {
   name: string;
   nakshatraId: string;
   rashiId: string;
+  gotra: string;
   city: string;
+  kannadaName: string;
+  kannadaCity: string;
   calendarType: number;
   type: number;
   fromDate: string;
@@ -137,6 +140,14 @@ interface CartSeva {
   remarks: string;
   mode: number;
   sevaCount?: number;
+  addresseeName?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  landmark?: string;
+  country?: string;
+  pincode?: string;
+  state?: string;
+  addresseePlace?: string;
 }
 
 const SEVA_TYPES: SevaType[] = [
@@ -235,6 +246,7 @@ export default function Seva() {
   const [kartaName, setKartaName] = useState("");
   const [kartaNakshatraId, setKartaNakshatraId] = useState("");
   const [kartaRashiId, setKartaRashiId] = useState("");
+  const [kartaGotra, setKartaGotra] = useState("");
   const [kartaCity, setKartaCity] = useState("");
   const [showKartaList, setShowKartaList] = useState(false);
 
@@ -316,14 +328,14 @@ export default function Seva() {
   }, []);
 
   useEffect(() => {
-    if (selectedSevaType?.id !== 1) return;
+    if (selectedSevaType?.id !== 1 && selectedSevaType?.id !== 3) return;
     if (nameTimerRef.current) clearTimeout(nameTimerRef.current);
     nameTimerRef.current = setTimeout(() => transliterate(kartaName, setKannadaName, nameAbortRef), 400);
     return () => { if (nameTimerRef.current) clearTimeout(nameTimerRef.current); };
   }, [kartaName, transliterate, selectedSevaType]);
 
   useEffect(() => {
-    if (selectedSevaType?.id !== 1) return;
+    if (selectedSevaType?.id !== 1 && selectedSevaType?.id !== 3) return;
     if (cityTimerRef.current) clearTimeout(cityTimerRef.current);
     cityTimerRef.current = setTimeout(() => transliterate(kartaCity, setKannadaCity, cityAbortRef), 400);
     return () => { if (cityTimerRef.current) clearTimeout(cityTimerRef.current); };
@@ -597,6 +609,7 @@ export default function Seva() {
     setKartaName("");
     setKartaNakshatraId("");
     setKartaRashiId("");
+    setKartaGotra("");
     setKartaCity("");
     setFromDate(getTomorrowDate());
     setToDate("");
@@ -857,7 +870,10 @@ export default function Seva() {
       name: kartaName,
       nakshatraId: kartaNakshatraId,
       rashiId: kartaRashiId,
+      gotra: kartaGotra,
       city: kartaCity,
+      kannadaName,
+      kannadaCity,
       calendarType,
       type: recurrenceType,
       fromDate,
@@ -874,18 +890,17 @@ export default function Seva() {
       remarks: effectiveRemarks,
       mode: isRecurring ? 3 : 2,
       sevaCount,
+      ...(receivePrasadam === "true" ? {
+        addresseeName,
+        addressLine1,
+        addressLine2,
+        landmark,
+        country,
+        pincode,
+        state,
+        addresseePlace: addressCity,
+      } : {}),
     };
-
-    if (receivePrasadam === "true") {
-      (newSeva as any).addresseeName = addresseeName;
-      (newSeva as any).addressLine1 = addressLine1;
-      (newSeva as any).addressLine2 = addressLine2;
-      (newSeva as any).landmark = landmark;
-      (newSeva as any).country = country;
-      (newSeva as any).pincode = pincode;
-      (newSeva as any).state = state;
-      (newSeva as any).addresseePlace = addressCity;
-    }
 
     setCart((prev) => [...prev, newSeva]);
     setTotalSevaAmount((prev) => prev + newSeva.totalAmount);
@@ -1744,6 +1759,7 @@ export default function Seva() {
                         setKartaName(karta.name || "");
                         setKartaNakshatraId(String(karta.nakshatraId || ""));
                         setKartaRashiId(String(karta.rashiId || ""));
+                        setKartaGotra(karta.gotra || "");
                         setKartaCity(karta.city || "");
                         setShowKartaList(false);
                       }}
@@ -1787,6 +1803,13 @@ export default function Seva() {
                       ))}
                     </select>
                   </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Gotra</label>
+                  <input type="text" value={kartaGotra} onChange={(e) => setKartaGotra(e.target.value)}
+                    className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Enter gotra"
+                    data-testid="input-karta-gotra" />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">City {inAbsentia === "0" || !postageId ? "*" : ""}</label>
