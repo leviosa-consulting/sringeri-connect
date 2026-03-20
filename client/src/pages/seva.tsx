@@ -1569,6 +1569,9 @@ export default function Seva() {
                     {seva.sevaCount && seva.sevaCount > 1 && (
                       <p className="text-xs text-muted-foreground">Occurrences: {seva.sevaCount}</p>
                     )}
+                    {seva.remarks && seva.mode === 3 && (
+                      <p className="text-xs text-muted-foreground italic">{seva.remarks}</p>
+                    )}
                     <p className="text-sm font-bold text-primary mt-1">₹{formatNumber(seva.totalAmount)}</p>
                   </div>
                   <button onClick={() => removeFromCart(index)} className="text-red-400 hover:text-red-600 p-1"
