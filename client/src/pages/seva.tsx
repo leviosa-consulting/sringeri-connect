@@ -1669,7 +1669,22 @@ export default function Seva() {
                 </div>
               </div>
 
-              <button onClick={() => { resetSevaForm(); setStep("home"); setSelectedSevaType(null); }}
+              <button onClick={() => {
+                  setFlCentre(null);
+                  setFlCentreSevas([]);
+                  setFlSelectedSevas(new Set());
+                  setFlPaymentSuccess(false);
+                  setFlAckData(null);
+                  setKannadaName("");
+                  setKannadaCity("");
+                  setKartaName("");
+                  setKartaCity("");
+                  setPayeeMobile("");
+                  setKartaNakshatraId("");
+                  setKartaRashiId("");
+                  setValidationErrors([]);
+                  setErrorMessage("");
+                }}
                 className="uppercase font-medium rounded-md bg-[#3d2000] text-white px-8 py-3 text-sm hover:bg-[#5a3510] transition-colors"
                 data-testid="button-fl-ack-new-booking">
                 Book Another Seva
