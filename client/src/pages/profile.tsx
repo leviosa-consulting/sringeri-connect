@@ -8,7 +8,6 @@ import { LogOut, Settings, History, MapPin, Users, Heart, Home, Loader2, Refresh
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
 import { auth } from "@/lib/firebase";
-import { updateProfile } from "firebase/auth";
 
 const PAGE_SIZE = 20;
 
@@ -66,7 +65,7 @@ function resizeImage(file: File, maxSize: number): Promise<string> {
 
 export default function Profile() {
   const [_, setLocation] = useLocation();
-  const { profile, user, logout, devoteeData, devoteeLoading, refreshDevoteeData } = useAuth();
+  const { profile, user, logout, devoteeData, devoteeLoading, refreshDevoteeData, avatarUrl } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -105,8 +104,8 @@ export default function Profile() {
     try {
       setUploadingPhoto(true);
       const dataUrl = await resizeImage(file, 200);
-      await updateProfile(auth.currentUser, { photoURL: dataUrl });
-      await auth.currentUser.reload();
+      const key = `sringeri-avatar-${auth.currentUser.uid}`;
+      localStorage.setItem(key, dataUrl);
       window.dispatchEvent(new Event("firebase-profile-updated"));
     } catch (err) {
       console.error("Failed to update profile photo:", err);
@@ -163,7 +162,7 @@ export default function Profile() {
             data-testid="button-change-avatar"
           >
             <Avatar className="h-20 w-20 border-4 border-white/20 shadow-xl" data-testid="img-avatar">
-              <AvatarImage src={user?.photoURL || undefined} />
+              <AvatarImage src={avatarUrl || undefined} />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

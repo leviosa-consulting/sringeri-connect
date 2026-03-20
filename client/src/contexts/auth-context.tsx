@@ -122,6 +122,7 @@ interface AuthContextType {
   devoteeData: DevoteeData | null;
   loading: boolean;
   devoteeLoading: boolean;
+  avatarUrl: string | null;
   login: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -132,12 +133,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function getLocalAvatar(uid: string | undefined): string | null {
+  if (!uid) return null;
+  try {
+    return localStorage.getItem(`sringeri-avatar-${uid}`);
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [devoteeData, setDevoteeData] = useState<DevoteeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [devoteeLoading, setDevoteeLoading] = useState(false);
+  const [localAvatar, setLocalAvatar] = useState<string | null>(null);
 
   const fetchDevoteeData = async (firebaseUser: User) => {
     setDevoteeLoading(true);
@@ -184,11 +195,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: firebaseUser.displayName || "Devotee",
           email: firebaseUser.email || "",
         });
+        setLocalAvatar(getLocalAvatar(firebaseUser.uid));
         
         await fetchDevoteeData(firebaseUser);
       } else {
         setProfile(null);
         setDevoteeData(null);
+        setLocalAvatar(null);
       }
       
       setLoading(false);
@@ -197,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleProfileUpdate = () => {
       const currentUser = auth.currentUser;
       if (currentUser) {
-        setUser({ ...currentUser } as User);
+        setLocalAvatar(getLocalAvatar(currentUser.uid));
       }
     };
     window.addEventListener("firebase-profile-updated", handleProfileUpdate);
@@ -243,6 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       devoteeData,
       loading, 
       devoteeLoading,
+      avatarUrl: localAvatar || user?.photoURL || null,
       login, 
       signUp, 
       signInWithGoogle, 

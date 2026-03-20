@@ -62,7 +62,7 @@ interface TodayDetails {
 
 export default function Home() {
   const [_, setLocation] = useLocation();
-  const { profile, user } = useAuth();
+  const { profile, user, avatarUrl } = useAuth();
   const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
   const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
   const [sringeriEvents, setSringeriEvents] = useState<SringeriEvent[]>([]);
@@ -176,7 +176,7 @@ export default function Home() {
                 data-testid="link-profile-avatar"
               >
                 <Avatar className="h-10 w-10 border-2 border-primary/30 shadow-sm">
-                  <AvatarImage src={user?.photoURL || undefined} />
+                  <AvatarImage src={avatarUrl || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">{initials}</AvatarFallback>
                 </Avatar>
               </div>
