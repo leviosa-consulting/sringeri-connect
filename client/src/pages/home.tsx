@@ -547,11 +547,10 @@ export default function Home() {
                     {youtubeVideos.map((video) => (
                       <div
                         key={video.videoId}
-                        className="w-[280px] shrink-0 border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => window.open(video.url, "_blank")}
+                        className="w-[280px] shrink-0 border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow flex flex-col"
                         data-testid={`card-video-${video.videoId}`}
                       >
-                        <div className="relative">
+                        <div className="relative cursor-pointer" onClick={() => window.open(video.url, "_blank")}>
                           <img src={video.thumbnail} alt={video.title} className="w-full h-[146px] object-cover" />
                           <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                             <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center">
@@ -559,9 +558,16 @@ export default function Home() {
                             </div>
                           </div>
                         </div>
-                        <div className="p-3">
+                        <div className="p-3 flex-1">
                           <h3 className="font-serif font-bold text-xs line-clamp-2 whitespace-normal">{video.title}</h3>
                           {video.date && <p className="text-[10px] text-muted-foreground mt-1">{video.date}</p>}
+                        </div>
+                        <div className="px-3 pb-3">
+                          <button
+                            className="text-xs font-bold text-white bg-[#B4A597] hover:bg-[#a39487] px-4 py-1.5 rounded-[3px] transition-colors"
+                            onClick={() => window.open(video.url, "_blank")}
+                            data-testid={`button-watch-youtube-${video.videoId}`}
+                          >WATCH ON YOUTUBE</button>
                         </div>
                       </div>
                     ))}
@@ -574,11 +580,10 @@ export default function Home() {
                 {youtubeVideos.slice(0, 6).map((video) => (
                   <div
                     key={video.videoId}
-                    className="border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => window.open(video.url, "_blank")}
+                    className="border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow flex flex-col"
                     data-testid={`card-video-desktop-${video.videoId}`}
                   >
-                    <div className="relative">
+                    <div className="relative cursor-pointer" onClick={() => window.open(video.url, "_blank")}>
                       <img src={video.thumbnail} alt={video.title} className="w-full h-[140px] object-cover" />
                       <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                         <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center">
@@ -586,9 +591,16 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                    <div className="p-3">
+                    <div className="p-3 flex-1">
                       <h3 className="font-serif font-bold text-sm line-clamp-2">{video.title}</h3>
                       {video.date && <p className="text-xs text-muted-foreground mt-1">{video.date}</p>}
+                    </div>
+                    <div className="px-3 pb-3">
+                      <button
+                        className="text-xs font-bold text-white bg-[#B4A597] hover:bg-[#a39487] px-4 py-1.5 rounded-[3px] transition-colors"
+                        onClick={() => window.open(video.url, "_blank")}
+                        data-testid={`button-watch-youtube-desktop-${video.videoId}`}
+                      >WATCH ON YOUTUBE</button>
                     </div>
                   </div>
                 ))}
