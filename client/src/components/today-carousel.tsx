@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import useEmblaCarousel from "embla-carousel-react";
-import { X, Sun, Sunrise, Sunset, Calendar, BookOpen, Quote, Image, Sparkles } from "lucide-react";
+import { Sun, Sunrise, Sunset, Calendar, BookOpen, Quote, Image, Sparkles } from "lucide-react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 interface TodayDetails {
   todayWebsiteKannada?: string;
@@ -99,94 +101,93 @@ const SLIDE_LABELS = ["Panchanga", "Occasion", "Shloka", "Quote", "Darshan"];
 const SLIDE_ICONS = [Calendar, Sparkles, BookOpen, Quote, Image];
 
 export default function TodayCarousel({ open, onClose, todayDetails, formattedDate }: TodayCarouselProps) {
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, skipSnaps: false });
+  const [api, setApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isUserInteracting, setIsUserInteracting] = useState(false);
 
   const onSelect = useCallback(() => {
-    if (!emblaApi) return;
-    setActiveIndex(emblaApi.selectedScrollSnap());
-  }, [emblaApi]);
+    if (!api) return;
+    setActiveIndex(api.selectedScrollSnap());
+  }, [api]);
 
   useEffect(() => {
-    if (!emblaApi) return;
-    emblaApi.on("select", onSelect);
-    emblaApi.on("pointerDown", () => setIsUserInteracting(true));
-    emblaApi.on("pointerUp", () => {
+    if (!api) return;
+    api.on("select", onSelect);
+    api.on("pointerDown", () => setIsUserInteracting(true));
+    api.on("pointerUp", () => {
       setTimeout(() => setIsUserInteracting(false), 8000);
     });
     onSelect();
     return () => {
-      emblaApi.off("select", onSelect);
+      api.off("select", onSelect);
     };
-  }, [emblaApi, onSelect]);
+  }, [api, onSelect]);
 
   useEffect(() => {
-    if (!emblaApi || !open || isUserInteracting) return;
+    if (!api || !open || isUserInteracting) return;
     const interval = setInterval(() => {
-      emblaApi.scrollNext();
+      api.scrollNext();
     }, 5000);
     return () => clearInterval(interval);
-  }, [emblaApi, open, isUserInteracting]);
+  }, [api, open, isUserInteracting]);
 
   useEffect(() => {
-    if (open && emblaApi) {
-      emblaApi.scrollTo(0, true);
+    if (open && api) {
+      api.scrollTo(0, true);
       setActiveIndex(0);
       setIsUserInteracting(false);
     }
-  }, [open, emblaApi]);
+  }, [open, api]);
 
   const todayShloka = SHLOKAS[getDailyIndex(SHLOKAS.length)];
   const todayQuote = QUOTES[getDailyIndex(QUOTES.length, 3)];
   const todayImage = DARSHAN_IMAGES[getDailyIndex(DARSHAN_IMAGES.length, 1)];
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50" data-testid="today-carousel-overlay">
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
-        onClick={onClose}
-      />
-      <div className="absolute inset-x-0 bottom-0 max-h-[85vh] bg-gradient-to-b from-[#FFF9F0] to-[#F0E6D6] rounded-t-3xl animate-in slide-in-from-bottom duration-500 flex flex-col" data-testid="today-carousel-sheet">
-        <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
-          <div className="flex items-center gap-2">
-            {(() => {
-              const Icon = SLIDE_ICONS[activeIndex];
-              return <Icon className="w-4 h-4 text-primary" />;
-            })()}
-            <span className="text-xs font-semibold text-primary uppercase tracking-wider">{SLIDE_LABELS[activeIndex]}</span>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-foreground/10 transition-colors"
-            data-testid="button-close-today"
-          >
-            <X className="w-5 h-5 text-foreground/60" />
-          </button>
+    <Sheet open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
+      <SheetContent
+        side="bottom"
+        className="rounded-t-3xl max-h-[85vh] bg-gradient-to-b from-[#FFF9F0] to-[#F0E6D6] flex flex-col p-0 [&>button:last-child]:top-3 [&>button:last-child]:right-4"
+        data-testid="today-carousel-sheet"
+      >
+        <VisuallyHidden>
+          <SheetTitle>Today's Spiritual Content</SheetTitle>
+        </VisuallyHidden>
+
+        <div className="flex items-center gap-2 px-5 pt-4 pb-2 shrink-0">
+          {(() => {
+            const Icon = SLIDE_ICONS[activeIndex];
+            return <Icon className="w-4 h-4 text-primary" />;
+          })()}
+          <span className="text-xs font-semibold text-primary uppercase tracking-wider">{SLIDE_LABELS[activeIndex]}</span>
         </div>
 
         <div className="w-12 h-1 bg-foreground/15 rounded-full mx-auto mb-3 shrink-0" />
 
-        <div className="flex-1 overflow-hidden" ref={emblaRef}>
-          <div className="flex h-full">
-            <div className="min-w-0 shrink-0 grow-0 basis-full px-5">
-              <PanchangaSlide todayDetails={todayDetails} formattedDate={formattedDate} />
-            </div>
-            <div className="min-w-0 shrink-0 grow-0 basis-full px-5">
-              <OccasionSlide todayDetails={todayDetails} formattedDate={formattedDate} />
-            </div>
-            <div className="min-w-0 shrink-0 grow-0 basis-full px-5">
-              <ShlokaSlide shloka={todayShloka} />
-            </div>
-            <div className="min-w-0 shrink-0 grow-0 basis-full px-5">
-              <QuoteSlide quote={todayQuote} />
-            </div>
-            <div className="min-w-0 shrink-0 grow-0 basis-full px-5">
-              <DarshanSlide imageUrl={todayImage} />
-            </div>
-          </div>
+        <div className="flex-1 overflow-hidden">
+          <Carousel
+            opts={{ loop: true, skipSnaps: false }}
+            setApi={setApi}
+            className="h-full"
+          >
+            <CarouselContent className="-ml-0 h-full">
+              <CarouselItem className="pl-0 px-5">
+                <PanchangaSlide todayDetails={todayDetails} formattedDate={formattedDate} />
+              </CarouselItem>
+              <CarouselItem className="pl-0 px-5">
+                <OccasionSlide todayDetails={todayDetails} formattedDate={formattedDate} />
+              </CarouselItem>
+              <CarouselItem className="pl-0 px-5">
+                <ShlokaSlide shloka={todayShloka} />
+              </CarouselItem>
+              <CarouselItem className="pl-0 px-5">
+                <QuoteSlide quote={todayQuote} />
+              </CarouselItem>
+              <CarouselItem className="pl-0 px-5">
+                <DarshanSlide imageUrl={todayImage} />
+              </CarouselItem>
+            </CarouselContent>
+          </Carousel>
         </div>
 
         <div className="flex justify-center gap-2 py-4 shrink-0">
@@ -194,7 +195,7 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
             <button
               key={label}
               onClick={() => {
-                emblaApi?.scrollTo(idx);
+                api?.scrollTo(idx);
                 setIsUserInteracting(true);
                 setTimeout(() => setIsUserInteracting(false), 8000);
               }}
@@ -205,8 +206,8 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
             />
           ))}
         </div>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
