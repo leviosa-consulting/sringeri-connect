@@ -118,25 +118,29 @@ interface CartSeva {
   amount: number;
   totalAmount: number;
   name: string;
+  nameK: string;
   nakshatraId: string;
   rashiId: string;
   gotra: string;
+  gotraK: string;
   city: string;
   kannadaName: string;
   kannadaCity: string;
-  calendarType: number;
-  type: number;
+  receiptTypeId: number;
+  branchId: number;
+  calendarType: number | string;
+  type: number | string;
   fromDate: string;
   toDate: string;
   noEnd: boolean;
-  weekdayId: number;
-  weekdayRepeatId: number;
-  specificDate: number;
-  monthId: number;
-  fromChandraMasaId: number;
-  fromNakshatraId: number;
-  fromTithiId: number;
-  fromSouraMasaId: number;
+  weekdayId: number | string;
+  weekdayRepeatId: number | string;
+  specificDate: number | string;
+  monthId: number | string;
+  fromChandraMasaId: number | string;
+  fromNakshatraId: number | string;
+  fromTithiId: number | string;
+  fromSouraMasaId: number | string;
   remarks: string;
   mode: number;
   sevaCount?: number;
@@ -247,6 +251,7 @@ export default function Seva() {
   const [kartaNakshatraId, setKartaNakshatraId] = useState("");
   const [kartaRashiId, setKartaRashiId] = useState("");
   const [kartaGotra, setKartaGotra] = useState("");
+  const [kartaGotraK, setKartaGotraK] = useState("");
   const [kartaCity, setKartaCity] = useState("");
   const [showKartaList, setShowKartaList] = useState(false);
 
@@ -612,6 +617,7 @@ export default function Seva() {
     setKartaNakshatraId("");
     setKartaRashiId("");
     setKartaGotra("");
+    setKartaGotraK("");
     setKartaCity("");
     setFromDate(getTomorrowDate());
     setToDate("");
@@ -822,42 +828,80 @@ export default function Seva() {
 
   function generateRemarks(): string {
     if (selectedSevaType?.id !== 3) return "";
-    let prefix = "";
-    if (calendarType === 1) prefix = "English: ";
-    else if (calendarType === 2) prefix = "Chandra Masa: ";
-    else if (calendarType === 3) prefix = "Soura Masa: ";
-    const parts: string[] = [];
-    if (weekdayRepeatId) {
-      const repeat = WEEKDAY_REPEATS.find(w => w.id === weekdayRepeatId);
-      if (repeat) parts.push(repeat.name);
+    const calType = calendarTypes.find((c: any) => c.id === calendarType);
+    const calendarText = (calType?.name || "") + ": ";
+    let recurrenceText = "";
+
+    const weekdayName = WEEKDAYS.find(w => w.id === weekdayId)?.name || "";
+    const repeatName = WEEKDAY_REPEATS.find(w => w.id === weekdayRepeatId)?.name || "";
+    const tithiName = tithis.find((t: any) => t.id === fromTithiId)?.name || "";
+    const nakshatraName = nakshatras.find((n: any) => n.id === fromNakshatraId)?.name || "";
+    const cmName = chandraMasas.find((c: any) => c.id === fromChandraMasaId)?.name || "";
+    const smName = souraMasas.find((s: any) => s.id === fromSouraMasaId)?.name || "";
+    const MONTHS = [{id:1,name:"January"},{id:2,name:"February"},{id:3,name:"March"},{id:4,name:"April"},{id:5,name:"May"},{id:6,name:"June"},{id:7,name:"July"},{id:8,name:"August"},{id:9,name:"September"},{id:10,name:"October"},{id:11,name:"November"},{id:12,name:"December"}];
+    const monthName = MONTHS.find(m => m.id === monthId)?.name || "";
+
+    if (recurrenceType === 1) {
+      recurrenceText = "Everyday";
+    } else if (recurrenceType === 2) {
+      recurrenceText = "Every " + weekdayName;
+    } else if (recurrenceType === 3) {
+      if (calendarType === 1) {
+        if (weekdayRepeatId && weekdayId) {
+          recurrenceText = repeatName + " " + weekdayName + " of every month";
+        } else if (specificDateNum) {
+          recurrenceText = "On " + specificDateNum + " of every month";
+        }
+      } else if (calendarType === 2) {
+        if (weekdayRepeatId && weekdayId) {
+          recurrenceText = repeatName + " " + weekdayName + " of every month";
+        } else if (fromTithiId) {
+          recurrenceText = tithiName + " of every month";
+        } else if (fromNakshatraId) {
+          recurrenceText = nakshatraName + " nakshatra of every month";
+        }
+      } else if (calendarType === 3) {
+        if (weekdayRepeatId && weekdayId) {
+          recurrenceText = repeatName + " " + weekdayName + " of every month";
+        } else if (fromTithiId) {
+          recurrenceText = tithiName + " of every month";
+        } else if (fromNakshatraId) {
+          recurrenceText = nakshatraName + " nakshatra of every month";
+        }
+      }
+    } else if (recurrenceType === 4) {
+      if (calendarType === 1) {
+        if (weekdayRepeatId && weekdayId) {
+          recurrenceText = repeatName + " " + weekdayName + " of " + monthName + " month of every year";
+        } else if (specificDateNum) {
+          recurrenceText = specificDateNum + " " + monthName + " of every year";
+        }
+      } else if (calendarType === 2) {
+        if (weekdayRepeatId && weekdayId) {
+          recurrenceText = repeatName + " " + weekdayName;
+          if (fromChandraMasaId) {
+            recurrenceText += " of " + cmName + " masa  of every year";
+          }
+        } else if (fromChandraMasaId && fromTithiId) {
+          recurrenceText = cmName + " " + tithiName + " tithi of every year";
+        } else if (fromChandraMasaId && fromNakshatraId) {
+          recurrenceText = cmName + " " + nakshatraName + " nakshatra of every year";
+        }
+      } else if (calendarType === 3) {
+        if (weekdayRepeatId && weekdayId) {
+          recurrenceText = repeatName + " " + weekdayName;
+          if (fromSouraMasaId) {
+            recurrenceText += " of " + smName + " masa  of every year";
+          }
+        } else if (fromSouraMasaId && fromTithiId) {
+          recurrenceText = smName + " " + tithiName + " tithi of every year";
+        } else if (fromSouraMasaId && fromNakshatraId) {
+          recurrenceText = smName + " " + nakshatraName + " nakshatra of every year";
+        }
+      }
     }
-    if (weekdayId) {
-      const weekday = WEEKDAYS.find(w => w.id === weekdayId);
-      if (weekday) parts.push(weekday.name);
-    }
-    if (specificDateNum) parts.push(`on ${specificDateNum}`);
-    if (fromTithiId) {
-      const tithi = tithis.find((t: any) => t.id === fromTithiId);
-      if (tithi) parts.push(tithi.name);
-    }
-    if (fromNakshatraId) {
-      const nakshatra = nakshatras.find((n: any) => n.id === fromNakshatraId);
-      if (nakshatra) parts.push(nakshatra.name);
-    }
-    if (monthId) {
-      const months = [{id:1,name:"January"},{id:2,name:"February"},{id:3,name:"March"},{id:4,name:"April"},{id:5,name:"May"},{id:6,name:"June"},{id:7,name:"July"},{id:8,name:"August"},{id:9,name:"September"},{id:10,name:"October"},{id:11,name:"November"},{id:12,name:"December"}];
-      const month = months.find(m => m.id === monthId);
-      if (month) parts.push(`in ${month.name}`);
-    }
-    if (fromChandraMasaId) {
-      const cm = chandraMasas.find((c: any) => c.id === fromChandraMasaId);
-      if (cm) parts.push(`in ${cm.name}`);
-    }
-    if (fromSouraMasaId) {
-      const sm = souraMasas.find((s: any) => s.id === fromSouraMasaId);
-      if (sm) parts.push(`in ${sm.name}`);
-    }
-    return prefix + parts.join(" ");
+
+    return calendarText + recurrenceText;
   }
 
   function addSevaToCart() {
@@ -888,25 +932,29 @@ export default function Seva() {
       amount: finalSevaAmount,
       totalAmount: finalTotal,
       name: kartaName,
+      nameK: kannadaName,
       nakshatraId: kartaNakshatraId,
       rashiId: kartaRashiId,
       gotra: kartaGotra,
+      gotraK: kartaGotraK,
       city: kartaCity,
       kannadaName,
       kannadaCity,
-      calendarType,
-      type: recurrenceType,
+      receiptTypeId: (selectedSeva as any)?.receiptTypeId || 1,
+      branchId: (selectedSeva as any)?.branchId || 1,
+      calendarType: isRecurring ? calendarType : "",
+      type: isRecurring ? recurrenceType : "",
       fromDate,
       toDate: effectiveToDate,
       noEnd,
-      weekdayId,
-      weekdayRepeatId,
-      specificDate: specificDateNum,
-      monthId,
-      fromChandraMasaId,
-      fromNakshatraId,
-      fromTithiId,
-      fromSouraMasaId,
+      weekdayId: weekdayId || "",
+      weekdayRepeatId: weekdayRepeatId || "",
+      specificDate: specificDateNum || "",
+      monthId: monthId || "",
+      fromChandraMasaId: fromChandraMasaId || "",
+      fromNakshatraId: fromNakshatraId || "",
+      fromTithiId: fromTithiId || "",
+      fromSouraMasaId: fromSouraMasaId || "",
       remarks: effectiveRemarks,
       mode: isRecurring ? 3 : 2,
       sevaCount,
@@ -985,10 +1033,12 @@ export default function Seva() {
 
       const receiptBody: any = {
         name: payeeName,
+        nameK: "",
         email: payeeEmail,
         countryCode: payeeCountryCode,
         mobile: payeeMobile,
-        addresseePlace: payeePlace,
+        city: payeePlace,
+        cityK: "",
         totalAmount: totalSevaAmount,
         paymentModeId: 6,
         addedAt,
@@ -1792,6 +1842,7 @@ export default function Seva() {
                         setKartaNakshatraId(String(karta.nakshatraId || ""));
                         setKartaRashiId(String(karta.rashiId || ""));
                         setKartaGotra(karta.gotra || "");
+                        setKartaGotraK(karta.gotraK || "");
                         setKartaCity(karta.city || "");
                         setShowKartaList(false);
                       }}
