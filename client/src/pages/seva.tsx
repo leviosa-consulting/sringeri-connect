@@ -57,6 +57,8 @@ interface DeitySeva {
   name: string;
   price: number;
   postageCharges?: number;
+  receiptTypeId?: number;
+  branchId?: number;
 }
 
 interface SevaAvailabilityDate {
@@ -940,8 +942,8 @@ export default function Seva() {
       city: kartaCity,
       kannadaName,
       kannadaCity,
-      receiptTypeId: (selectedSeva as any)?.receiptTypeId || 1,
-      branchId: (selectedSeva as any)?.branchId || 1,
+      receiptTypeId: selectedSeva?.receiptTypeId || 1,
+      branchId: selectedSeva?.branchId || 1,
       calendarType: isRecurring ? calendarType : "",
       type: isRecurring ? recurrenceType : "",
       fromDate,
@@ -1038,7 +1040,7 @@ export default function Seva() {
         countryCode: payeeCountryCode,
         mobile: payeeMobile,
         city: payeePlace,
-        cityK: "",
+        cityK: payeePlace,
         totalAmount: totalSevaAmount,
         paymentModeId: 6,
         addedAt,
