@@ -377,11 +377,17 @@ export async function registerRoutes(
             }
             if (videos.length > 0) {
               console.log(`[YouTube] Channel page scrape succeeded: ${videos.length} videos found`);
+            } else {
+              console.log("[YouTube] Channel page scrape returned data but parsed 0 videos");
             }
+          } else {
+            console.log("[YouTube] Channel page scrape: no ytInitialData found in response");
           }
+        } else {
+          console.log(`[YouTube] Channel page scrape returned HTTP ${pageRes.status}`);
         }
       } catch (scrapeErr) {
-        console.log("[YouTube] Channel page scrape failed, trying RSS feed...");
+        console.log(`[YouTube] Channel page scrape failed: ${String(scrapeErr)}`);
       }
 
       if (videos.length === 0) {
@@ -423,7 +429,7 @@ export async function registerRoutes(
             console.log(`[YouTube] RSS feed returned ${response.status}`);
           }
         } catch (rssErr) {
-          console.log("[YouTube] RSS feed also failed");
+          console.log(`[YouTube] RSS feed also failed: ${String(rssErr)}`);
         }
       }
 
