@@ -167,9 +167,9 @@ export default function Home() {
       </div>
 
       {/* Header + Panchanga gradient wrapper (mobile) */}
-      <div className="md:hidden -mt-4 w-screen relative left-1/2 -translate-x-1/2" style={{ background: 'linear-gradient(to bottom, #ffffff, #d9cfc3)' }}>
+      <div className="md:hidden -mt-8 w-screen relative left-1/2 -translate-x-1/2" style={{ background: 'linear-gradient(to bottom, #ffffff, #d9cfc3)' }}>
         {/* Header Section */}
-        <div className="px-4 space-y-4 pb-4">
+        <div className="px-4 space-y-4 pt-4 pb-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div
