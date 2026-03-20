@@ -1356,31 +1356,30 @@ export default function Seva() {
     }
   }
 
-  async function fetchRecurrenceCount() {
-    if (selectedSevaType?.id !== 3 || !calendarType || !recurrenceType) return;
-    try {
-      const effectiveToDate = noEnd ? "9999-12-31" : (toDate || "0");
-      const masaId = calendarType === 2 ? (fromChandraMasaId || 0) : (calendarType === 3 ? (fromSouraMasaId || 0) : 0);
-      const params = [
-        calendarType, fromDate || "0", effectiveToDate, recurrenceType,
-        weekdayId || 0, specificDateNum || 0, weekdayRepeatId || 0,
-        monthId || 0, fromTithiId || 0, fromNakshatraId || 0, masaId,
-      ].join("/");
-      const res = await fetch(`/api/recurranceCount/${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSevaCount(typeof data === "number" ? data : (data?.count || 1));
-      }
-    } catch {
-      setSevaCount(1);
-    }
-  }
-
   useEffect(() => {
-    if (selectedSevaType?.id === 3 && calendarType && recurrenceType && fromDate && (toDate || noEnd)) {
-      fetchRecurrenceCount();
-    }
-  }, [calendarType, recurrenceType, fromDate, toDate, noEnd, weekdayId, weekdayRepeatId, specificDateNum, monthId, fromTithiId, fromNakshatraId, fromSouraMasaId, fromChandraMasaId]);
+    if (selectedSevaType?.id !== 3 || !calendarType || !recurrenceType || !fromDate || (!toDate && !noEnd)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const effectiveToDate = noEnd ? "9999-12-31" : (toDate || "0");
+        const masaId = calendarType === 2 ? (fromChandraMasaId || 0) : (calendarType === 3 ? (fromSouraMasaId || 0) : 0);
+        const params = [
+          calendarType, fromDate, effectiveToDate, recurrenceType,
+          weekdayId || 0, specificDateNum || 0, weekdayRepeatId || 0,
+          monthId || 0, fromTithiId || 0, fromNakshatraId || 0, masaId,
+        ].join("/");
+        const res = await fetch(`/api/recurranceCount/${params}`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          const count = typeof data === "number" ? data : (typeof data?.count === "number" ? data.count : 1);
+          setSevaCount(count);
+        }
+      } catch {
+        if (!cancelled) setSevaCount(1);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedSevaType?.id, calendarType, recurrenceType, fromDate, toDate, noEnd, weekdayId, weekdayRepeatId, specificDateNum, monthId, fromTithiId, fromNakshatraId, fromSouraMasaId, fromChandraMasaId]);
 
   // ========== PAYEE STEP ==========
   if (step === "payee") {
