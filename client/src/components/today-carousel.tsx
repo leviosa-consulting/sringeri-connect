@@ -110,18 +110,23 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
     setActiveIndex(api.selectedScrollSnap());
   }, [api]);
 
+  const handlePointerDown = useCallback(() => setIsUserInteracting(true), []);
+  const handlePointerUp = useCallback(() => {
+    setTimeout(() => setIsUserInteracting(false), 8000);
+  }, []);
+
   useEffect(() => {
     if (!api) return;
     api.on("select", onSelect);
-    api.on("pointerDown", () => setIsUserInteracting(true));
-    api.on("pointerUp", () => {
-      setTimeout(() => setIsUserInteracting(false), 8000);
-    });
+    api.on("pointerDown", handlePointerDown);
+    api.on("pointerUp", handlePointerUp);
     onSelect();
     return () => {
       api.off("select", onSelect);
+      api.off("pointerDown", handlePointerDown);
+      api.off("pointerUp", handlePointerUp);
     };
-  }, [api, onSelect]);
+  }, [api, onSelect, handlePointerDown, handlePointerUp]);
 
   useEffect(() => {
     if (!api || !open || isUserInteracting) return;

@@ -220,20 +220,21 @@ export default function Home() {
             </a>
           </div>
 
-          {/* Today Button */}
-          <div className="pt-2">
-            <button
-              onClick={() => setTodaySheetOpen(true)}
-              className="group relative mx-auto flex items-center gap-1.5 px-6 py-2 rounded-full bg-primary text-white text-sm font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 active:scale-95 transition-all duration-200"
-              data-testid="button-today-ritual"
-            >
-              <span className="absolute inset-0 rounded-full bg-primary/20 animate-ping opacity-30" style={{ animationDuration: '3s' }} />
-              <span className="relative">Today</span>
-              <ChevronDown className="w-4 h-4 relative group-hover:translate-y-0.5 transition-transform" />
-            </button>
-          </div>
         </div>
       )}
+
+        {/* Today Button — always visible */}
+        <div className="py-3 flex justify-center">
+          <button
+            onClick={() => setTodaySheetOpen(true)}
+            className="group relative mx-auto flex items-center gap-1.5 px-6 py-2 rounded-full bg-primary text-white text-sm font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 active:scale-95 transition-all duration-200"
+            data-testid="button-today-ritual"
+          >
+            <span className="absolute inset-0 rounded-full bg-primary/20 animate-ping opacity-30" style={{ animationDuration: '3s' }} />
+            <span className="relative">Today</span>
+            <ChevronDown className="w-4 h-4 relative group-hover:translate-y-0.5 transition-transform" />
+          </button>
+        </div>
       </div>
 
       {/* Today Carousel Sheet */}
