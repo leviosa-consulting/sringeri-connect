@@ -466,7 +466,7 @@ export default function Home() {
                     {announcements.map((item) => (
                       <div
                         key={item.id}
-                        className="w-[220px] shrink-0 rounded-xl border border-border/50 bg-card flex flex-col justify-between hover:shadow-md transition-shadow"
+                        className="w-[260px] shrink-0 border border-border/50 bg-card flex flex-col justify-between hover:shadow-md transition-shadow"
                         data-testid={`card-announcement-${item.id}`}
                       >
                         <div className="p-4 flex-1">
@@ -498,7 +498,7 @@ export default function Home() {
                     {announcements.map((item) => (
                       <div
                         key={item.id}
-                        className="w-[260px] shrink-0 rounded-xl border border-border/50 bg-card flex flex-col justify-between hover:shadow-md transition-shadow"
+                        className="w-[260px] shrink-0 border border-border/50 bg-card flex flex-col justify-between hover:shadow-md transition-shadow"
                         data-testid={`card-announcement-desktop-${item.id}`}
                       >
                         <div className="p-5 flex-1">
@@ -544,7 +544,7 @@ export default function Home() {
                     {youtubeVideos.map((video) => (
                       <div
                         key={video.videoId}
-                        className="w-[260px] shrink-0 rounded-xl border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                        className="w-[260px] shrink-0 border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
                         onClick={() => window.open(video.url, "_blank")}
                         data-testid={`card-video-${video.videoId}`}
                       >
@@ -571,7 +571,7 @@ export default function Home() {
                 {youtubeVideos.slice(0, 6).map((video) => (
                   <div
                     key={video.videoId}
-                    className="rounded-xl border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                    className="border border-border/50 bg-card overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => window.open(video.url, "_blank")}
                     data-testid={`card-video-desktop-${video.videoId}`}
                   >
