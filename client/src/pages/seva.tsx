@@ -720,20 +720,31 @@ export default function Seva() {
       if ((calendarType === 2 || calendarType === 3) && !noEnd && toDate && toDate > "2027-04-06") {
         errors.push("End date for lunar/solar calendar cannot exceed 2027-04-06.");
       }
-      if (recurrenceType >= 2 && !weekdayId && !fromTithiId && !fromNakshatraId) {
-        errors.push("Please select a weekday, tithi, or nakshatra.");
+      if (recurrenceType === 2 && !weekdayId) {
+        errors.push("Please select a weekday.");
       }
-      if ((recurrenceType === 3 || recurrenceType === 4) && !weekdayRepeatId && !fromTithiId && !fromNakshatraId) {
-        errors.push("Please select a repeat pattern, tithi, or nakshatra.");
+      if ((recurrenceType === 3 || recurrenceType === 4) && calendarType === 1) {
+        if (!weekdayId && !specificDateNum) {
+          errors.push("Please select a weekday or specific date.");
+        }
+        if (weekdayId && !weekdayRepeatId) {
+          errors.push("Please select a repeat pattern.");
+        }
+        if (recurrenceType === 4 && specificDateNum && !monthId) {
+          errors.push("Please select a month.");
+        }
       }
-      if (calendarType === 1 && recurrenceType === 4 && !monthId && !specificDateNum) {
-        errors.push("Please select a month or specific date.");
-      }
-      if (calendarType === 2 && recurrenceType === 4 && !fromChandraMasaId && !fromTithiId && !fromNakshatraId) {
-        errors.push("Please select a Chandra Masa, tithi, or nakshatra.");
-      }
-      if (calendarType === 3 && recurrenceType === 4 && !fromSouraMasaId && !fromTithiId && !fromNakshatraId) {
-        errors.push("Please select a Soura Masa, tithi, or nakshatra.");
+      if ((recurrenceType === 3 || recurrenceType === 4) && (calendarType === 2 || calendarType === 3)) {
+        if (!weekdayId && !fromTithiId && !fromNakshatraId) {
+          errors.push("Please select a weekday, tithi, or nakshatra.");
+        }
+        if (weekdayId && !weekdayRepeatId) {
+          errors.push("Please select a repeat pattern.");
+        }
+        if (recurrenceType === 4 && (fromTithiId || fromNakshatraId)) {
+          if (calendarType === 2 && !fromChandraMasaId) errors.push("Please select a Chandra Masa.");
+          if (calendarType === 3 && !fromSouraMasaId) errors.push("Please select a Soura Masa.");
+        }
       }
       if (sevaCount <= 0) errors.push("Please select a valid date range for seva.");
     }
@@ -1366,7 +1377,7 @@ export default function Seva() {
   }
 
   useEffect(() => {
-    if (selectedSevaType?.id === 3 && calendarType && recurrenceType && (toDate || noEnd)) {
+    if (selectedSevaType?.id === 3 && calendarType && recurrenceType && fromDate && (toDate || noEnd)) {
       fetchRecurrenceCount();
     }
   }, [calendarType, recurrenceType, fromDate, toDate, noEnd, weekdayId, weekdayRepeatId, specificDateNum, monthId, fromTithiId, fromNakshatraId, fromSouraMasaId, fromChandraMasaId]);
@@ -2432,7 +2443,7 @@ export default function Seva() {
                       <div className="space-y-3">
                         <div>
                           <label className="text-xs text-muted-foreground mb-2 block">Weekday</label>
-                          <select value={weekdayId} onChange={(e) => { setWeekdayId(Number(e.target.value)); if (Number(e.target.value)) { setSpecificDateNum(0); } }}
+                          <select value={weekdayId} onChange={(e) => { setWeekdayId(Number(e.target.value)); if (Number(e.target.value)) { setSpecificDateNum(0); setMonthId(0); } }}
                             className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
                             data-testid="select-weekday">
                             <option value={0}>Select Weekday</option>
@@ -2458,7 +2469,7 @@ export default function Seva() {
                               data-testid="input-specific-date" />
                           </div>
                         )}
-                        {recurrenceType === 4 && (
+                        {recurrenceType === 4 && !weekdayId && (
                           <div>
                             <label className="text-xs text-muted-foreground mb-2 block">Month</label>
                             <select value={monthId} onChange={(e) => setMonthId(Number(e.target.value))}
