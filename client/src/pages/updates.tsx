@@ -212,9 +212,9 @@ export default function Updates() {
                     className="flex items-start gap-2.5 group py-1.5 cursor-pointer"
                     data-testid={`link-update-${item.id}`}
                   >
-                    <span className={`shrink-0 mt-0.5 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${tag.bg}`}>
-                      <Icon className="h-2.5 w-2.5" />
-                      {tag.label}
+                    <span className={`shrink-0 mt-0.5 inline-flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider rounded ${tag.bg} w-6 h-6 md:w-[100px] md:h-auto md:px-1.5 md:py-0.5`}>
+                      <Icon className="h-3 w-3 md:h-2.5 md:w-2.5" />
+                      <span className="hidden md:inline">{tag.label}</span>
                     </span>
                     <span className="text-sm leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
                       {item.title}
