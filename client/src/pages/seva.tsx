@@ -2666,6 +2666,47 @@ export default function Seva() {
             </Card>
           )}
 
+          {selectedSeva && (selectedSevaType?.id !== 3 || (!sevaCountLoading && sevaCountFetched && sevaCount > 0)) && (() => {
+            const isBhikshaCapped = selectedSevaType?.id === 3 && selectedSeva?.id === 59 && noEnd && recurrenceType === 1 && computedSevaAmount > 2500000;
+            const displaySevaAmount = isBhikshaCapped ? 2500000 : computedSevaAmount;
+            const displayPostage = computedPostageAmount;
+            const displayTotal = displaySevaAmount + displayPostage;
+            return (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-4 space-y-2">
+                  <h3 className="font-serif font-bold text-sm">Payment Summary</h3>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Seva Amount</span>
+                      <span>
+                        {selectedSevaType?.id === 3 && sevaCount > 1 ? (
+                          <span>₹{formatNumber(sevaBaseAmount)} × {sevaCount} = ₹{formatNumber(displaySevaAmount)}</span>
+                        ) : (
+                          <span>₹{formatNumber(displaySevaAmount)}</span>
+                        )}
+                      </span>
+                    </div>
+                    {isBhikshaCapped && (
+                      <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+                        Guru Bhikshavandanam lifetime daily seva capped at ₹25,00,000
+                      </p>
+                    )}
+                    {displayPostage > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Postage{selectedSevaType?.id === 3 && sevaCount > 1 ? ` (₹${formatNumber(postageCharges)} × ${sevaCount})` : ""}</span>
+                        <span>₹{formatNumber(displayPostage)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-primary/20 pt-1 flex justify-between font-bold">
+                      <span>Total</span>
+                      <span className="text-primary">₹{formatNumber(displayTotal)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {validationErrors.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-md p-3">
               {validationErrors.map((err, i) => <p key={i} className="text-red-600 text-xs">{err}</p>)}
