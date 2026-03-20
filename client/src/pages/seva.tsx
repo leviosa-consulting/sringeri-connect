@@ -1576,7 +1576,7 @@ export default function Seva() {
                     <p className="text-xs text-muted-foreground mt-1">{seva.sannidhiName}</p>
                     <p className="text-xs text-muted-foreground">Devotee: {seva.name}</p>
                     {seva.sevaDate && <p className="text-xs text-muted-foreground">Date: {formatDate(seva.sevaDate)}</p>}
-                    {seva.sevaCount && seva.sevaCount > 1 && (
+                    {seva.sevaCount && seva.sevaCount >= 1 && (
                       <p className="text-xs text-muted-foreground">Occurrences: {seva.sevaCount}</p>
                     )}
                     {seva.remarks && seva.mode === 3 && (
@@ -2595,14 +2595,20 @@ export default function Seva() {
             </Card>
           )}
 
-          {selectedSeva && selectedSevaType?.id === 3 && sevaCount > 1 && (
+          {selectedSeva && selectedSevaType?.id === 3 && sevaCount > 0 && (
             <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-              <p className="text-xs text-green-700 font-medium">This seva will be performed {sevaCount} times</p>
+              <p className="text-xs text-green-700 font-medium">This seva will be performed {sevaCount} {sevaCount === 1 ? "time" : "times"}</p>
               <p className="text-xs text-green-600 mt-1">Total: ₹{formatNumber(sevaBaseAmount)} × {sevaCount} = ₹{formatNumber(computedSevaAmount)}</p>
             </div>
           )}
 
-          {selectedSeva && selectedSevaType?.id === 3 && (
+          {selectedSeva && selectedSevaType?.id === 3 && sevaCount === 0 && fromDate && (toDate || noEnd) && (
+            <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+              <p className="text-xs text-red-700 font-medium">No occurrences found for the selected date range and recurrence pattern. Please adjust your selections.</p>
+            </div>
+          )}
+
+          {selectedSeva && selectedSevaType?.id === 3 && sevaCount > 0 && (
             <Card>
               <CardContent className="p-5 space-y-3">
                 <h3 className="font-serif font-bold text-sm">Prasadam & Postage</h3>
@@ -2641,7 +2647,7 @@ export default function Seva() {
             </div>
           )}
 
-          {selectedSeva && (
+          {selectedSeva && (selectedSevaType?.id !== 3 || sevaCount > 0) && (
             <Button className="w-full h-11" onClick={goToKartaStep} data-testid="button-next-karta">
               Next — Enter Devotee Details
             </Button>
