@@ -89,11 +89,14 @@ Preferred communication style: Simple, everyday language.
   3. `/api/paymentAck` POST — forwards Paytm response to Sringeri API
   4. `/api/verifyPaytmTransaction` POST — server-side verification with regular credentials
 - Seva Booking APIs: centres, online/deities/:sevaTypeId, online/deitySevas/:sannidhiId/:sevaTypeId, online/sevaAvailability/:dsId, onlineFrequentSevas, rashis, postageOptions, recurrenceTypes, recurranceCount (multi-param), online/fl (POST for payment)
-- Fastline seva flow uses Paytm JS Checkout:
+- Fastline seva flow uses Paytm JS Checkout (both standalone `/fastline` page AND "Today" section in `/seva` page share the same flow):
   1. `/api/initiatePaytmTransaction` POST — generates FL_ orderId, calls Paytm Initiate Transaction API, returns txnToken
   2. `/api/newReceiptFl` POST — creates DB receipt with form data (devoteeName, devoteeNameK, totalAmount, paymentModeId=6, mobile, city, cityK, receiptTypeId, inAbsentia, branchId, addedAt, status=8, paymentRef=orderId, selectedSevas)
   3. Paytm JS Checkout opens inline for payment
   4. `/api/paymentAck` POST — forwards Paytm response (uppercase keys: BANKNAME, BANKTXNID, CURRENCY, PAYMENTMODE, ORDERID, RESPCODE, RESPMSG, STATUS, TXNDATE, TXNID, TXNAMOUNT) to Sringeri API
+  5. `/api/verifyPaytmTransaction` POST — server-side verification (non-blocking)
+  6. Success screen shows Transaction ID, Order ID, Amount, and list of booked sevas
+- Both Fastline UIs include auto-transliteration of Karta Name and City to Kannada via `/api/transliterate`
 - Requires `PAYTM_MID`, `PAYTM_MERCHANT_KEY` (regular) and `PAYTM_MID_SPCT`, `PAYTM_MERCHANT_KEY_SPCT` (80G donations) environment secrets
 - Other seva types (One-time, Recurring) still use `/api/online/fl` POST with Razorpay
 - Three seva types: Fastline (id=1, today's sevas), One-time (id=2, future date with calendar), Recurring/Puduvattu (id=3, recurring with calendar type and recurrence patterns)
