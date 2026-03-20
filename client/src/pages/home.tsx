@@ -169,17 +169,23 @@ export default function Home() {
       {/* Header Section */}
       <div className="md:hidden px-4 -mt-4 space-y-4">
           <div className="flex justify-between items-center">
-            <div className="space-y-1">
-              <h2 className="text-sm font-medium text-muted-foreground">Namaste,</h2>
-              <h1 className="text-2xl font-serif font-bold text-foreground">{displayName}</h1>
+            <div className="flex items-center gap-3">
+              <div
+                className="cursor-pointer"
+                onClick={() => setLocation("/profile")}
+                data-testid="link-profile-avatar"
+              >
+                <Avatar className="h-10 w-10 border-2 border-primary/30 shadow-sm">
+                  <AvatarImage src={user?.photoURL || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">{initials}</AvatarFallback>
+                </Avatar>
+              </div>
+              <div className="space-y-0.5">
+                <h2 className="text-xs font-medium text-muted-foreground">Namaste,</h2>
+                <h1 className="text-xl font-serif font-bold text-foreground">{displayName}</h1>
+              </div>
             </div>
-            <div className="flex gap-3 items-center">
-              <FontSizeToggle />
-              <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                <AvatarImage src={user?.photoURL || undefined} />
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-            </div>
+            <FontSizeToggle />
           </div>
           
           {/* Search hidden for now */}
