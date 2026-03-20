@@ -1910,7 +1910,8 @@ export async function registerRoutes(
         String(now.getMinutes()).padStart(2, "0") +
         String(now.getSeconds()).padStart(2, "0");
       const rand = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
-      const orderId = `FL_${ts}_${rand}`;
+      const orderPrefix = req.body.orderPrefix || "FL";
+      const orderId = `${orderPrefix}_${ts}_${rand}`;
 
       const paytmParams: Record<string, any> = {
         body: {
@@ -2071,6 +2072,40 @@ export async function registerRoutes(
       res.json(data);
     } catch (error) {
       console.error("Error creating receipt:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/newReceiptFlr", async (req, res) => {
+    try {
+      const response = await fetch(`${SRINGERI_API_URL}/api/newReceiptFlr`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(req.body),
+      });
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to create recurring receipt" });
+      }
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('{');
+        const jsonStartArr = text.indexOf('[');
+        const start = jsonStart !== -1 && (jsonStartArr === -1 || jsonStart < jsonStartArr) ? jsonStart : jsonStartArr;
+        if (start !== -1) {
+          data = JSON.parse(text.substring(start));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        return res.status(500).json({ error: "Invalid API response" });
+      }
+      res.json(data);
+    } catch (error) {
+      console.error("Error creating recurring receipt:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

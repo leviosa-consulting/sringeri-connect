@@ -186,6 +186,7 @@ const WEEKDAY_REPEATS = [
   { id: 3, name: "2nd" },
   { id: 4, name: "3rd" },
   { id: 5, name: "4th" },
+  { id: 6, name: "Last" },
 ];
 
 function formatNumber(value: number): string {
@@ -284,6 +285,9 @@ export default function Seva() {
   const [flSelectedSevas, setFlSelectedSevas] = useState<Set<number>>(new Set());
   const [flPaymentSuccess, setFlPaymentSuccess] = useState(false);
   const [flAckData, setFlAckData] = useState<{ txnId: string; orderId: string; amount: string; sevaNames: string[] } | null>(null);
+
+  const [cartPaymentSuccess, setCartPaymentSuccess] = useState(false);
+  const [cartAckData, setCartAckData] = useState<{ txnId: string; orderId: string; amount: string; sevaNames: string[] } | null>(null);
 
   const [kannadaName, setKannadaName] = useState("");
   const [kannadaCity, setKannadaCity] = useState("");
@@ -624,6 +628,8 @@ export default function Seva() {
     setFlSelectedSevas(new Set());
     setFlPaymentSuccess(false);
     setFlAckData(null);
+    setCartPaymentSuccess(false);
+    setCartAckData(null);
     setKannadaName("");
     setKannadaCity("");
     setValidationErrors([]);
@@ -698,6 +704,24 @@ export default function Seva() {
       if (!toDate && !noEnd) errors.push("Please select an end date or mark as no end.");
       if (!calendarType) errors.push("Please select a calendar type.");
       if (!recurrenceType) errors.push("Please select a recurrence type.");
+      if ((calendarType === 2 || calendarType === 3) && !noEnd && toDate && toDate > "2027-04-06") {
+        errors.push("End date for lunar/solar calendar cannot exceed 2027-04-06.");
+      }
+      if (recurrenceType >= 2 && !weekdayId && !fromTithiId && !fromNakshatraId) {
+        errors.push("Please select a weekday, tithi, or nakshatra.");
+      }
+      if ((recurrenceType === 3 || recurrenceType === 4) && !weekdayRepeatId && !fromTithiId && !fromNakshatraId) {
+        errors.push("Please select a repeat pattern, tithi, or nakshatra.");
+      }
+      if (calendarType === 1 && recurrenceType === 4 && !monthId && !specificDateNum) {
+        errors.push("Please select a month or specific date.");
+      }
+      if (calendarType === 2 && recurrenceType === 4 && !fromChandraMasaId && !fromTithiId && !fromNakshatraId) {
+        errors.push("Please select a Chandra Masa, tithi, or nakshatra.");
+      }
+      if (calendarType === 3 && recurrenceType === 4 && !fromSouraMasaId && !fromTithiId && !fromNakshatraId) {
+        errors.push("Please select a Soura Masa, tithi, or nakshatra.");
+      }
       if (sevaCount <= 0) errors.push("Please select a valid date range for seva.");
     }
 
@@ -763,19 +787,73 @@ export default function Seva() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function generateRemarks(): string {
+    if (selectedSevaType?.id !== 3) return "";
+    let prefix = "";
+    if (calendarType === 1) prefix = "English: ";
+    else if (calendarType === 2) prefix = "Chandra Masa: ";
+    else if (calendarType === 3) prefix = "Soura Masa: ";
+    const parts: string[] = [];
+    if (weekdayRepeatId) {
+      const repeat = WEEKDAY_REPEATS.find(w => w.id === weekdayRepeatId);
+      if (repeat) parts.push(repeat.name);
+    }
+    if (weekdayId) {
+      const weekday = WEEKDAYS.find(w => w.id === weekdayId);
+      if (weekday) parts.push(weekday.name);
+    }
+    if (specificDateNum) parts.push(`on ${specificDateNum}`);
+    if (fromTithiId) {
+      const tithi = tithis.find((t: any) => t.id === fromTithiId);
+      if (tithi) parts.push(tithi.name);
+    }
+    if (fromNakshatraId) {
+      const nakshatra = nakshatras.find((n: any) => n.id === fromNakshatraId);
+      if (nakshatra) parts.push(nakshatra.name);
+    }
+    if (monthId) {
+      const months = [{id:1,name:"January"},{id:2,name:"February"},{id:3,name:"March"},{id:4,name:"April"},{id:5,name:"May"},{id:6,name:"June"},{id:7,name:"July"},{id:8,name:"August"},{id:9,name:"September"},{id:10,name:"October"},{id:11,name:"November"},{id:12,name:"December"}];
+      const month = months.find(m => m.id === monthId);
+      if (month) parts.push(`in ${month.name}`);
+    }
+    if (fromChandraMasaId) {
+      const cm = chandraMasas.find((c: any) => c.id === fromChandraMasaId);
+      if (cm) parts.push(`in ${cm.name}`);
+    }
+    if (fromSouraMasaId) {
+      const sm = souraMasas.find((s: any) => s.id === fromSouraMasaId);
+      if (sm) parts.push(`in ${sm.name}`);
+    }
+    return prefix + parts.join(" ");
+  }
+
   function addSevaToCart() {
+    const isRecurring = selectedSevaType?.id === 3;
+    const effectiveToDate = isRecurring && noEnd ? "9999-12-31" : toDate;
+    const effectiveInAbsentia = isRecurring ? 1 : (Number(inAbsentia) || 0);
+    const effectiveRemarks = isRecurring ? generateRemarks() : sevaRemarks;
+
+    let finalSevaAmount = computedSevaAmount;
+    let finalTotal = computedTotalPerSeva;
+    if (isRecurring && selectedSeva?.id === 59 && noEnd && recurrenceType === 1) {
+      if (finalSevaAmount > 2500000) {
+        finalSevaAmount = 2500000;
+        finalTotal = finalSevaAmount + computedPostageAmount;
+      }
+    }
+
     const newSeva: CartSeva = {
       sannidhiId: selectedSannidhi?.id || 0,
       sannidhiName: selectedSannidhi?.name || "",
       dsId: selectedSeva?.id || 0,
       deitySevaName: selectedSeva?.name || "",
       sevaDate,
-      inAbsentia: Number(inAbsentia) || 0,
+      inAbsentia: effectiveInAbsentia,
       receivePrasadam,
       postageCharges: computedPostageAmount,
       postageId,
-      amount: computedSevaAmount,
-      totalAmount: computedTotalPerSeva,
+      amount: finalSevaAmount,
+      totalAmount: finalTotal,
       name: kartaName,
       nakshatraId: kartaNakshatraId,
       rashiId: kartaRashiId,
@@ -783,7 +861,7 @@ export default function Seva() {
       calendarType,
       type: recurrenceType,
       fromDate,
-      toDate,
+      toDate: effectiveToDate,
       noEnd,
       weekdayId,
       weekdayRepeatId,
@@ -793,8 +871,8 @@ export default function Seva() {
       fromNakshatraId,
       fromTithiId,
       fromSouraMasaId,
-      remarks: sevaRemarks,
-      mode: selectedSevaType?.id === 3 ? 3 : 2,
+      remarks: effectiveRemarks,
+      mode: isRecurring ? 3 : 2,
       sevaCount,
     };
 
@@ -845,71 +923,155 @@ export default function Seva() {
 
     setSubmitting(true);
     setErrorMessage("");
+    setValidationErrors([]);
 
-    const obj: any = {
-      name: payeeName,
-      email: payeeEmail,
-      countryCode: payeeCountryCode,
-      addresseeMobile: payeeMobile,
-      addresseePlace: payeePlace,
-      totalAmount: totalSevaAmount,
-      selectedSevas: cart,
-      sevaTypeId: selectedSevaType?.id || cart[0]?.mode || 2,
-      uid: user?.uid || "",
-    };
+    const isRecurring = cart.every(s => s.mode === 3);
+    const orderPrefix = isRecurring ? "PS" : "OTFS";
+    const receiptEndpoint = isRecurring ? "/api/newReceiptFlr" : "/api/newReceiptFl";
 
     try {
-      const res = await fetch("/api/online/fl", {
+      const initRes = await fetch("/api/initiatePaytmTransaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(obj),
+        body: JSON.stringify({ amount: totalSevaAmount, mobile: payeeMobile, orderPrefix }),
       });
 
-      if (!res.ok) {
-        setErrorMessage("Failed to submit seva booking. Please try again.");
+      if (!initRes.ok) {
+        const errData = await initRes.json().catch(() => ({}));
+        setErrorMessage(errData.details || "Failed to initiate payment. Please try again.");
         setSubmitting(false);
         return;
       }
 
-      const data = await res.json();
+      const { txnToken, orderId, mid, amount } = await initRes.json();
 
-      if (data.orderId) {
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = "https://api.razorpay.com/v1/checkout/embedded";
-        form.style.display = "none";
+      const now = new Date();
+      const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
 
-        const fields: Record<string, string> = {
-          key_id: data.key_id || "",
-          name: "Sri Sringeri Sharada Peetham",
-          description: "Payment for Sevas",
-          order_id: data.orderId,
-          amount: String(data.amount),
-          currency: "INR",
-          callback_url: data.callback_url || "https://donate.sringeri.net/rpg/onlinesevaresponse",
-          cancel_url: data.cancel_url || "https://donate.sringeri.net/sevas-gnr",
-          "prefill[name]": payeeName,
-          "prefill[contact]": `${payeeCountryCode}${payeeMobile}`,
-        };
-
-        for (const [key, value] of Object.entries(fields)) {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = value;
-          form.appendChild(input);
-        }
-
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-      } else {
-        setErrorMessage("Payment could not be initiated. Please try again later.");
+      const receiptBody: any = {
+        name: payeeName,
+        email: payeeEmail,
+        countryCode: payeeCountryCode,
+        mobile: payeeMobile,
+        addresseePlace: payeePlace,
+        totalAmount: totalSevaAmount,
+        paymentModeId: 6,
+        addedAt,
+        status: 8,
+        paymentRef: orderId,
+        selectedSevas: cart,
+        sevaTypeId: selectedSevaType?.id || cart[0]?.mode || 2,
+        uid: user?.uid || "",
+      };
+      if (isRecurring) {
+        receiptBody.inAbsentia = 1;
       }
-    } catch {
-      setErrorMessage("Something went wrong. Please try again.");
+
+      const receiptRes = await fetch(receiptEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(receiptBody),
+      });
+
+      if (!receiptRes.ok) {
+        setErrorMessage("Failed to create booking record. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      await loadPaytmScript(mid);
+
+      const config = {
+        root: "",
+        flow: "DEFAULT",
+        data: {
+          orderId: orderId,
+          token: txnToken,
+          tokenType: "TXN_TOKEN",
+          amount: amount,
+        },
+        handler: {
+          transactionStatus: async (paytmResponse: any) => {
+            console.log("Paytm transactionStatus:", JSON.stringify(paytmResponse));
+            try {
+              const ackBody: Record<string, string> = {};
+              if (paytmResponse.BANKNAME) ackBody.BANKNAME = paytmResponse.BANKNAME;
+              if (paytmResponse.BANKTXNID) ackBody.BANKTXNID = paytmResponse.BANKTXNID;
+              if (paytmResponse.CURRENCY) ackBody.CURRENCY = paytmResponse.CURRENCY;
+              if (paytmResponse.PAYMENTMODE) ackBody.PAYMENTMODE = paytmResponse.PAYMENTMODE;
+              if (paytmResponse.ORDERID) ackBody.ORDERID = paytmResponse.ORDERID;
+              if (paytmResponse.RESPCODE) ackBody.RESPCODE = paytmResponse.RESPCODE;
+              if (paytmResponse.RESPMSG) ackBody.RESPMSG = paytmResponse.RESPMSG;
+              if (paytmResponse.STATUS) ackBody.STATUS = paytmResponse.STATUS;
+              if (paytmResponse.TXNDATE) ackBody.TXNDATE = paytmResponse.TXNDATE;
+              if (paytmResponse.TXNID) ackBody.TXNID = paytmResponse.TXNID;
+              if (paytmResponse.TXNAMOUNT) ackBody.TXNAMOUNT = paytmResponse.TXNAMOUNT;
+
+              await fetch("/api/paymentAck", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(ackBody),
+              });
+
+              const clientStatus = paytmResponse.STATUS || paytmResponse.status || paytmResponse.body?.resultInfo?.resultStatus || "";
+              const isSuccess = clientStatus === "TXN_SUCCESS" || clientStatus === "S";
+              const resolvedOrderId = paytmResponse.ORDERID || paytmResponse.orderId || orderId;
+
+              if (isSuccess) {
+                setCartAckData({
+                  txnId: paytmResponse.TXNID || "",
+                  orderId: resolvedOrderId,
+                  amount: paytmResponse.TXNAMOUNT || amount,
+                  sevaNames: cart.map(s => s.deitySevaName),
+                });
+                setCartPaymentSuccess(true);
+
+                try {
+                  await fetch("/api/verifyPaytmTransaction", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ orderId: resolvedOrderId }),
+                  });
+                } catch (verifyErr) {
+                  console.error("Verification call failed (non-blocking):", verifyErr);
+                }
+              } else {
+                setErrorMessage(paytmResponse.RESPMSG || "Payment was not successful. Please try again.");
+              }
+            } catch {
+              setErrorMessage("Payment completed but acknowledgment failed. Please contact support.");
+            }
+
+            try {
+              const checkout = (window as any).Paytm?.CheckoutJS;
+              if (checkout && typeof checkout.close === "function") checkout.close();
+            } catch {}
+            setSubmitting(false);
+          },
+          notifyMerchant: (eventName: string, data: any) => {
+            console.log("Paytm notifyMerchant:", eventName, data);
+            if (eventName === "APP_CLOSED" || eventName === "PAYMENT_ERROR" || eventName === "SESSION_EXPIRED") {
+              setErrorMessage(
+                eventName === "APP_CLOSED" ? "Payment was cancelled. Please try again." :
+                eventName === "SESSION_EXPIRED" ? "Payment session expired. Please try again." :
+                "A payment error occurred. Please try again."
+              );
+              try { (window as any).Paytm?.CheckoutJS?.close(); } catch {}
+              setSubmitting(false);
+            }
+          },
+        },
+        merchant: { mid: mid, redirect: false },
+      };
+
+      const checkoutJS = (window as any).Paytm.CheckoutJS;
+      await checkoutJS.init(config);
+      checkoutJS.invoke();
+    } catch (err: any) {
+      console.error("Payment error:", err);
+      setErrorMessage(err.message || "Something went wrong. Please try again.");
+      setSubmitting(false);
     }
-    setSubmitting(false);
   }
 
   async function selectFlCentre(centre: any) {
@@ -1171,10 +1333,12 @@ export default function Seva() {
   async function fetchRecurrenceCount() {
     if (selectedSevaType?.id !== 3 || !calendarType || !recurrenceType) return;
     try {
+      const effectiveToDate = noEnd ? "9999-12-31" : (toDate || "0");
+      const masaId = calendarType === 2 ? (fromChandraMasaId || 0) : (calendarType === 3 ? (fromSouraMasaId || 0) : 0);
       const params = [
-        calendarType, fromDate || "0", toDate || "0", recurrenceType,
+        calendarType, fromDate || "0", effectiveToDate, recurrenceType,
         weekdayId || 0, specificDateNum || 0, weekdayRepeatId || 0,
-        monthId || 0, fromTithiId || 0, fromNakshatraId || 0, fromSouraMasaId || 0,
+        monthId || 0, fromTithiId || 0, fromNakshatraId || 0, masaId,
       ].join("/");
       const res = await fetch(`/api/recurranceCount/${params}`);
       if (res.ok) {
@@ -1190,10 +1354,70 @@ export default function Seva() {
     if (selectedSevaType?.id === 3 && calendarType && recurrenceType && (toDate || noEnd)) {
       fetchRecurrenceCount();
     }
-  }, [calendarType, recurrenceType, fromDate, toDate, noEnd, weekdayId, weekdayRepeatId, specificDateNum, monthId, fromTithiId, fromNakshatraId, fromSouraMasaId]);
+  }, [calendarType, recurrenceType, fromDate, toDate, noEnd, weekdayId, weekdayRepeatId, specificDateNum, monthId, fromTithiId, fromNakshatraId, fromSouraMasaId, fromChandraMasaId]);
 
   // ========== PAYEE STEP ==========
   if (step === "payee") {
+    if (cartPaymentSuccess && cartAckData) {
+      return (
+        <div className="min-h-screen bg-[#F7F2EC]" data-testid="seva-cart-ack">
+          <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+            <div className="flex items-center gap-3">
+              <Star className="h-7 w-7" />
+              <div>
+                <h1 className="text-xl font-serif font-bold">Seva Booking</h1>
+                <p className="text-sm opacity-80">Booking Confirmed</p>
+              </div>
+            </div>
+          </div>
+          <div className="px-4 mt-4 pb-12">
+            <div className="bg-white rounded-lg shadow-md px-6 py-8 text-center">
+              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h2 className="text-xl font-serif font-bold text-primary mb-2" data-testid="text-cart-ack-title">Payment Successful</h2>
+              <p className="text-sm text-muted-foreground mb-6">Your seva booking has been confirmed.</p>
+
+              <div className="text-left bg-[#F7F2EC] rounded-lg p-4 mb-6">
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Transaction ID</span>
+                  <span className="text-xs font-medium text-primary" data-testid="text-cart-ack-txnid">{cartAckData.txnId}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Order ID</span>
+                  <span className="text-xs font-medium text-primary" data-testid="text-cart-ack-orderid">{cartAckData.orderId}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-primary/10">
+                  <span className="text-xs text-muted-foreground">Amount Paid</span>
+                  <span className="text-sm font-semibold text-primary" data-testid="text-cart-ack-amount">{"\u20B9"}{cartAckData.amount}</span>
+                </div>
+                <div className="py-2">
+                  <span className="text-xs text-muted-foreground">Sevas Booked</span>
+                  <ul className="mt-1">
+                    {cartAckData.sevaNames.map((name, i) => (
+                      <li key={i} className="text-xs text-primary py-0.5" data-testid={`text-cart-ack-seva-${i}`}>{"\u2022"} {name}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <button onClick={() => {
+                  setCart([]);
+                  setTotalSevaAmount(0);
+                  setCartPaymentSuccess(false);
+                  setCartAckData(null);
+                  setStep("home");
+                  setSelectedSevaType(null);
+                  resetSevaForm();
+                }}
+                className="uppercase font-medium rounded-md bg-[#3d2000] text-white px-8 py-3 text-sm hover:bg-[#5a3510] transition-colors"
+                data-testid="button-cart-ack-new-booking">
+                Book Another Seva
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-[#F7F2EC] pb-24" data-testid="seva-payee">
         <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
@@ -1914,6 +2138,7 @@ export default function Seva() {
                     <label className="text-xs text-muted-foreground mb-1 block">End Date</label>
                     <input type="date" value={toDate} onChange={(e) => { setToDate(e.target.value); setNoEnd(false); }}
                       disabled={noEnd} min={fromDate}
+                      max={(calendarType === 2 || calendarType === 3) ? "2027-04-06" : undefined}
                       className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white disabled:opacity-50"
                       data-testid="input-to-date" />
                   </div>
@@ -1921,8 +2146,11 @@ export default function Seva() {
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={noEnd} onChange={(e) => { setNoEnd(e.target.checked); if (e.target.checked) setToDate(""); }}
                     className="rounded border-border" data-testid="check-no-end" />
-                  <span className="text-muted-foreground text-xs">No end date</span>
+                  <span className="text-muted-foreground text-xs">No end date (lifetime / 20 years)</span>
                 </label>
+                {(calendarType === 2 || calendarType === 3) && !noEnd && (
+                  <p className="text-[10px] text-muted-foreground">Max end date for lunar/solar calendar: 2027-04-06</p>
+                )}
               </CardContent>
             </Card>
           )}
@@ -2181,7 +2409,7 @@ export default function Seva() {
                 {recurrenceType >= 2 && (
                   <div>
                     <label className="text-xs text-muted-foreground mb-2 block">Weekday</label>
-                    <select value={weekdayId} onChange={(e) => setWeekdayId(Number(e.target.value))}
+                    <select value={weekdayId} onChange={(e) => { setWeekdayId(Number(e.target.value)); if (Number(e.target.value)) { setFromTithiId(0); setFromNakshatraId(0); } }}
                       className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
                       data-testid="select-weekday">
                       <option value={0}>Select Weekday</option>
@@ -2253,7 +2481,7 @@ export default function Seva() {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Tithi</label>
-                      <select value={fromTithiId} onChange={(e) => { setFromTithiId(Number(e.target.value)); if (e.target.value) setFromNakshatraId(0); }}
+                      <select value={fromTithiId} onChange={(e) => { setFromTithiId(Number(e.target.value)); if (Number(e.target.value)) { setFromNakshatraId(0); setWeekdayId(0); setWeekdayRepeatId(0); } }}
                         className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
                         data-testid="select-tithi">
                         <option value={0}>Select</option>
@@ -2262,7 +2490,7 @@ export default function Seva() {
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Nakshatra</label>
-                      <select value={fromNakshatraId} onChange={(e) => { setFromNakshatraId(Number(e.target.value)); if (e.target.value) setFromTithiId(0); }}
+                      <select value={fromNakshatraId} onChange={(e) => { setFromNakshatraId(Number(e.target.value)); if (Number(e.target.value)) { setFromTithiId(0); setWeekdayId(0); setWeekdayRepeatId(0); } }}
                         className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
                         data-testid="select-nakshatra">
                         <option value={0}>Select</option>
