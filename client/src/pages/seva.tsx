@@ -2368,41 +2368,56 @@ export default function Seva() {
               <CardContent className="p-5 space-y-4">
                 <h3 className="font-serif font-bold text-sm">Recurrence Settings</h3>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-2 block">Calendar Type</label>
+                  <label className="text-xs text-muted-foreground mb-2 block">Recurrence Type</label>
                   <div className="flex flex-wrap gap-2">
-                    {calendarTypes.map((ct: any) => (
-                      <button key={ct.id}
-                        onClick={() => { setCalendarType(ct.id); setRecurrenceType(0); setWeekdayId(0); setWeekdayRepeatId(0); setSpecificDateNum(0); setMonthId(0); setFromChandraMasaId(0); setFromNakshatraId(0); setFromTithiId(0); setFromSouraMasaId(0); }}
-                        className={`px-3 py-1.5 rounded text-xs ${calendarType === ct.id ? "bg-primary text-white" : "bg-white border border-border"}`}
-                        data-testid={`button-cal-${ct.id}`}
+                    {recurrenceTypes.map((rt) => (
+                      <button key={rt.id}
+                        onClick={() => {
+                          setRecurrenceType(rt.id);
+                          if (rt.id === 1 || rt.id === 2) {
+                            setCalendarType(1);
+                          } else {
+                            setCalendarType(0);
+                          }
+                          setWeekdayId(0); setWeekdayRepeatId(0); setSpecificDateNum(0); setMonthId(0);
+                          setFromChandraMasaId(0); setFromNakshatraId(0); setFromTithiId(0); setFromSouraMasaId(0);
+                          setSevaCount(1);
+                        }}
+                        className={`px-3 py-1.5 rounded text-xs ${recurrenceType === rt.id ? "bg-primary text-white" : "bg-white border border-border"}`}
+                        data-testid={`button-recurrence-${rt.id}`}
                       >
-                        {ct.name}
+                        {rt.name}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {calendarType > 0 && (
+                {(recurrenceType === 3 || recurrenceType === 4) && (
                   <div>
-                    <label className="text-xs text-muted-foreground mb-2 block">Recurrence Type</label>
+                    <label className="text-xs text-muted-foreground mb-2 block">Calendar Type</label>
                     <div className="flex flex-wrap gap-2">
-                      {recurrenceTypes.map((rt) => (
-                        <button key={rt.id}
-                          onClick={() => setRecurrenceType(rt.id)}
-                          className={`px-3 py-1.5 rounded text-xs ${recurrenceType === rt.id ? "bg-primary text-white" : "bg-white border border-border"}`}
-                          data-testid={`button-recurrence-${rt.id}`}
+                      {calendarTypes.map((ct: any) => (
+                        <button key={ct.id}
+                          onClick={() => {
+                            setCalendarType(ct.id);
+                            setWeekdayId(0); setWeekdayRepeatId(0); setSpecificDateNum(0); setMonthId(0);
+                            setFromChandraMasaId(0); setFromNakshatraId(0); setFromTithiId(0); setFromSouraMasaId(0);
+                            setSevaCount(1);
+                          }}
+                          className={`px-3 py-1.5 rounded text-xs ${calendarType === ct.id ? "bg-primary text-white" : "bg-white border border-border"}`}
+                          data-testid={`button-cal-${ct.id}`}
                         >
-                          {rt.name}
+                          {ct.name}
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {recurrenceType >= 2 && (
+                {recurrenceType === 2 && (
                   <div>
                     <label className="text-xs text-muted-foreground mb-2 block">Weekday</label>
-                    <select value={weekdayId} onChange={(e) => { setWeekdayId(Number(e.target.value)); if (Number(e.target.value)) { setFromTithiId(0); setFromNakshatraId(0); } }}
+                    <select value={weekdayId} onChange={(e) => setWeekdayId(Number(e.target.value))}
                       className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
                       data-testid="select-weekday">
                       <option value={0}>Select Weekday</option>
@@ -2411,99 +2426,133 @@ export default function Seva() {
                   </div>
                 )}
 
-                {(recurrenceType === 3 || recurrenceType === 4) && (
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-2 block">Repeat</label>
-                    <select value={weekdayRepeatId} onChange={(e) => setWeekdayRepeatId(Number(e.target.value))}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                      data-testid="select-weekday-repeat">
-                      <option value={0}>Select Repeat</option>
-                      {WEEKDAY_REPEATS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                    </select>
-                  </div>
-                )}
+                {(recurrenceType === 3 || recurrenceType === 4) && calendarType > 0 && (
+                  <>
+                    {calendarType === 1 && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-2 block">Weekday</label>
+                          <select value={weekdayId} onChange={(e) => { setWeekdayId(Number(e.target.value)); if (Number(e.target.value)) { setSpecificDateNum(0); } }}
+                            className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                            data-testid="select-weekday">
+                            <option value={0}>Select Weekday</option>
+                            {WEEKDAYS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                          </select>
+                        </div>
+                        {weekdayId > 0 && (
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-2 block">Repeat</label>
+                            <select value={weekdayRepeatId} onChange={(e) => setWeekdayRepeatId(Number(e.target.value))}
+                              className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                              data-testid="select-weekday-repeat">
+                              <option value={0}>Select Repeat</option>
+                              {WEEKDAY_REPEATS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                            </select>
+                          </div>
+                        )}
+                        {!weekdayId && (
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-2 block">Specific Date (1-31)</label>
+                            <input type="number" min={1} max={31} value={specificDateNum || ""} onChange={(e) => { setSpecificDateNum(Number(e.target.value)); if (Number(e.target.value)) { setWeekdayId(0); setWeekdayRepeatId(0); } }}
+                              className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                              data-testid="input-specific-date" />
+                          </div>
+                        )}
+                        {recurrenceType === 4 && (
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-2 block">Month</label>
+                            <select value={monthId} onChange={(e) => setMonthId(Number(e.target.value))}
+                              className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                              data-testid="select-month">
+                              <option value={0}>Select Month</option>
+                              {[{id:1,name:"January"},{id:2,name:"February"},{id:3,name:"March"},{id:4,name:"April"},{id:5,name:"May"},{id:6,name:"June"},{id:7,name:"July"},{id:8,name:"August"},{id:9,name:"September"},{id:10,name:"October"},{id:11,name:"November"},{id:12,name:"December"}].map((m) => (
+                                <option key={m.id} value={m.id}>{m.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                {calendarType === 1 && (recurrenceType === 3 || recurrenceType === 4) && (
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-2 block">Specific Date (1-31)</label>
-                    <input type="number" min={1} max={31} value={specificDateNum || ""} onChange={(e) => setSpecificDateNum(Number(e.target.value))}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                      data-testid="input-specific-date" />
-                  </div>
-                )}
-
-                {calendarType === 1 && recurrenceType === 4 && (
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-2 block">Month</label>
-                    <select value={monthId} onChange={(e) => setMonthId(Number(e.target.value))}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                      data-testid="select-month">
-                      <option value={0}>Select Month</option>
-                      {[{id:1,name:"January"},{id:2,name:"February"},{id:3,name:"March"},{id:4,name:"April"},{id:5,name:"May"},{id:6,name:"June"},{id:7,name:"July"},{id:8,name:"August"},{id:9,name:"September"},{id:10,name:"October"},{id:11,name:"November"},{id:12,name:"December"}].map((m) => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {calendarType === 2 && recurrenceType === 4 && (
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-2 block">Chandra Masa</label>
-                    <select value={fromChandraMasaId} onChange={(e) => setFromChandraMasaId(Number(e.target.value))}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                      data-testid="select-chandra-masa">
-                      <option value={0}>Select Chandra Masa</option>
-                      {chandraMasas.map((cm: any) => <option key={cm.id} value={cm.id}>{cm.name}</option>)}
-                    </select>
-                  </div>
-                )}
-
-                {calendarType === 3 && recurrenceType === 4 && (
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-2 block">Soura Masa</label>
-                    <select value={fromSouraMasaId} onChange={(e) => setFromSouraMasaId(Number(e.target.value))}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                      data-testid="select-soura-masa">
-                      <option value={0}>Select Soura Masa</option>
-                      {souraMasas.map((sm: any) => <option key={sm.id} value={sm.id}>{sm.name}</option>)}
-                    </select>
-                  </div>
-                )}
-
-                {(calendarType === 2 || calendarType === 3) && (recurrenceType === 3 || recurrenceType === 4) && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Tithi</label>
-                      <select value={fromTithiId} onChange={(e) => { setFromTithiId(Number(e.target.value)); if (Number(e.target.value)) { setFromNakshatraId(0); setWeekdayId(0); setWeekdayRepeatId(0); } }}
-                        className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                        data-testid="select-tithi">
-                        <option value={0}>Select</option>
-                        {tithis.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Nakshatra</label>
-                      <select value={fromNakshatraId} onChange={(e) => { setFromNakshatraId(Number(e.target.value)); if (Number(e.target.value)) { setFromTithiId(0); setWeekdayId(0); setWeekdayRepeatId(0); } }}
-                        className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                        data-testid="select-nakshatra">
-                        <option value={0}>Select</option>
-                        {nakshatras.map((n: any) => <option key={n.id} value={n.id}>{n.name}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                {sevaCount > 1 && (
-                  <div className="bg-green-50 rounded-lg p-3">
-                    <p className="text-xs text-green-700 font-medium">This seva will be performed {sevaCount} times</p>
-                    <p className="text-xs text-green-600 mt-1">Total: ₹{formatNumber(sevaBaseAmount)} × {sevaCount} = ₹{formatNumber(computedSevaAmount)}</p>
-                  </div>
+                    {(calendarType === 2 || calendarType === 3) && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-2 block">Weekday</label>
+                          <select value={weekdayId} onChange={(e) => { const v = Number(e.target.value); setWeekdayId(v); if (v) { setFromTithiId(0); setFromNakshatraId(0); } }}
+                            className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                            data-testid="select-weekday">
+                            <option value={0}>Select Weekday</option>
+                            {WEEKDAYS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                          </select>
+                        </div>
+                        {weekdayId > 0 && (
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-2 block">Repeat</label>
+                            <select value={weekdayRepeatId} onChange={(e) => setWeekdayRepeatId(Number(e.target.value))}
+                              className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                              data-testid="select-weekday-repeat">
+                              <option value={0}>Select Repeat</option>
+                              {WEEKDAY_REPEATS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                            </select>
+                          </div>
+                        )}
+                        {!weekdayId && (
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">Tithi</label>
+                            <select value={fromTithiId} onChange={(e) => { const v = Number(e.target.value); setFromTithiId(v); if (v) { setFromNakshatraId(0); setWeekdayId(0); setWeekdayRepeatId(0); } }}
+                              className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                              data-testid="select-tithi">
+                              <option value={0}>Select Tithi</option>
+                              {tithis.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            </select>
+                          </div>
+                        )}
+                        {!weekdayId && !fromTithiId && (
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">Nakshatra</label>
+                            <select value={fromNakshatraId} onChange={(e) => { const v = Number(e.target.value); setFromNakshatraId(v); if (v) { setFromTithiId(0); setWeekdayId(0); setWeekdayRepeatId(0); } }}
+                              className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                              data-testid="select-nakshatra">
+                              <option value={0}>Select Nakshatra</option>
+                              {nakshatras.map((n: any) => <option key={n.id} value={n.id}>{n.name}</option>)}
+                            </select>
+                          </div>
+                        )}
+                        {recurrenceType === 4 && (fromTithiId > 0 || fromNakshatraId > 0) && (
+                          <div>
+                            {calendarType === 2 && (
+                              <>
+                                <label className="text-xs text-muted-foreground mb-2 block">Chandra Masa</label>
+                                <select value={fromChandraMasaId} onChange={(e) => setFromChandraMasaId(Number(e.target.value))}
+                                  className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                                  data-testid="select-chandra-masa">
+                                  <option value={0}>Select Chandra Masa</option>
+                                  {chandraMasas.map((cm: any) => <option key={cm.id} value={cm.id}>{cm.name}</option>)}
+                                </select>
+                              </>
+                            )}
+                            {calendarType === 3 && (
+                              <>
+                                <label className="text-xs text-muted-foreground mb-2 block">Soura Masa</label>
+                                <select value={fromSouraMasaId} onChange={(e) => setFromSouraMasaId(Number(e.target.value))}
+                                  className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                                  data-testid="select-soura-masa">
+                                  <option value={0}>Select Soura Masa</option>
+                                  {souraMasas.map((sm: any) => <option key={sm.id} value={sm.id}>{sm.name}</option>)}
+                                </select>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
           )}
 
-          {selectedSeva && selectedSevaType?.id === 3 && (
+          {selectedSeva && selectedSevaType?.id === 3 && recurrenceType > 0 && (recurrenceType <= 2 || calendarType > 0) && (
             <Card>
               <CardContent className="p-5 space-y-3">
                 <h3 className="font-serif font-bold text-sm">Date Range</h3>
@@ -2534,6 +2583,13 @@ export default function Seva() {
                 )}
               </CardContent>
             </Card>
+          )}
+
+          {selectedSeva && selectedSevaType?.id === 3 && sevaCount > 1 && (
+            <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+              <p className="text-xs text-green-700 font-medium">This seva will be performed {sevaCount} times</p>
+              <p className="text-xs text-green-600 mt-1">Total: ₹{formatNumber(sevaBaseAmount)} × {sevaCount} = ₹{formatNumber(computedSevaAmount)}</p>
+            </div>
           )}
 
           {selectedSeva && selectedSevaType?.id === 3 && (
