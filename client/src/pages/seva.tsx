@@ -2692,12 +2692,17 @@ export default function Seva() {
                         Guru Bhikshavandanam lifetime daily seva capped at ₹25,00,000
                       </p>
                     )}
-                    {displayPostage > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Postage{selectedSevaType?.id === 3 && postageMultiplier > 1 ? ` (₹${formatNumber(postageCharges)} × ${postageMultiplier}${recurrenceType === 1 ? " wks" : ""})` : ""}</span>
-                        <span>₹{formatNumber(displayPostage)}</span>
-                      </div>
-                    )}
+                    {displayPostage > 0 && (() => {
+                      const postageLabel = selectedSevaType?.id === 3 && postageMultiplier > 1
+                        ? ` (₹${formatNumber(postageCharges)} × ${postageMultiplier}${recurrenceType === 1 ? " wks" : ""})`
+                        : "";
+                      return (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Postage{postageLabel}</span>
+                          <span>₹{formatNumber(displayPostage)}</span>
+                        </div>
+                      );
+                    })()}
                     <div className="border-t border-primary/20 pt-1 flex justify-between font-bold">
                       <span>Total</span>
                       <span className="text-primary">₹{formatNumber(displayTotal)}</span>
