@@ -312,6 +312,19 @@ export async function registerRoutes(
   const ytCache: { videos: any[]; timestamp: number } = { videos: [], timestamp: 0 };
   const YT_CACHE_TTL = 10 * 60 * 1000;
 
+  const STATIC_FALLBACK_VIDEOS = [
+    { videoId: "TMK0LDSERhc", title: "Ugadi - Jagadguru Shankaracharya's Anugraha Sandesha", published: "2026-03-20" },
+    { videoId: "Y6bY5HdEkhc", title: "Yugadi Sandarbhadalli Sringeri Jagadgurugalavara Anugraha Sandesha", published: "2026-03-20" },
+    { videoId: "jHCWpLPG7gA", title: "Saraswathi Puja | Vidya Bhooshan International School | Sri Sharada Krupa", published: "2026-03-11" },
+    { videoId: "QbMGP6jKVZo", title: "Sri Sringeri Sharada Peetham", published: "2026-03-10" },
+    { videoId: "UgwWvDwTWfc", title: "Saraswathi Puja at Shree Sharada Vidyaniketan School | Sri Sharada Krupa", published: "2026-03-10" },
+  ].map(v => ({
+    ...v,
+    date: v.published ? new Date(v.published).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+    thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
+    url: `https://www.youtube.com/watch?v=${v.videoId}`,
+  }));
+
   app.get("/api/youtube-videos", async (req, res) => {
     try {
       if (ytCache.videos.length > 0 && Date.now() - ytCache.timestamp < YT_CACHE_TTL) {
@@ -321,80 +334,96 @@ export async function registerRoutes(
       const channelId = "UCC7AKcYvtFdlubqwW6Ave2Q";
       let videos: any[] = [];
 
-      const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-        const response = await fetch(feedUrl, { signal: controller.signal });
-        clearTimeout(timeout);
-        if (response.ok) {
-          const xml = await response.text();
-          const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
-          let match;
-          while ((match = entryRegex.exec(xml)) !== null && videos.length < 10) {
-            const entry = match[1];
-            const videoId = entry.match(/<yt:videoId>(.*?)<\/yt:videoId>/)?.[1] || "";
-            const title = entry.match(/<title>(.*?)<\/title>/)?.[1] || "";
-            const published = entry.match(/<published>(.*?)<\/published>/)?.[1] || "";
-            const thumbnail = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
-            if (videoId) {
-              videos.push({
-                videoId,
-                title: title.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
-                published,
-                date: published ? new Date(published).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
-                thumbnail,
-                url: `https://www.youtube.com/watch?v=${videoId}`,
-              });
-            }
-          }
-        }
-      } catch (rssErr) {
-        console.log("RSS feed failed, trying channel page scrape...");
-      }
-
-      if (videos.length === 0) {
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        let pageRes;
         try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 10000);
-          const pageRes = await fetch(`https://www.youtube.com/@SharadaPeetham/videos`, {
+          pageRes = await fetch(`https://www.youtube.com/@SharadaPeetham/videos`, {
             headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
             signal: controller.signal,
           });
+        } finally {
           clearTimeout(timeout);
-          if (pageRes.ok) {
-            const html = await pageRes.text();
-            const dataMatch = html.match(/var ytInitialData = ({.*?});<\/script>/);
-            if (dataMatch) {
-              const data = JSON.parse(dataMatch[1]);
-              const found: any[] = [];
-              const seen = new Set<string>();
-              const findVideos = (obj: any): void => {
-                if (!obj || typeof obj !== 'object') return;
-                if (obj.videoId && obj.title && !seen.has(obj.videoId)) {
-                  seen.add(obj.videoId);
-                  const title = obj.title?.runs?.[0]?.text || obj.title?.simpleText || "";
-                  const pub = obj.publishedTimeText?.simpleText || "";
-                  found.push({ videoId: obj.videoId, title, published: pub });
-                  return;
-                }
-                for (const v of Object.values(obj)) findVideos(v);
-              };
-              findVideos(data);
-              for (const v of found.slice(0, 10)) {
+        }
+        if (pageRes.ok) {
+          const html = await pageRes.text();
+          const dataMatch = html.match(/var ytInitialData = ({.*?});<\/script>/s);
+          if (dataMatch) {
+            const data = JSON.parse(dataMatch[1]);
+            const found: any[] = [];
+            const seen = new Set<string>();
+            const findVideos = (obj: any): void => {
+              if (!obj || typeof obj !== 'object') return;
+              if (obj.videoId && obj.title && !seen.has(obj.videoId)) {
+                seen.add(obj.videoId);
+                const title = obj.title?.runs?.[0]?.text || obj.title?.simpleText || "";
+                const pub = obj.publishedTimeText?.simpleText || "";
+                found.push({ videoId: obj.videoId, title, published: pub });
+                return;
+              }
+              for (const v of Object.values(obj)) findVideos(v);
+            };
+            findVideos(data);
+            for (const v of found.slice(0, 10)) {
+              videos.push({
+                videoId: v.videoId,
+                title: v.title,
+                published: v.published,
+                date: v.published || null,
+                thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
+                url: `https://www.youtube.com/watch?v=${v.videoId}`,
+              });
+            }
+            if (videos.length > 0) {
+              console.log(`[YouTube] Channel page scrape succeeded: ${videos.length} videos found`);
+            }
+          }
+        }
+      } catch (scrapeErr) {
+        console.log("[YouTube] Channel page scrape failed, trying RSS feed...");
+      }
+
+      if (videos.length === 0) {
+        const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 8000);
+          let response;
+          try {
+            response = await fetch(feedUrl, { signal: controller.signal });
+          } finally {
+            clearTimeout(timeout);
+          }
+          if (response.ok) {
+            const xml = await response.text();
+            const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
+            let match;
+            while ((match = entryRegex.exec(xml)) !== null && videos.length < 10) {
+              const entry = match[1];
+              const videoId = entry.match(/<yt:videoId>(.*?)<\/yt:videoId>/)?.[1] || "";
+              const title = entry.match(/<title>(.*?)<\/title>/)?.[1] || "";
+              const published = entry.match(/<published>(.*?)<\/published>/)?.[1] || "";
+              const thumbnail = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+              if (videoId) {
                 videos.push({
-                  videoId: v.videoId,
-                  title: v.title,
-                  published: v.published,
-                  date: v.published || null,
-                  thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
-                  url: `https://www.youtube.com/watch?v=${v.videoId}`,
+                  videoId,
+                  title: title.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
+                  published,
+                  date: published ? new Date(published).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+                  thumbnail,
+                  url: `https://www.youtube.com/watch?v=${videoId}`,
                 });
               }
             }
+            if (videos.length > 0) {
+              console.log(`[YouTube] RSS feed succeeded: ${videos.length} videos found`);
+            }
+          } else {
+            console.log(`[YouTube] RSS feed returned ${response.status}`);
           }
-        } catch (scrapeErr) {
-          console.error("Channel page scrape also failed:", scrapeErr);
+        } catch (rssErr) {
+          console.log("[YouTube] RSS feed also failed");
         }
       }
 
@@ -402,16 +431,20 @@ export async function registerRoutes(
         ytCache.videos = videos;
         ytCache.timestamp = Date.now();
       } else if (ytCache.videos.length > 0) {
+        console.log("[YouTube] Using cached videos");
         return res.json({ videos: ytCache.videos });
+      } else {
+        console.log("[YouTube] All methods failed, using static fallback videos");
+        videos = STATIC_FALLBACK_VIDEOS;
       }
 
       res.json({ videos });
     } catch (error) {
-      console.error("Error fetching YouTube videos:", error);
+      console.error("[YouTube] Error fetching videos:", error);
       if (ytCache.videos.length > 0) {
         return res.json({ videos: ytCache.videos });
       }
-      res.status(500).json({ error: "Failed to fetch YouTube videos" });
+      res.json({ videos: STATIC_FALLBACK_VIDEOS });
     }
   });
 
