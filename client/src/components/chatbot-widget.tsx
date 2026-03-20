@@ -198,7 +198,7 @@ export default function ChatbotWidget() {
   };
 
   return (
-    <div className="fixed bottom-36 md:bottom-8 right-4 z-50" data-testid="chatbot-widget">
+    <div className="fixed bottom-24 md:bottom-8 right-4 z-50" data-testid="chatbot-widget">
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
