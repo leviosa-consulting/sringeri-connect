@@ -14,10 +14,10 @@ interface DateGroup {
   items: UpdateItem[];
 }
 
-const TAG: Record<string, { label: string; icon: typeof Calendar; bg: string }> = {
-  event: { label: "Event", icon: Calendar, bg: "bg-[#e8a735]/15 text-[#b8860b]" },
-  announcement: { label: "Announcement", icon: Megaphone, bg: "bg-[#b85c2f]/15 text-[#b85c2f]" },
-  video: { label: "Video", icon: Play, bg: "bg-[#c0392b]/15 text-[#c0392b]" },
+const TAG: Record<string, { label: string; icon: typeof Calendar; bg: string; color: string; activeBg: string }> = {
+  event: { label: "Event", icon: Calendar, bg: "bg-[#e8a735]/15 text-[#e8a735]", color: "#e8a735", activeBg: "bg-[#e8a735] text-white border-[#e8a735]" },
+  announcement: { label: "Announcement", icon: Megaphone, bg: "bg-[#ff6600]/15 text-[#ff6600]", color: "#ff6600", activeBg: "bg-[#ff6600] text-white border-[#ff6600]" },
+  video: { label: "Video", icon: Play, bg: "bg-[#c0392b]/15 text-[#c0392b]", color: "#c0392b", activeBg: "bg-[#c0392b] text-white border-[#c0392b]" },
 };
 
 function toDateLabel(ts: number): string {
@@ -165,13 +165,15 @@ export default function Updates() {
           { key: "video", label: "Videos", icon: Play },
         ] as const).map(({ key, label, icon: Icon }) => {
           const isActive = key === "all" ? allSelected : activeFilters.has(key);
+          const tagInfo = key !== "all" ? TAG[key] : null;
+          const activeCls = tagInfo ? tagInfo.activeBg : "bg-[#B4A597] text-white border-[#B4A597]";
           return (
             <button
               key={key}
               onClick={() => toggleFilter(key)}
               className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
                 isActive
-                  ? "bg-[#e8a735] text-white border-[#e8a735]"
+                  ? activeCls
                   : "bg-white text-foreground/70 border-border hover:border-foreground/30"
               }`}
               data-testid={`filter-${key}`}
