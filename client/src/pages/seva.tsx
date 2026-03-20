@@ -696,7 +696,8 @@ export default function Seva() {
 
   const sevaBaseAmount = selectedSeva?.price || 0;
   const computedSevaAmount = sevaBaseAmount * sevaCount;
-  const computedPostageAmount = postageCharges * (selectedSevaType?.id === 3 ? sevaCount : 1);
+  const postageMultiplier = selectedSevaType?.id === 3 ? (recurrenceType === 1 ? Math.ceil(sevaCount / 7) : sevaCount) : 1;
+  const computedPostageAmount = postageCharges * postageMultiplier;
   const computedTotalPerSeva = computedSevaAmount + computedPostageAmount;
 
   function validateStep1(): boolean {
@@ -2693,7 +2694,7 @@ export default function Seva() {
                     )}
                     {displayPostage > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Postage{selectedSevaType?.id === 3 && sevaCount > 1 ? ` (₹${formatNumber(postageCharges)} × ${sevaCount})` : ""}</span>
+                        <span className="text-muted-foreground">Postage{selectedSevaType?.id === 3 && postageMultiplier > 1 ? ` (₹${formatNumber(postageCharges)} × ${postageMultiplier}${recurrenceType === 1 ? " wks" : ""})` : ""}</span>
                         <span>₹{formatNumber(displayPostage)}</span>
                       </div>
                     )}
