@@ -4,7 +4,7 @@ import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Info, Megaphone, Play } from "lucide-react";
+import { Info, Megaphone, Play, Globe, BookOpen, CalendarDays } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
@@ -299,7 +299,7 @@ export default function Home() {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-serif font-bold text-lg flex items-center gap-2">
-                <span className="w-1 h-5 bg-primary rounded-full block"></span>
+                <Globe className="w-5 h-5 text-[#ff6600]" />
                 Online Services
               </h2>
             </div>
@@ -322,7 +322,7 @@ export default function Home() {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-serif font-bold text-lg flex items-center gap-2">
-                <span className="w-1 h-5 bg-secondary rounded-full block"></span>
+                <BookOpen className="w-5 h-5 text-[#ff6600]" />
                 Resources
               </h2>
             </div>
@@ -344,7 +344,10 @@ export default function Home() {
            {/* Recent Events */}
            <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif font-bold text-xl">Recent Events</h2>
+              <h2 className="font-serif font-bold text-xl flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-[#ff6600]" />
+                Recent Events
+              </h2>
               <a 
                 href="/updates"
                 className="text-sm text-primary hover:underline cursor-pointer"
