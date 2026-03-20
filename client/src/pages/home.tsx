@@ -4,10 +4,11 @@ import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Info, Megaphone, Play, Globe, BookOpen, CalendarDays } from "lucide-react";
+import { Info, Megaphone, Play, Globe, BookOpen, CalendarDays, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/contexts/auth-context";
 import FontSizeToggle from "@/components/font-size-toggle";
+import TodayCarousel from "@/components/today-carousel";
 import guruBanner from "@assets/footer-collage-web_(1)_1773382448292.webp";
 import calendarBg from "@assets/background-writing-web_1770978468122.jpg";
 
@@ -70,6 +71,7 @@ export default function Home() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [youtubeVideos, setYoutubeVideos] = useState<YouTubeVideo[]>([]);
   const [activeEventIndex, setActiveEventIndex] = useState(0);
+  const [todaySheetOpen, setTodaySheetOpen] = useState(false);
   const eventScrollRef = useRef<HTMLDivElement>(null);
   const displayName = profile?.name || user?.displayName || "Devotee";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
@@ -169,7 +171,7 @@ export default function Home() {
       {/* Header + Panchanga gradient wrapper (mobile) */}
       <div className="md:hidden -mt-8 w-screen relative left-1/2 -translate-x-1/2" style={{ background: 'linear-gradient(to bottom, #ffffff, #d9cfc3)' }}>
         {/* Header Section */}
-        <div className="px-4 space-y-4 pt-4 pb-4">
+        <div className="px-4 pt-5 pb-2">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div
@@ -193,99 +195,54 @@ export default function Home() {
 
         {/* Hindu Calendar Strip */}
         {todayDetails && (
-          <div className="py-4 px-6 text-center space-y-2" data-testid="card-today-calendar">
-          {/* Occasion - hidden for now */}
-          {/* {(todayDetails.occasionK || todayDetails.occasion) && (
-            <div className="pb-2 border-b border-foreground/10">
-              {todayDetails.occasionK && (
-                <div className="text-sm font-medium text-foreground" data-testid="text-occasion-kannada">{todayDetails.occasionK}</div>
-              )}
-              {todayDetails.occasion && (
-                <div className="text-xs text-foreground/70" data-testid="text-occasion-english">{todayDetails.occasion}</div>
-              )}
-            </div>
-          )} */}
-          
-          {/* Combined Panchanga Text with Info Icon */}
+          <div className="py-5 px-6 text-center space-y-3" data-testid="card-today-calendar">
           <div className="flex items-center justify-center gap-2">
             <div className="flex-1">
               {todayDetails.todayWebsiteKannada && (
-                <div className="text-base font-serif text-foreground" data-testid="text-calendar-kannada">{todayDetails.todayWebsiteKannada}</div>
+                <div className="text-lg font-serif text-foreground leading-relaxed" style={{ fontFamily: "'Noto Serif Kannada', 'Merriweather', serif" }} data-testid="text-calendar-kannada">{todayDetails.todayWebsiteKannada}</div>
               )}
               {todayDetails.todayWebsiteEnglish && (
-                <div className="text-sm text-foreground/70" data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
+                <div className="text-sm text-foreground/60 mt-1" data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
               )}
             </div>
-            
-            {/* Info Icon with Popover */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="p-1 rounded-full hover:bg-primary/10 transition-colors" data-testid="button-panchanga-info">
-                  <Info className="h-4 w-4 text-primary" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-4" align="end">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-serif font-bold text-sm text-primary">
-                      {panchangaLang === 'en' ? 'Panchanga Details' : 'ಪಂಚಾಂಗ ವಿವರಗಳು'}
-                    </h4>
-                    <div className="flex gap-1 text-xs">
-                      <button 
-                        onClick={() => setPanchangaLang('en')}
-                        className={`px-2 py-0.5 rounded ${panchangaLang === 'en' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}
-                        data-testid="button-lang-en"
-                      >
-                        EN
-                      </button>
-                      <button 
-                        onClick={() => setPanchangaLang('kn')}
-                        className={`px-2 py-0.5 rounded ${panchangaLang === 'kn' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}
-                        data-testid="button-lang-kn"
-                      >
-                        ಕನ್ನಡ
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Samvatsara:' : 'ಸಂವತ್ಸರ:'}</span>
-                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.samvatsara : todayDetails.samvatsaraK}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Chandra Masa:' : 'ಚಂದ್ರ ಮಾಸ:'}</span>
-                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.chandraMasa : todayDetails.chandraMasaK}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Tithi:' : 'ತಿಥಿ:'}</span>
-                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.tithi : todayDetails.tithiK}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Nakshatra:' : 'ನಕ್ಷತ್ರ:'}</span>
-                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.nakshatra : todayDetails.nakshatraK}</span>
-                    </div>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
           </div>
           
-          {/* Date and Link */}
-          <div className="pt-2 border-t border-foreground/10 flex items-center justify-between">
-            <div className="text-xs font-semibold text-foreground" data-testid="text-today-date">{formatTodayDate()}</div>
+          <div className="flex items-center justify-between text-xs">
+            <div className="font-semibold text-foreground" data-testid="text-today-date">{formatTodayDate()}</div>
             <a 
               href="https://sandhyakala.vercel.app" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-xs text-foreground hover:underline font-medium"
+              className="text-foreground/70 hover:underline font-medium"
               data-testid="link-detailed-panchanga"
             >
               Sandhya Kala Details →
             </a>
           </div>
+
+          {/* Today Button */}
+          <div className="pt-2">
+            <button
+              onClick={() => setTodaySheetOpen(true)}
+              className="group relative mx-auto flex items-center gap-1.5 px-6 py-2 rounded-full bg-primary text-white text-sm font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 active:scale-95 transition-all duration-200"
+              data-testid="button-today-ritual"
+            >
+              <span className="absolute inset-0 rounded-full bg-primary/20 animate-ping opacity-30" style={{ animationDuration: '3s' }} />
+              <span className="relative">Today</span>
+              <ChevronDown className="w-4 h-4 relative group-hover:translate-y-0.5 transition-transform" />
+            </button>
+          </div>
         </div>
       )}
       </div>
+
+      {/* Today Carousel Sheet */}
+      <TodayCarousel
+        open={todaySheetOpen}
+        onClose={() => setTodaySheetOpen(false)}
+        todayDetails={todayDetails}
+        formattedDate={formatTodayDate()}
+      />
 
       {/* Desktop Welcome Banner */}
       <div className="hidden md:block w-screen relative left-1/2 -translate-x-1/2 h-[300px] overflow-hidden">

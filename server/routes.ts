@@ -348,7 +348,7 @@ export async function registerRoutes(
         }
         if (pageRes.ok) {
           const html = await pageRes.text();
-          const dataMatch = html.match(/var ytInitialData = ({.*?});<\/script>/s);
+          const dataMatch = html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/);
           if (dataMatch) {
             const data = JSON.parse(dataMatch[1]);
             const found: any[] = [];
