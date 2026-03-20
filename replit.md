@@ -100,7 +100,7 @@ Preferred communication style: Simple, everyday language.
 - Requires `PAYTM_MID`, `PAYTM_MERCHANT_KEY` (regular) and `PAYTM_MID_SPCT`, `PAYTM_MERCHANT_KEY_SPCT` (80G donations) environment secrets
 - One-time and Recurring seva types now use Paytm JS Checkout (Razorpay removed):
   1. `/api/initiatePaytmTransaction` POST — generates PS_ (recurring) or OTFS_ (one-time) orderId via `orderPrefix` param, calls Paytm Initiate Transaction API, returns `{txnToken, orderId, mid, amount}`
-  2. `/api/newReceiptFlr` POST (recurring) or `/api/newReceiptFl` POST (one-time) — creates DB receipt with cart data (paymentRef=orderId, selectedSevas, inAbsentia=1 for recurring)
+  2. `/api/newReceiptFlr` POST (both recurring and one-time) — creates DB receipt with cart data (paymentRef=orderId, selectedSevas, inAbsentia=1 for recurring)
   3. Paytm JS Checkout opens inline for payment
   4. `/api/paymentAck` POST → `/api/verifyPaytmTransaction` POST (non-blocking)
   5. Success screen shows Transaction ID, Order ID, Amount, and list of booked sevas

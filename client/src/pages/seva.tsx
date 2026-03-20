@@ -1012,7 +1012,7 @@ export default function Seva() {
 
     const isRecurring = cart.every(s => s.mode === 3);
     const orderPrefix = isRecurring ? "PS" : "OTFS";
-    const receiptEndpoint = isRecurring ? "/api/newReceiptFlr" : "/api/newReceiptFl";
+    const receiptEndpoint = "/api/newReceiptFlr";
 
     try {
       const initRes = await fetch("/api/initiatePaytmTransaction", {
