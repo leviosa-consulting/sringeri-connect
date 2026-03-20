@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { LogOut, Settings, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera } from "lucide-react";
+import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
 import { auth } from "@/lib/firebase";
@@ -554,23 +554,16 @@ export default function Profile() {
         </Tabs>
 
         {/* Account Actions */}
-        <Card className="shadow-sm" data-testid="card-account-actions">
-           <CardContent className="p-2">
-             <Button variant="ghost" className="w-full justify-start h-12 text-muted-foreground hover:text-foreground" data-testid="button-settings">
-               <Settings className="mr-2 h-4 w-4" />
-               Settings
-             </Button>
-             <Button 
-                variant="ghost" 
-                className="w-full justify-start h-12 text-destructive hover:text-destructive hover:bg-destructive/5"
-                onClick={handleLogout}
-                data-testid="button-logout"
-             >
-               <LogOut className="mr-2 h-4 w-4" />
-               Sign Out
-             </Button>
-           </CardContent>
-        </Card>
+        <Button 
+          variant="ghost" 
+          size="sm"
+          className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/5 text-sm"
+          onClick={handleLogout}
+          data-testid="button-logout"
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign Out
+        </Button>
       </div>
     </div>
   );
