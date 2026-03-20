@@ -20,14 +20,14 @@ export default function FontSizeToggle() {
   }, [open]);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative" style={{ fontSize: '16px' }}>
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-black/5 transition-colors text-[#ff6600]"
         aria-label="Change font size"
         data-testid="button-font-size-toggle"
       >
-        <span className="text-sm font-bold leading-none">Aa</span>
+        <span className="font-bold leading-none" style={{ fontSize: '14px' }}>Aa</span>
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-border py-1 min-w-[140px] z-50">
@@ -35,7 +35,8 @@ export default function FontSizeToggle() {
             <button
               key={opt}
               onClick={() => { setFontSize(opt); setOpen(false); }}
-              className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+              className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors"
+              style={{ fontSize: '14px' }}
               data-testid={`button-font-${opt}`}
             >
               <span className={fontSize === opt ? "font-semibold text-primary" : "text-foreground"}>
