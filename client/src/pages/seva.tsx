@@ -2469,7 +2469,7 @@ export default function Seva() {
                               data-testid="input-specific-date" />
                           </div>
                         )}
-                        {recurrenceType === 4 && !weekdayId && (
+                        {recurrenceType === 4 && !weekdayId && specificDateNum > 0 && (
                           <div>
                             <label className="text-xs text-muted-foreground mb-2 block">Month</label>
                             <select value={monthId} onChange={(e) => setMonthId(Number(e.target.value))}
@@ -2507,7 +2507,7 @@ export default function Seva() {
                             </select>
                           </div>
                         )}
-                        {!weekdayId && (
+                        {!weekdayId && !fromNakshatraId && (
                           <div>
                             <label className="text-xs text-muted-foreground mb-1 block">Tithi</label>
                             <select value={fromTithiId} onChange={(e) => { const v = Number(e.target.value); setFromTithiId(v); if (v) { setFromNakshatraId(0); setWeekdayId(0); setWeekdayRepeatId(0); } }}
