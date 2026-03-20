@@ -290,6 +290,7 @@ export default function Seva() {
   const [calendarMonths, setCalendarMonths] = useState<CalendarMonth[]>([]);
   const [sevaCount, setSevaCount] = useState(1);
   const [sevaCountLoading, setSevaCountLoading] = useState(false);
+  const [sevaCountFetched, setSevaCountFetched] = useState(false);
 
   const [flDeity, setFlDeity] = useState<Sannidhi | null>(null);
   const [flCentre, setFlCentre] = useState<any>(null);
@@ -637,6 +638,7 @@ export default function Seva() {
     setCalendarMonths([]);
     setSevaCount(1);
     setSevaCountLoading(false);
+    setSevaCountFetched(false);
     setFlDeity(null);
     setFlCentre(null);
     setFlCentreSevas([]);
@@ -1366,6 +1368,7 @@ export default function Seva() {
       return;
     }
     setSevaCountLoading(true);
+    setSevaCountFetched(false);
     let cancelled = false;
     (async () => {
       try {
@@ -1381,6 +1384,7 @@ export default function Seva() {
           const data = await res.json();
           const count = typeof data === "number" ? data : (typeof data?.count === "number" ? data.count : 1);
           setSevaCount(count);
+          setSevaCountFetched(true);
         }
       } catch {
         if (!cancelled) setSevaCount(1);
@@ -2401,7 +2405,7 @@ export default function Seva() {
                           }
                           setWeekdayId(0); setWeekdayRepeatId(0); setSpecificDateNum(0); setMonthId(0);
                           setFromChandraMasaId(0); setFromNakshatraId(0); setFromTithiId(0); setFromSouraMasaId(0);
-                          setSevaCount(1); setSevaCountLoading(false);
+                          setSevaCount(1); setSevaCountLoading(false); setSevaCountFetched(false);
                         }}
                         className={`px-3 py-1.5 rounded text-xs ${recurrenceType === rt.id ? "bg-primary text-white" : "bg-white border border-border"}`}
                         data-testid={`button-recurrence-${rt.id}`}
@@ -2422,7 +2426,7 @@ export default function Seva() {
                             setCalendarType(ct.id);
                             setWeekdayId(0); setWeekdayRepeatId(0); setSpecificDateNum(0); setMonthId(0);
                             setFromChandraMasaId(0); setFromNakshatraId(0); setFromTithiId(0); setFromSouraMasaId(0);
-                            setSevaCount(1); setSevaCountLoading(false);
+                            setSevaCount(1); setSevaCountLoading(false); setSevaCountFetched(false);
                           }}
                           className={`px-3 py-1.5 rounded text-xs ${calendarType === ct.id ? "bg-primary text-white" : "bg-white border border-border"}`}
                           data-testid={`button-cal-${ct.id}`}
@@ -2612,20 +2616,20 @@ export default function Seva() {
             </div>
           )}
 
-          {selectedSeva && selectedSevaType?.id === 3 && !sevaCountLoading && sevaCount > 0 && (
+          {selectedSeva && selectedSevaType?.id === 3 && !sevaCountLoading && sevaCountFetched && sevaCount > 0 && (
             <div className="bg-green-50 rounded-lg p-3 border border-green-200">
               <p className="text-xs text-green-700 font-medium">This seva will be performed {sevaCount} {sevaCount === 1 ? "time" : "times"}</p>
               <p className="text-xs text-green-600 mt-1">Total: ₹{formatNumber(sevaBaseAmount)} × {sevaCount} = ₹{formatNumber(computedSevaAmount)}</p>
             </div>
           )}
 
-          {selectedSeva && selectedSevaType?.id === 3 && !sevaCountLoading && sevaCount === 0 && fromDate && (toDate || noEnd) && (
+          {selectedSeva && selectedSevaType?.id === 3 && !sevaCountLoading && sevaCountFetched && sevaCount === 0 && (
             <div className="bg-red-50 rounded-lg p-3 border border-red-200">
               <p className="text-xs text-red-700 font-medium">No occurrences found for the selected date range and recurrence pattern. Please adjust your selections.</p>
             </div>
           )}
 
-          {selectedSeva && selectedSevaType?.id === 3 && !sevaCountLoading && sevaCount > 0 && (
+          {selectedSeva && selectedSevaType?.id === 3 && !sevaCountLoading && sevaCountFetched && sevaCount > 0 && (
             <Card>
               <CardContent className="p-5 space-y-3">
                 <h3 className="font-serif font-bold text-sm">Prasadam & Postage</h3>
@@ -2664,7 +2668,7 @@ export default function Seva() {
             </div>
           )}
 
-          {selectedSeva && (selectedSevaType?.id !== 3 || (!sevaCountLoading && sevaCount > 0)) && (
+          {selectedSeva && (selectedSevaType?.id !== 3 || (!sevaCountLoading && sevaCountFetched && sevaCount > 0)) && (
             <Button className="w-full h-11" onClick={goToKartaStep} data-testid="button-next-karta">
               Next — Enter Devotee Details
             </Button>
