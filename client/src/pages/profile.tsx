@@ -1,12 +1,14 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { LogOut, Settings, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X } from "lucide-react";
+import { LogOut, Settings, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
+import { auth } from "@/lib/firebase";
+import { updateProfile } from "firebase/auth";
 
 const PAGE_SIZE = 20;
 
@@ -34,9 +36,39 @@ function filterByDateRange<T>(items: T[], dateExtractor: (item: T) => string | u
   });
 }
 
+function resizeImage(file: File, maxSize: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let w = img.width;
+        let h = img.height;
+        if (w > h) {
+          if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; }
+        } else {
+          if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function Profile() {
   const [_, setLocation] = useLocation();
   const { profile, user, logout, devoteeData, devoteeLoading, refreshDevoteeData } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [sevasOpen, setSevasOpen] = useState(false);
   const [donationsOpen, setDonationsOpen] = useState(false);
@@ -62,6 +94,27 @@ export default function Profile() {
   const email = devoteeData?.email || profile?.email || user?.email || "";
   const phone = devoteeData?.mobile || profile?.phone || "";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+    try {
+      setUploadingPhoto(true);
+      const dataUrl = await resizeImage(file, 200);
+      await updateProfile(auth.currentUser, { photoURL: dataUrl });
+      await auth.currentUser.reload();
+      window.dispatchEvent(new Event("firebase-profile-updated"));
+    } catch (err) {
+      console.error("Failed to update profile photo:", err);
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -95,10 +148,37 @@ export default function Profile() {
       <div className="bg-primary pt-12 pb-20 px-6 text-primary-foreground relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10 flex items-center gap-4">
-          <Avatar className="h-20 w-20 border-4 border-white/20 shadow-xl" data-testid="img-avatar">
-            <AvatarImage src={user?.photoURL || undefined} />
-            <AvatarFallback>{initials}</AvatarFallback>
-          </Avatar>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoChange}
+            data-testid="input-photo-upload"
+          />
+          <button
+            onClick={handleAvatarClick}
+            className="relative group"
+            disabled={uploadingPhoto}
+            data-testid="button-change-avatar"
+          >
+            <Avatar className="h-20 w-20 border-4 border-white/20 shadow-xl" data-testid="img-avatar">
+              <AvatarImage src={user?.photoURL || undefined} />
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              {uploadingPhoto ? (
+                <Loader2 className="h-5 w-5 text-white animate-spin" />
+              ) : (
+                <Camera className="h-5 w-5 text-white" />
+              )}
+            </div>
+            {uploadingPhoto && (
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                <Loader2 className="h-5 w-5 text-white animate-spin" />
+              </div>
+            )}
+          </button>
           <div className="flex-1">
             <h1 className="text-2xl font-serif font-bold" data-testid="text-username">{displayName}</h1>
             <p className="opacity-90 text-sm" data-testid="text-email">{email}</p>

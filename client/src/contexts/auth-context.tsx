@@ -185,7 +185,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: firebaseUser.email || "",
         });
         
-        // Fetch devotee data from external API using user UID
         await fetchDevoteeData(firebaseUser);
       } else {
         setProfile(null);
@@ -195,7 +194,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    const handleProfileUpdate = () => {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        setUser({ ...currentUser } as User);
+      }
+    };
+    window.addEventListener("firebase-profile-updated", handleProfileUpdate);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("firebase-profile-updated", handleProfileUpdate);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
