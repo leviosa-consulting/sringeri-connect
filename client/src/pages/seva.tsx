@@ -2148,39 +2148,6 @@ export default function Seva() {
         </div>
 
         <div className="px-4 mt-4 space-y-4">
-          {selectedSevaType?.id === 3 && (
-            <Card>
-              <CardContent className="p-5 space-y-3">
-                <h3 className="font-serif font-bold text-sm">Date Range</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Start Date</label>
-                    <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
-                      min={getTomorrowDate()}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                      data-testid="input-from-date" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">End Date</label>
-                    <input type="date" value={toDate} onChange={(e) => { setToDate(e.target.value); setNoEnd(false); }}
-                      disabled={noEnd} min={fromDate}
-                      max={(calendarType === 2 || calendarType === 3) ? "2027-04-06" : undefined}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white disabled:opacity-50"
-                      data-testid="input-to-date" />
-                  </div>
-                </div>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={noEnd} onChange={(e) => { setNoEnd(e.target.checked); if (e.target.checked) setToDate(""); }}
-                    className="rounded border-border" data-testid="check-no-end" />
-                  <span className="text-muted-foreground text-xs">No end date (lifetime / 20 years)</span>
-                </label>
-                {(calendarType === 2 || calendarType === 3) && !noEnd && (
-                  <p className="text-[10px] text-muted-foreground">Max end date for lunar/solar calendar: 2027-04-06</p>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
           <Card>
             <CardContent className="p-5 space-y-3">
               <h3 className="font-serif font-bold text-sm">Select Sannidhi (Deity)</h3>
@@ -2531,6 +2498,39 @@ export default function Seva() {
                     <p className="text-xs text-green-700 font-medium">This seva will be performed {sevaCount} times</p>
                     <p className="text-xs text-green-600 mt-1">Total: ₹{formatNumber(sevaBaseAmount)} × {sevaCount} = ₹{formatNumber(computedSevaAmount)}</p>
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {selectedSeva && selectedSevaType?.id === 3 && (
+            <Card>
+              <CardContent className="p-5 space-y-3">
+                <h3 className="font-serif font-bold text-sm">Date Range</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Start Date</label>
+                    <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
+                      min={getTomorrowDate()}
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                      data-testid="input-from-date" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">End Date</label>
+                    <input type="date" value={toDate} onChange={(e) => { setToDate(e.target.value); setNoEnd(false); }}
+                      disabled={noEnd} min={fromDate}
+                      max={(calendarType === 2 || calendarType === 3) ? "2027-04-06" : undefined}
+                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white disabled:opacity-50"
+                      data-testid="input-to-date" />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={noEnd} onChange={(e) => { setNoEnd(e.target.checked); if (e.target.checked) setToDate(""); }}
+                    className="rounded border-border" data-testid="check-no-end" />
+                  <span className="text-muted-foreground text-xs">No end date (lifetime / 20 years)</span>
+                </label>
+                {(calendarType === 2 || calendarType === 3) && !noEnd && (
+                  <p className="text-[10px] text-muted-foreground">Max end date for lunar/solar calendar: 2027-04-06</p>
                 )}
               </CardContent>
             </Card>
