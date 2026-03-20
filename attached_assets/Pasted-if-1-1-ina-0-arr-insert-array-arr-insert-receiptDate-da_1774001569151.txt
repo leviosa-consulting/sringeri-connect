@@ -1,0 +1,119 @@
+if(1==1){ 
+			$ina = 0;
+			$arr_insert = array();
+			$arr_insert["receiptDate"] = date('Y-m-d');
+			$arr_insert["devoteeName"] = $data["name"];
+			$arr_insert["devoteeNameK"] = $data["nameK"];
+			$arr_insert["totalAmount"] = $data["totalAmount"];
+			$arr_insert["paymentModeId"] = 6;//$data["paymentModeId"];
+			$arr_insert["mobile"] = ($data["mobile"]=="")?$data["addresseeMobile"]:$data["mobile"];
+			isset($data["email"])?$arr_insert["email"] = $data["email"]:"";
+			$arr_insert["city"] = $data["city"];
+			$arr_insert["cityK"] = isset($data["cityK"])?$data["cityK"]:$data["city"];
+			$arr_insert["receiptTypeId"] = 1;//$data["receiptTypeId"];
+			if($data["sevaTypeId"]==1 && $data["inAbsentia"] != ""){
+				$arr_insert["inAbsentia"] = $data["inAbsentia"];
+				$ina = $data["inAbsentia"];
+			}else{
+				$arr_insert["inAbsentia"] = 0;
+				$ina = 0;
+			}
+			$arr_insert["branchId"] = 1;
+			$arr_insert["addedBy"] = $data["uid"];
+			$arr_insert["sevaType"] = $data["sevaTypeId"];
+			$arr_insert["addedAt"] = date('Y-m-d H:i:s');
+			$arr_insert["status"] = 8;
+
+			$insert_id = db_insert('receipt_master_agg',$arr_insert);
+			$totalAmount = 0;
+			foreach($data["selectedSevas"] AS $ds){
+				$dsId = ($data["sevaTypeId"]==1)?$ds["id"]:$ds["dsId"];
+				$getamount = db_one("SELECT s.price FROM deity_sevas ds INNER JOIN sevas s ON s.id = ds.sevaId WHERE ds.id=".$dsId."");
+				if($getamount["price"] <= 0 || $data["sevaTypeId"] == 3){
+					$totalAmount += isset($ds["price"])?$ds["price"]:$ds["amount"];
+				}else{
+					$totalAmount += $getamount["price"];
+				}
+				
+				$arr_insert_detail = array();
+				$arr_insert_detail["receiptMasterId"] = $insert_id;
+				$arr_insert_detail["receiptTypeId"] = $ds["receiptTypeId"];
+				$arr_insert_detail["branchId"] = $ds["branchId"];
+// 				$arr_insert_detail["inAbsentia"] = 0;
+				$arr_insert_detail["inAbsentia"] = ($data["sevaTypeId"]==1)?$ina:$ds["inAbsentia"];
+				$arr_insert_detail["deitySevaId"] = $dsId;
+				$arr_insert_detail["devoteeName"] = ($data["sevaTypeId"]==1)?$data["name"]:$ds["name"];
+				$arr_insert_detail["devoteeNameK"] = ($data["sevaTypeId"]==1)?$data["nameK"]:$ds["nameK"];
+				isset($ds["receivePrasadam"])?$arr_insert_detail["prasadaNeeded"] = ($ds["receivePrasadam"]=="true")?1:0:"";
+				isset($ds["postageCharges"])?$arr_insert_detail["postageCharges"] = $ds["postageCharges"]:"";
+				if(isset($ds["postageId"])){
+					$arr_insert_detail["postageId"] = ($ds["postageId"]!="")?$ds["postageId"]:5;
+				}
+				isset($ds["addresseeName"])?$arr_insert_detail["addresseeName"] = $ds["addresseeName"]:"";
+				isset($ds["addressLine1"])?$arr_insert_detail["addressLine1"] = $ds["addressLine1"]:"";
+				isset($ds["addressLine2"])?$arr_insert_detail["addressLine2"] = $ds["addressLine2"]:"";
+				isset($ds["landmark"])?$arr_insert_detail["landmark"] = $ds["landmark"]:"";
+				isset($ds["country"])?$arr_insert_detail["country"] = $ds["country"]:"";
+				isset($ds["pincode"])?$arr_insert_detail["pincode"] = $ds["pincode"]:"";
+				isset($ds["state"])?$arr_insert_detail["state"] = $ds["state"]:"";
+				isset($ds["city"])?$arr_insert_detail["city"] = $ds["city"]:"";
+				if($data["sevaTypeId"]==3){
+					($ds["fromDate"]!="")?$arr_insert_detail["puduvattuFromDate"] = $ds["fromDate"]:"";
+					($ds["toDate"]!="")?$arr_insert_detail["puduvattuToDate"] = $ds["toDate"]:$arr_insert_detail["puduvattuToDate"] = '9999-12-31';
+					($ds["calendarType"]!="")?$arr_insert_detail["calendarTypeId"] = $ds["calendarType"]:"";
+					($ds["type"]!="")?$arr_insert_detail["recurrenceTypeId"] = $ds["type"]:"";
+					($ds["weekdayId"]!="")?$arr_insert_detail["weekdayId"] = $ds["weekdayId"]:"";
+					($ds["specificDate"]!="")?$arr_insert_detail["specificDate"] = $ds["specificDate"]:"";
+					($ds["weekdayRepeatId"]!="")?$arr_insert_detail["weekdayRepeatId"] = $ds["weekdayRepeatId"]:"";
+					($ds["monthId"]!="")?$arr_insert_detail["monthId"] = $ds["monthId"]:"";
+					($ds["fromChandraMasaId"]!="")?$arr_insert_detail["fromChandraMasaId"] = $ds["fromChandraMasaId"]:"";
+					($ds["fromNakshatraId"]!="")?$arr_insert_detail["fromNakshatraId"] = $ds["fromNakshatraId"]:"";
+					($ds["fromTithiId"]!="")?$arr_insert_detail["fromTithiId"] = $ds["fromTithiId"]:"";				
+					$arr_insert_detail["prasadaNeeded"] = ($ds["receivePrasadam"]=="true")?1:0;	
+					isset($ds["remarks"])?$arr_insert_detail["remarks"] = $ds["remarks"]:"";
+				}
+				
+				if(isset($ds["nakshatraId"])){
+						(($ds["nakshatraId"] =='')? '': $arr_insert_detail["nakshatraId"] = $ds["nakshatraId"]);
+				}
+				if(isset($ds["rashiId"])){
+						(($ds["rashiId"] =='')? '': $arr_insert_detail["rashiId"] = $ds["rashiId"]);
+				}
+				if(isset($ds["gotra"])){
+						(($ds["gotra"] =='')? '': $arr_insert_detail["gotra"] = $ds["gotra"]);
+						(($ds["gotraK"] =='')? '': $arr_insert_detail["gotraK"] = $ds["gotraK"]);
+				}
+				
+				if($getamount["price"] <= 0 || $data["sevaTypeId"] == 3){
+					$arr_insert_detail["amount"] = isset($ds["price"])?$ds["price"]:$ds["amount"];
+				}else{
+					$arr_insert_detail["amount"] = $getamount["price"];
+				}
+				
+				$arr_insert_detail["quantity"] = 1;
+				if(isset($ds["sevaDate"]) && $ds["sevaDate"] != ""){
+					$arr_insert_detail["sevaDate"] = $ds["sevaDate"];
+				}else{
+					$arr_insert_detail["sevaDate"] = date('Y-m-d');
+				}
+				$insert_detail_id = db_insert('receipt_detail_agg',$arr_insert_detail);
+			}	
+
+			$res_arr = array();
+			if($insert_id > 0 && $insert_detail_id > 0){
+				
+				$arr_update = array();
+				$arr_update["totalAmount"] = $data["totalAmount"];
+				$arr_update["paymentRef"] = $data["paymentRef"];
+				$wr = where_id($insert_id);
+	      		$update_ack = db_update('receipt_master_agg',$arr_update,$wr);
+				
+				$res_arr["status"] = "Successful";
+				
+				$res_arr["recordId"] = $insert_id;
+				$res_arr["statusCode"] = 1;
+			}else{
+				$res_arr["status"] = "Something Went Wrong";
+				$res_arr["statusCode"] = 0;
+			}
+		}
