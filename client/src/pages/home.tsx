@@ -166,8 +166,10 @@ export default function Home() {
         />
       </div>
 
-      {/* Header Section */}
-      <div className="md:hidden px-4 -mt-4 space-y-4 pb-4" style={{ background: 'linear-gradient(to bottom, #ffffff, #e8e0d4)' }}>
+      {/* Header + Panchanga gradient wrapper (mobile) */}
+      <div className="md:hidden -mt-4 w-screen relative left-1/2 -translate-x-1/2" style={{ background: 'linear-gradient(to bottom, #ffffff, #d9cfc3)' }}>
+        {/* Header Section */}
+        <div className="px-4 space-y-4 pb-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div
@@ -187,23 +189,11 @@ export default function Home() {
             </div>
             <FontSizeToggle />
           </div>
-          
-          {/* Search hidden for now */}
-      </div>
+        </div>
 
-      {/* Desktop Welcome Banner */}
-      <div className="hidden md:block w-screen relative left-1/2 -translate-x-1/2 h-[300px] overflow-hidden">
-        <img 
-          src={guruBanner} 
-          alt="Sri Sharada Devi and Jagadgurus" 
-          className="w-full h-full object-cover object-center"
-          data-testid="img-guru-banner-desktop"
-        />
-      </div>
-
-      {/* Hindu Calendar Strip */}
-      {todayDetails && (
-        <div className="py-4 px-6 text-center space-y-2 bg-cover bg-center w-screen relative left-1/2 -translate-x-1/2" style={{ backgroundImage: `url(${calendarBg})` }} data-testid="card-today-calendar">
+        {/* Hindu Calendar Strip */}
+        {todayDetails && (
+          <div className="py-4 px-6 text-center space-y-2" data-testid="card-today-calendar">
           {/* Occasion - hidden for now */}
           {/* {(todayDetails.occasionK || todayDetails.occasion) && (
             <div className="pb-2 border-b border-foreground/10">
@@ -289,6 +279,88 @@ export default function Home() {
               rel="noopener noreferrer"
               className="text-xs text-foreground hover:underline font-medium"
               data-testid="link-detailed-panchanga"
+            >
+              Sandhya Kala Details →
+            </a>
+          </div>
+        </div>
+      )}
+      </div>
+
+      {/* Desktop Welcome Banner */}
+      <div className="hidden md:block w-screen relative left-1/2 -translate-x-1/2 h-[300px] overflow-hidden">
+        <img 
+          src={guruBanner} 
+          alt="Sri Sharada Devi and Jagadgurus" 
+          className="w-full h-full object-cover object-center"
+          data-testid="img-guru-banner-desktop"
+        />
+      </div>
+
+      {/* Desktop Hindu Calendar Strip */}
+      {todayDetails && (
+        <div className="hidden md:block py-4 px-6 text-center space-y-2 bg-cover bg-center w-screen relative left-1/2 -translate-x-1/2" style={{ backgroundImage: `url(${calendarBg})` }} data-testid="card-today-calendar-desktop">
+          <div className="flex items-center justify-center gap-2">
+            <div className="flex-1">
+              {todayDetails.todayWebsiteKannada && (
+                <div className="text-base font-serif text-foreground">{todayDetails.todayWebsiteKannada}</div>
+              )}
+              {todayDetails.todayWebsiteEnglish && (
+                <div className="text-sm text-foreground/70">{todayDetails.todayWebsiteEnglish}</div>
+              )}
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="p-1 rounded-full hover:bg-primary/10 transition-colors">
+                  <Info className="h-4 w-4 text-primary" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-4" align="end">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-serif font-bold text-sm text-primary">
+                      {panchangaLang === 'en' ? 'Panchanga Details' : 'ಪಂಚಾಂಗ ವಿವರಗಳು'}
+                    </h4>
+                    <div className="flex gap-1 text-xs">
+                      <button 
+                        onClick={() => setPanchangaLang('en')}
+                        className={`px-2 py-0.5 rounded ${panchangaLang === 'en' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}
+                      >EN</button>
+                      <button 
+                        onClick={() => setPanchangaLang('kn')}
+                        className={`px-2 py-0.5 rounded ${panchangaLang === 'kn' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}
+                      >ಕನ್ನಡ</button>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Samvatsara:' : 'ಸಂವತ್ಸರ:'}</span>
+                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.samvatsara : todayDetails.samvatsaraK}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Chandra Masa:' : 'ಚಂದ್ರ ಮಾಸ:'}</span>
+                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.chandraMasa : todayDetails.chandraMasaK}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Tithi:' : 'ತಿಥಿ:'}</span>
+                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.tithi : todayDetails.tithiK}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{panchangaLang === 'en' ? 'Nakshatra:' : 'ನಕ್ಷತ್ರ:'}</span>
+                      <span className="font-medium text-right">{panchangaLang === 'en' ? todayDetails.nakshatra : todayDetails.nakshatraK}</span>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="pt-2 border-t border-foreground/10 flex items-center justify-between">
+            <div className="text-xs font-semibold text-foreground">{formatTodayDate()}</div>
+            <a 
+              href="https://sandhyakala.vercel.app" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-xs text-foreground hover:underline font-medium"
             >
               Sandhya Kala Details →
             </a>
