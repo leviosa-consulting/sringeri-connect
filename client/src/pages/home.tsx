@@ -451,7 +451,7 @@ export default function Home() {
         </div>
 
         {announcements.length > 0 && (
-          <div className="px-4 md:px-6 md:col-span-12">
+          <div className="md:col-span-12">
             <section>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -528,7 +528,7 @@ export default function Home() {
         )}
 
         {youtubeVideos.length > 0 && (
-          <div className="mt-3 px-4 md:px-6 pb-3 md:col-span-12">
+          <div className="mt-3 pb-3 md:col-span-12">
             <section>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
