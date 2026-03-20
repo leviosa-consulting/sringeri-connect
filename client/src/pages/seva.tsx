@@ -751,6 +751,10 @@ export default function Seva() {
         }
       }
       if (sevaCount <= 0) errors.push("Please select a valid date range for seva.");
+      if (receivePrasadam === "") errors.push("Please select if you want prasadam.");
+      if (receivePrasadam === "true" && !postageId && !hideCalendarPostage) {
+        errors.push("Please select a postage option.");
+      }
     }
 
     if (errors.length > 0) {
