@@ -167,7 +167,7 @@ export default function Home() {
       </div>
 
       {/* Header Section */}
-      <div className="md:hidden px-4 -mt-4 space-y-4">
+      <div className="md:hidden px-4 -mt-4 space-y-4 pb-4" style={{ background: 'linear-gradient(to bottom, #ffffff, #e8e0d4)' }}>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div
