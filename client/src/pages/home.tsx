@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
@@ -6,7 +6,6 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Info, Megaphone, Play, Globe, BookOpen, CalendarDays } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useMedia } from "react-use";
 import { useAuth } from "@/contexts/auth-context";
 import FontSizeToggle from "@/components/font-size-toggle";
 import guruBanner from "@assets/footer-collage-web_(1)_1773382448292.webp";
@@ -62,7 +61,6 @@ interface TodayDetails {
 }
 
 export default function Home() {
-  const isDesktop = useMedia('(min-width: 768px)', false);
   const [_, setLocation] = useLocation();
   const { profile, user } = useAuth();
   const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
@@ -71,6 +69,8 @@ export default function Home() {
   const [eventsLoading, setEventsLoading] = useState(true);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [youtubeVideos, setYoutubeVideos] = useState<YouTubeVideo[]>([]);
+  const [activeEventIndex, setActiveEventIndex] = useState(0);
+  const eventScrollRef = useRef<HTMLDivElement>(null);
   const displayName = profile?.name || user?.displayName || "Devotee";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
@@ -290,10 +290,146 @@ export default function Home() {
         </div>
       )}
 
+      {/* Featured Events Hero */}
+      {!eventsLoading && sringeriEvents.length > 0 && (
+        <div className="px-4 md:px-6" data-testid="section-featured-events">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-serif font-bold text-lg flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-[#ff6600]" />
+              Events at the Peetham
+            </h2>
+            <a
+              href="/updates"
+              className="text-sm text-primary hover:underline cursor-pointer"
+              data-testid="link-view-all-events"
+            >
+              View All
+            </a>
+          </div>
+
+          {/* Mobile: full-width swipeable cards */}
+          <div className="md:hidden">
+            <div
+              ref={eventScrollRef}
+              className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              onScroll={() => {
+                const el = eventScrollRef.current;
+                if (el && el.children.length > 0) {
+                  const children = Array.from(el.children) as HTMLElement[];
+                  let closestIdx = 0;
+                  let minDist = Infinity;
+                  children.forEach((child, i) => {
+                    const dist = Math.abs(child.offsetLeft - el.scrollLeft);
+                    if (dist < minDist) { minDist = dist; closestIdx = i; }
+                  });
+                  setActiveEventIndex(closestIdx);
+                }
+              }}
+            >
+              {sringeriEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="w-full shrink-0 snap-center cursor-pointer"
+                  onClick={() => event.url && window.open(event.url, "_blank")}
+                  data-testid={`card-featured-event-${event.id}`}
+                >
+                  <div className="relative h-[220px] overflow-hidden rounded-lg">
+                    {event.featuredImage ? (
+                      <img
+                        src={event.featuredImage}
+                        alt={event.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-[#ff6600]/20 to-[#e8a735]/30" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4 space-y-1.5">
+                      {event.date && (
+                        <span className="inline-block bg-[#e8a735] text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-sm">
+                          {event.date}
+                        </span>
+                      )}
+                      <h3 className="font-serif font-bold text-base text-white leading-tight line-clamp-2">
+                        {event.title}
+                      </h3>
+                      {event.description && (
+                        <p className="text-xs text-white/80 line-clamp-2 leading-relaxed">
+                          {event.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {sringeriEvents.length > 1 && (
+              <div className="flex justify-center gap-1.5 mt-2">
+                {sringeriEvents.map((_, idx) => (
+                  <button
+                    key={idx}
+                    className={`h-1.5 rounded-full transition-all ${idx === activeEventIndex ? 'w-6 bg-[#ff6600]' : 'w-1.5 bg-gray-300'}`}
+                    onClick={() => {
+                      const el = eventScrollRef.current;
+                      if (el && el.children[idx]) {
+                        (el.children[idx] as HTMLElement).scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+                      }
+                      setActiveEventIndex(idx);
+                    }}
+                    data-testid={`button-event-dot-${idx}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: large primary card + side cards */}
+          <div className="hidden md:grid md:grid-cols-3 gap-4">
+            {sringeriEvents.slice(0, 3).map((event, idx) => (
+              <div
+                key={event.id}
+                className={`relative overflow-hidden rounded-lg cursor-pointer group ${idx === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}
+                onClick={() => event.url && window.open(event.url, "_blank")}
+                data-testid={`card-featured-event-desktop-${event.id}`}
+              >
+                <div className={`relative overflow-hidden ${idx === 0 ? 'h-[360px]' : 'h-[170px]'}`}>
+                  {event.featuredImage ? (
+                    <img
+                      src={event.featuredImage}
+                      alt={event.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-[#ff6600]/20 to-[#e8a735]/30" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4 space-y-1.5">
+                    {event.date && (
+                      <span className="inline-block bg-[#e8a735] text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-sm">
+                        {event.date}
+                      </span>
+                    )}
+                    <h3 className={`font-serif font-bold text-white leading-tight line-clamp-2 ${idx === 0 ? 'text-xl' : 'text-sm'}`}>
+                      {event.title}
+                    </h3>
+                    {idx === 0 && event.description && (
+                      <p className="text-sm text-white/80 line-clamp-2 leading-relaxed">
+                        {event.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:grid md:grid-cols-12 gap-8 px-4 md:px-6">
         
         {/* Main Content Column */}
-        <div className="md:col-span-8 space-y-8">
+        <div className="md:col-span-12 space-y-8">
           
           {/* Online Services */}
           <section className="space-y-3">
@@ -338,120 +474,6 @@ export default function Home() {
 
         </div>
 
-        {/* Sidebar / Secondary Content */}
-        <div className="md:col-span-4 space-y-8">
-           
-           {/* Recent Events */}
-           <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-serif font-bold text-xl flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-[#ff6600]" />
-                Recent Events
-              </h2>
-              <a 
-                href="/updates"
-                className="text-sm text-primary hover:underline cursor-pointer"
-                data-testid="link-view-all-events"
-              >
-                View All
-              </a>
-            </div>
-            
-            {eventsLoading ? (
-              <div className="text-sm text-muted-foreground text-center py-6">Loading events...</div>
-            ) : sringeriEvents.length === 0 ? (
-              <div className="text-sm text-muted-foreground text-center py-6">No upcoming events</div>
-            ) : (
-              <>
-                {/* Mobile Horizontal Scroll */}
-                <div className="md:hidden">
-                  <ScrollArea className="w-full whitespace-nowrap">
-                    <div className="flex w-max space-x-4 pb-4">
-                      {sringeriEvents.map((item) => (
-                        <div 
-                          key={item.id} 
-                          className="w-[280px] shrink-0 overflow-hidden border border-border/50 bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => item.url && window.open(item.url, "_blank")}
-                          data-testid={`card-event-${item.id}`}
-                        >
-                          {item.featuredImage && (
-                            <div className="h-40 overflow-hidden relative">
-                              <img src={item.featuredImage} alt={item.title} className="w-full h-full object-cover" />
-                              {item.date && (
-                                <div className="absolute bottom-0 left-0">
-                                  <span className="inline-block bg-[#e8a735] text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1">
-                                    {item.date}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {!item.featuredImage && item.date && (
-                            <div className="px-4 pt-4">
-                              <span className="inline-block bg-[#e8a735] text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1">
-                                {item.date}
-                              </span>
-                            </div>
-                          )}
-                          <div className="p-4 space-y-2">
-                            <h3 className="font-serif font-bold text-sm leading-tight line-clamp-2 whitespace-normal">{item.title}</h3>
-                            {item.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-2 whitespace-normal leading-relaxed">{item.description}</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <ScrollBar orientation="horizontal" className="hidden" />
-                  </ScrollArea>
-                </div>
-
-                <div className="hidden md:block">
-                  <ScrollArea className="w-full whitespace-nowrap">
-                    <div className="flex gap-4 pb-2">
-                      {sringeriEvents.map((item) => (
-                        <div
-                          key={item.id}
-                          className="w-[300px] shrink-0 overflow-hidden border border-border/50 bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => item.url && window.open(item.url, "_blank")}
-                          data-testid={`card-event-desktop-${item.id}`}
-                        >
-                          {item.featuredImage && (
-                            <div className="h-44 overflow-hidden relative">
-                              <img src={item.featuredImage} alt={item.title} className="w-full h-full object-cover" />
-                              {item.date && (
-                                <div className="absolute bottom-0 left-0">
-                                  <span className="inline-block bg-[#e8a735] text-white text-xs font-bold uppercase tracking-wide px-3 py-1.5">
-                                    {item.date}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {!item.featuredImage && item.date && (
-                            <div className="px-4 pt-4">
-                              <span className="inline-block bg-[#e8a735] text-white text-xs font-bold uppercase tracking-wide px-3 py-1.5">
-                                {item.date}
-                              </span>
-                            </div>
-                          )}
-                          <div className="p-4 space-y-2">
-                            <h3 className="font-serif font-bold text-base leading-tight line-clamp-2 whitespace-normal">{item.title}</h3>
-                            {item.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-3 whitespace-normal leading-relaxed">{item.description}</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <ScrollBar orientation="horizontal" className="hidden" />
-                  </ScrollArea>
-                </div>
-              </>
-            )}
-
-          </section>
-        </div>
 
         {announcements.length > 0 && (
           <div className="md:col-span-12">
