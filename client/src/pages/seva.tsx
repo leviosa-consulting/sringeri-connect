@@ -2651,6 +2651,11 @@ export default function Seva() {
                 </div>
                 {receivePrasadam === "true" && !hideCalendarPostage && (
                   <div className="space-y-2">
+                    {recurrenceType === 1 && (
+                      <p className="text-xs text-blue-700 bg-blue-50 rounded px-2 py-1">
+                        For daily seva, prasadam postage will be done once a week.
+                      </p>
+                    )}
                     {postageOptions.map((opt) => (
                       <button key={opt.id} onClick={() => handlePostageSelect(opt)}
                         className={`w-full text-left rounded-lg p-3 text-sm ${postageId === String(opt.id) ? "bg-primary text-white" : "bg-white border border-border"}`}
