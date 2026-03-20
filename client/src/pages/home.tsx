@@ -167,7 +167,7 @@ export default function Home() {
       </div>
 
       {/* Header Section */}
-      <div className="md:hidden px-4 space-y-4">
+      <div className="md:hidden px-4 -mt-4 space-y-4">
           <div className="flex justify-between items-center">
             <div className="space-y-1">
               <h2 className="text-sm font-medium text-muted-foreground">Namaste,</h2>
