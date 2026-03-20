@@ -330,7 +330,7 @@ export default function Home() {
               {sringeriEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="w-full shrink-0 snap-center cursor-pointer"
+                  className={`w-full shrink-0 snap-center ${event.url ? 'cursor-pointer' : ''}`}
                   onClick={() => event.url && window.open(event.url, "_blank")}
                   data-testid={`card-featured-event-${event.id}`}
                 >
@@ -389,7 +389,7 @@ export default function Home() {
             {sringeriEvents.slice(0, 3).map((event, idx) => (
               <div
                 key={event.id}
-                className={`relative overflow-hidden rounded-lg cursor-pointer group ${idx === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}
+                className={`relative overflow-hidden rounded-lg group ${idx === 0 ? 'md:col-span-2 md:row-span-2' : ''} ${event.url ? 'cursor-pointer' : ''}`}
                 onClick={() => event.url && window.open(event.url, "_blank")}
                 data-testid={`card-featured-event-desktop-${event.id}`}
               >
@@ -413,8 +413,8 @@ export default function Home() {
                     <h3 className={`font-serif font-bold text-white leading-tight line-clamp-2 ${idx === 0 ? 'text-xl' : 'text-sm'}`}>
                       {event.title}
                     </h3>
-                    {idx === 0 && event.description && (
-                      <p className="text-sm text-white/80 line-clamp-2 leading-relaxed">
+                    {event.description && (
+                      <p className={`text-white/80 leading-relaxed ${idx === 0 ? 'text-sm line-clamp-2' : 'text-xs line-clamp-1'}`}>
                         {event.description}
                       </p>
                     )}
