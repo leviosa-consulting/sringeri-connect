@@ -2149,6 +2149,106 @@ export async function registerRoutes(
     }
   });
 
+  const ADMIN_UIDS = (process.env.ANALYTICS_ADMIN_UIDS || "").split(",").map(s => s.trim()).filter(Boolean);
+
+  function isAdmin(req: any): boolean {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return false;
+    const uid = authHeader.replace("Bearer ", "").trim();
+    return ADMIN_UIDS.includes(uid);
+  }
+
+  app.post("/api/analytics/events", async (req, res) => {
+    try {
+      const { events } = req.body;
+      if (!Array.isArray(events) || events.length === 0) {
+        return res.status(400).json({ error: "events array is required" });
+      }
+      if (events.length > 100) {
+        return res.status(400).json({ error: "Maximum 100 events per request" });
+      }
+      const { insertAnalyticsEventSchema } = await import("@shared/schema");
+      const validated = [];
+      for (const e of events) {
+        const parsed = insertAnalyticsEventSchema.safeParse(e);
+        if (parsed.success) validated.push(parsed.data);
+      }
+      if (validated.length > 0) {
+        storage.insertAnalyticsEvents(validated).catch(err => console.error("Analytics insert error:", err));
+      }
+      res.json({ accepted: validated.length });
+    } catch (error) {
+      console.error("Analytics events error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/analytics/summary", async (req, res) => {
+    try {
+      if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const from = (req.query.from as string) || new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+      const to = (req.query.to as string) || new Date().toISOString().split("T")[0];
+      const page = req.query.page as string | undefined;
+      const result = await storage.getAnalyticsSummary(from, to, page);
+      res.json(result);
+    } catch (error) {
+      console.error("Analytics summary error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/analytics/top-elements", async (req, res) => {
+    try {
+      if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const from = (req.query.from as string) || new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+      const to = (req.query.to as string) || new Date().toISOString().split("T")[0];
+      const page = req.query.page as string | undefined;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const result = await storage.getTopElements(from, to, page, limit);
+      res.json(result);
+    } catch (error) {
+      console.error("Analytics top-elements error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/analytics/page-stats", async (req, res) => {
+    try {
+      if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const from = (req.query.from as string) || new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+      const to = (req.query.to as string) || new Date().toISOString().split("T")[0];
+      const result = await storage.getPageStats(from, to);
+      res.json(result);
+    } catch (error) {
+      console.error("Analytics page-stats error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/analytics/live", async (req, res) => {
+    try {
+      if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const count = await storage.getLiveSessionCount();
+      res.json({ activeSessions: count });
+    } catch (error) {
+      console.error("Analytics live error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/analytics/aggregate", async (req, res) => {
+    try {
+      if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const { date } = req.body;
+      if (!date) return res.status(400).json({ error: "date is required (YYYY-MM-DD)" });
+      await storage.aggregateDailySummary(date);
+      res.json({ success: true, date });
+    } catch (error) {
+      console.error("Analytics aggregate error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/chat", async (req, res) => {
     try {
       const { message } = req.body;

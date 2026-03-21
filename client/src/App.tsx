@@ -15,6 +15,8 @@ import Seva from "@/pages/seva";
 import Fastline from "@/pages/fastline";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { FontSizeProvider } from "@/contexts/font-size-context";
+import { AnalyticsProvider } from "@/contexts/analytics-context";
+import Analytics from "@/pages/analytics";
 import { Loader2 } from "lucide-react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -48,6 +50,7 @@ function Router() {
         <Route path="/donation">{() => <ProtectedRoute component={Donation} />}</Route>
         <Route path="/seva">{() => <ProtectedRoute component={Seva} />}</Route>
         <Route path="/fastline" component={Fastline} />
+        <Route path="/analytics" component={Analytics} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
@@ -59,8 +62,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <FontSizeProvider>
         <AuthProvider>
-          <Toaster />
-          <Router />
+          <AnalyticsProvider>
+            <Toaster />
+            <Router />
+          </AnalyticsProvider>
         </AuthProvider>
       </FontSizeProvider>
     </QueryClientProvider>
