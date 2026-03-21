@@ -5,7 +5,7 @@ import { initializeApp as initializeFirebaseApp, getApps } from "firebase/app";
 import { getFirestore, collection, getDocs, query, orderBy, limit, where, Timestamp } from "firebase/firestore";
 import { handleChatMessage, setEventsCache, setAnnouncementsCache } from "./chatbot";
 import { createRequire } from "module";
-const _require = createRequire(import.meta.url);
+const _require = createRequire(typeof __filename !== 'undefined' ? __filename : import.meta.url);
 const PaytmChecksum = _require("paytmchecksum");
 
 export async function registerRoutes(
