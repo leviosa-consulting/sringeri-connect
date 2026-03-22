@@ -17,7 +17,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { icon: Home, label: "Home", path: "/home" },
     { icon: Bell, label: "Updates", path: "/updates" },
-    { icon: Users, label: "Devotee", path: "/devotee" },
+    // { icon: Users, label: "Devotee", path: "/devotee" },
     { icon: BookOpenCheck, label: "Knowledge", path: "/knowledge" },
     { icon: User, label: "Account", path: "/profile" },
   ];
