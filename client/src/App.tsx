@@ -20,6 +20,7 @@ import Analytics from "@/pages/analytics";
 import Knowledge from "@/pages/knowledge";
 import AdminQuizzes from "@/pages/admin-quizzes";
 import AdminLaunch from "@/pages/admin-launch";
+import AdminLaunchReset from "@/pages/admin-launch-reset";
 import ComingSoon from "@/pages/coming-soon";
 import { Loader2 } from "lucide-react";
 
@@ -59,6 +60,7 @@ function Router() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/admin/quizzes">{() => <ProtectedRoute component={AdminQuizzes} />}</Route>
         <Route path="/admin/launch" component={AdminLaunch} />
+        <Route path="/admin/launch/reset" component={AdminLaunchReset} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
@@ -91,6 +93,7 @@ function LaunchGate() {
   return (
     <Switch>
       <Route path="/admin/launch" component={AdminLaunch} />
+      <Route path="/admin/launch/reset" component={AdminLaunchReset} />
       <Route path="/fastline" component={Fastline} />
       <Route component={ComingSoon} />
     </Switch>

@@ -13,7 +13,6 @@ export default function AdminLaunch() {
   const [launched, setLaunched] = useState(false);
   const [alreadyLaunched, setAlreadyLaunched] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
-  const [resetting, setResetting] = useState(false);
   const [error, setError] = useState("");
   const [confirmStep, setConfirmStep] = useState(false);
   const [email, setEmail] = useState("");
@@ -38,28 +37,6 @@ export default function AdminLaunch() {
       </div>
     );
   }
-
-  const isAdmin = user && ADMIN_UIDS.includes(user.uid);
-
-  const handleReset = async () => {
-    if (!confirm("Reset the app back to Coming Soon mode?")) return;
-    setResetting(true);
-    try {
-      const token = await getIdToken();
-      const res = await fetch("/api/launch/reset", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!res.ok) throw new Error("Reset failed");
-      window.location.reload();
-    } catch (err: any) {
-      setError(err.message || "Reset failed");
-      setResetting(false);
-    }
-  };
 
   if (alreadyLaunched || launched) {
     return (
@@ -86,24 +63,6 @@ export default function AdminLaunch() {
           >
             Enter the App
           </Button>
-
-          {isAdmin && (
-            <div className="pt-8 border-t border-border/30 mt-4">
-              <Button
-                onClick={handleReset}
-                disabled={resetting}
-                variant="ghost"
-                size="sm"
-                className="text-xs text-muted-foreground/50 hover:text-destructive"
-                data-testid="button-reset-launch"
-              >
-                {resetting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
-                Reset to Coming Soon
-              </Button>
-            </div>
-          )}
-
-          {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       </div>
     );
