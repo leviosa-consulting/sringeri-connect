@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { BookOpenCheck, ChevronLeft, ChevronRight, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2 } from "lucide-react";
+import { BookOpenCheck, ChevronLeft, ChevronRight, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -62,6 +62,8 @@ export default function Knowledge() {
   const [showContent, setShowContent] = useState(true);
   const [showResultContent, setShowResultContent] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [reviewQuiz, setReviewQuiz] = useState<QuizData | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   const fetchQuiz = useCallback(async () => {
     try {
@@ -466,7 +468,16 @@ export default function Knowledge() {
 
       {tab === "history" && (
         <div className="space-y-3">
-          {historyLoading ? (
+          {reviewQuiz ? (
+            <HistoryReview
+              quiz={reviewQuiz}
+              galleryIndex={galleryIndex}
+              setGalleryIndex={setGalleryIndex}
+              onBack={() => { setReviewQuiz(null); setShowResultContent(false); }}
+              showResultContent={showResultContent}
+              setShowResultContent={setShowResultContent}
+            />
+          ) : historyLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
@@ -478,9 +489,29 @@ export default function Knowledge() {
             </div>
           ) : (
             history.map((item) => (
-              <div
+              <button
                 key={item.id}
-                className="bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between"
+                onClick={async () => {
+                  setReviewLoading(true);
+                  try {
+                    const token = await getToken();
+                    const res = await fetch(`/api/quiz/${item.quizId}/review`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setReviewQuiz(data);
+                      setShowResultContent(false);
+                      setGalleryIndex(0);
+                    }
+                  } catch (err) {
+                    console.error("Failed to load quiz review:", err);
+                  } finally {
+                    setReviewLoading(false);
+                  }
+                }}
+                disabled={reviewLoading}
+                className="w-full bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between text-left hover:border-primary/30 transition-colors"
                 data-testid={`history-item-${item.id}`}
               >
                 <div className="space-y-0.5">
@@ -489,17 +520,138 @@ export default function Knowledge() {
                     {new Date(item.quizPublishDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
                 </div>
-                <div className={cn(
-                  "text-lg font-bold font-serif px-3 py-1 rounded-lg",
-                  item.score === item.totalQuestions ? "bg-green-100 text-green-700" :
-                  item.score >= item.totalQuestions / 2 ? "bg-amber-100 text-amber-700" :
-                  "bg-red-100 text-red-600"
-                )}>
-                  {item.score}/{item.totalQuestions}
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "text-lg font-bold font-serif px-3 py-1 rounded-lg",
+                    item.score === item.totalQuestions ? "bg-green-100 text-green-700" :
+                    item.score >= item.totalQuestions / 2 ? "bg-amber-100 text-amber-700" :
+                    "bg-red-100 text-red-600"
+                  )}>
+                    {item.score}/{item.totalQuestions}
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </div>
-              </div>
+              </button>
             ))
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HistoryReview({ quiz, galleryIndex, setGalleryIndex, onBack, showResultContent, setShowResultContent }: {
+  quiz: QuizData;
+  galleryIndex: number;
+  setGalleryIndex: (i: number) => void;
+  onBack: () => void;
+  showResultContent: boolean;
+  setShowResultContent: (v: boolean) => void;
+}) {
+  const hasContent = quiz.description || quiz.videoUrl || quiz.audioUrl || (quiz.imageUrls && quiz.imageUrls.length > 0);
+
+  return (
+    <div className="space-y-5" data-testid="history-review">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={onBack} data-testid="button-back-history">
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <div>
+          <h2 className="font-serif font-bold text-base">{quiz.title}</h2>
+          {quiz.subtitle && <p className="text-xs text-muted-foreground">{quiz.subtitle}</p>}
+        </div>
+      </div>
+
+      {quiz.attempt && (
+        <div className={cn(
+          "rounded-xl p-4 text-center space-y-1",
+          quiz.attempt.score === quiz.attempt.totalQuestions ? "bg-green-50 border border-green-200" :
+          quiz.attempt.score >= quiz.attempt.totalQuestions / 2 ? "bg-amber-50 border border-amber-200" :
+          "bg-red-50 border border-red-200"
+        )}>
+          <Trophy className={cn(
+            "w-8 h-8 mx-auto",
+            quiz.attempt.score === quiz.attempt.totalQuestions ? "text-green-500" :
+            quiz.attempt.score >= quiz.attempt.totalQuestions / 2 ? "text-amber-500" : "text-red-400"
+          )} />
+          <div className="text-2xl font-bold font-serif">{quiz.attempt.score}/{quiz.attempt.totalQuestions}</div>
+        </div>
+      )}
+
+      {hasContent && (
+        <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+          <button
+            onClick={() => setShowResultContent(!showResultContent)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-primary hover:bg-muted/50 transition-colors"
+            data-testid="button-toggle-review-content"
+          >
+            <span className="flex items-center gap-2">
+              <BookOpenCheck className="w-4 h-4" />
+              {showResultContent ? "Hide Content" : "Read Content"}
+            </span>
+            <ChevronRight className={cn("w-4 h-4 transition-transform", showResultContent && "rotate-90")} />
+          </button>
+          {showResultContent && (
+            <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-3">
+              {quiz.description && (
+                <div className="prose prose-sm max-w-none text-foreground">
+                  <ReactMarkdown>{quiz.description}</ReactMarkdown>
+                </div>
+              )}
+              {quiz.videoUrl && (
+                <div className="rounded-lg overflow-hidden">
+                  {getYouTubeId(quiz.videoUrl) ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${getYouTubeId(quiz.videoUrl)}`}
+                      className="w-full aspect-video"
+                      allowFullScreen
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    />
+                  ) : (
+                    <video src={quiz.videoUrl} controls className="w-full rounded-lg" />
+                  )}
+                </div>
+              )}
+              {quiz.audioUrl && (
+                <div className="flex items-center gap-3 bg-muted/50 rounded-lg p-3">
+                  <Volume2 className="w-5 h-5 text-primary shrink-0" />
+                  <audio src={quiz.audioUrl} controls className="w-full h-8" />
+                </div>
+              )}
+              {quiz.imageUrls && quiz.imageUrls.length > 0 && (
+                <div className="rounded-lg overflow-hidden bg-muted">
+                  <img
+                    src={quiz.imageUrls[galleryIndex]}
+                    alt={`Image ${galleryIndex + 1}`}
+                    className="w-full max-h-[300px] object-contain mx-auto"
+                  />
+                  {quiz.imageUrls.length > 1 && (
+                    <div className="flex justify-center gap-1 py-2">
+                      {quiz.imageUrls.map((_, i) => (
+                        <button key={i} onClick={() => setGalleryIndex(i)} className={cn("w-2 h-2 rounded-full", i === galleryIndex ? "bg-primary" : "bg-muted-foreground/30")} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {quiz.attempt && (
+        <div className="space-y-3">
+          <h3 className="font-serif font-bold text-base">Review Answers</h3>
+          {quiz.questions.map((q, qIdx) => (
+            <QuestionCard
+              key={q.id}
+              question={q}
+              selected={(quiz.attempt!.answers[String(q.id)] || [])}
+              onToggle={() => {}}
+              submitted={true}
+              questionNumber={qIdx + 1}
+            />
+          ))}
         </div>
       )}
     </div>

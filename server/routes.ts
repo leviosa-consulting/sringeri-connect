@@ -2515,6 +2515,40 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/quiz/:id/review", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const quizId = Number(req.params.id);
+      const attempt = await storage.getAttemptByUserAndQuiz(uid, quizId);
+      if (!attempt) return res.status(403).json({ error: "Quiz not attempted" });
+      const quiz = await storage.getQuizById(quizId);
+      if (!quiz) return res.status(404).json({ error: "Quiz not found" });
+      const questions = await storage.getQuestionsByQuizId(quizId);
+      res.json({
+        id: quiz.id,
+        title: quiz.title,
+        subtitle: quiz.subtitle,
+        description: quiz.description,
+        videoUrl: quiz.videoUrl,
+        audioUrl: quiz.audioUrl,
+        imageUrls: quiz.imageUrls,
+        publishDate: quiz.publishDate,
+        questions: questions.map(q => ({
+          id: q.id,
+          questionText: q.questionText,
+          options: q.options,
+          correctCount: q.correctCount,
+          sortOrder: q.sortOrder,
+        })),
+        attempt: { score: attempt.score, totalQuestions: attempt.totalQuestions, answers: attempt.answers, completedAt: attempt.completedAt },
+      });
+    } catch (error) {
+      console.error("Error getting quiz review:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/quiz/history", async (req, res) => {
     try {
       const uid = await getFirebaseUid(req);
