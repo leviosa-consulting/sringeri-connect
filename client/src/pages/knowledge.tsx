@@ -161,8 +161,9 @@ export default function Knowledge() {
     );
   }
 
-  const hasContent = quiz && (quiz.description || quiz.videoUrl || quiz.audioUrl || (quiz.imageUrls && quiz.imageUrls.length > 0));
   const hasQuestions = quiz && quiz.questions.length > 0;
+  const hasContent = quiz && (quiz.description || quiz.videoUrl || quiz.audioUrl || (quiz.imageUrls && quiz.imageUrls.length > 0));
+  const quizStarted = !showContent || (!hasContent && hasQuestions);
 
   return (
     <div className="px-4 py-6 pb-24 lg:pb-8 space-y-5" data-testid="knowledge-page">
@@ -287,7 +288,7 @@ export default function Knowledge() {
                 </div>
               )}
 
-              {hasQuestions && !showContent && !submitted && (
+              {hasQuestions && quizStarted && !submitted && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-muted-foreground">
@@ -315,17 +316,16 @@ export default function Knowledge() {
                   />
 
                   <div className="flex gap-3">
-                    {currentQuestion > 0 && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setCurrentQuestion(c => c - 1)}
-                        className="flex-1"
-                        data-testid="button-prev-question"
-                      >
-                        <ChevronLeft className="w-4 h-4 mr-1" />
-                        Back
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => currentQuestion > 0 ? setCurrentQuestion(c => c - 1) : (hasContent && setShowContent(true))}
+                      disabled={currentQuestion === 0 && !hasContent}
+                      className="flex-1"
+                      data-testid="button-prev-question"
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-1" />
+                      {currentQuestion === 0 && hasContent ? "Content" : "Back"}
+                    </Button>
 
                     {currentQuestion < quiz.questions.length - 1 ? (
                       <Button
@@ -350,15 +350,6 @@ export default function Knowledge() {
                     ) : null}
                   </div>
 
-                  {hasContent && (
-                    <button
-                      onClick={() => setShowContent(true)}
-                      className="text-sm text-primary font-medium hover:underline mx-auto block"
-                      data-testid="button-review-content"
-                    >
-                      Review content
-                    </button>
-                  )}
                 </div>
               )}
 

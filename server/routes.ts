@@ -2433,6 +2433,8 @@ export async function registerRoutes(
 
   app.get("/api/quiz/today", async (req, res) => {
     try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
       const today = new Date().toISOString().split("T")[0];
       const quiz = await storage.getQuizByDate(today);
       if (!quiz) return res.json(null);
@@ -2444,11 +2446,7 @@ export async function registerRoutes(
         correctCount: q.correctCount,
         sortOrder: q.sortOrder,
       }));
-      const uid = await getFirebaseUid(req);
-      let attempt = null;
-      if (uid) {
-        attempt = await storage.getAttemptByUserAndQuiz(uid, quiz.id);
-      }
+      const attempt = await storage.getAttemptByUserAndQuiz(uid, quiz.id);
       res.json({
         id: quiz.id,
         title: quiz.title,
