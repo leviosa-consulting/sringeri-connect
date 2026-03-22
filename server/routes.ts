@@ -2467,6 +2467,35 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/quiz/past", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const today = new Date().toISOString().split("T")[0];
+      const allQuizzes = await storage.listQuizzes();
+      const pastQuizzes = allQuizzes.filter(q => q.isActive && q.publishDate < today);
+      const results = [];
+      for (const q of pastQuizzes) {
+        const questions = await storage.getQuestionsByQuizId(q.id);
+        const attempt = await storage.getAttemptByUserAndQuiz(uid, q.id);
+        results.push({
+          id: q.id,
+          title: q.title,
+          subtitle: q.subtitle,
+          publishDate: q.publishDate,
+          questionCount: questions.length,
+          attempted: !!attempt,
+          score: attempt?.score ?? null,
+          totalQuestions: attempt?.totalQuestions ?? null,
+        });
+      }
+      res.json(results);
+    } catch (error) {
+      console.error("Error getting past quizzes:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/quiz/today", async (req, res) => {
     try {
       const uid = await getFirebaseUid(req);

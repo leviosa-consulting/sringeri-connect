@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { useParams } from "wouter";
-import { BookOpenCheck, ChevronLeft, ChevronRight, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check } from "lucide-react";
+import { useParams, useLocation } from "wouter";
+import { BookOpenCheck, ChevronLeft, ChevronRight, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check, Library } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -114,6 +114,17 @@ interface HistoryItem {
   quizPublishDate: string;
 }
 
+interface PastQuizItem {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  publishDate: string;
+  questionCount: number;
+  attempted: boolean;
+  score: number | null;
+  totalQuestions: number | null;
+}
+
 function getYouTubeId(url: string): string | null {
   const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
   return m ? m[1] : null;
@@ -122,12 +133,15 @@ function getYouTubeId(url: string): string | null {
 export default function Knowledge() {
   const { getToken } = useAuth();
   const params = useParams<{ id?: string }>();
+  const [, setLocation] = useLocation();
   const permalinkId = params.id ? Number(params.id) : null;
   const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"quiz" | "history">("quiz");
+  const [tab, setTab] = useState<"quiz" | "history" | "past">("quiz");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [pastQuizzes, setPastQuizzes] = useState<PastQuizItem[]>([]);
+  const [pastLoading, setPastLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -181,11 +195,29 @@ export default function Knowledge() {
     }
   }, [getToken]);
 
+  const fetchPastQuizzes = useCallback(async () => {
+    try {
+      setPastLoading(true);
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch("/api/quiz/past", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setPastQuizzes(data);
+    } catch (err) {
+      console.error("Failed to fetch past quizzes:", err);
+    } finally {
+      setPastLoading(false);
+    }
+  }, [getToken]);
+
   useEffect(() => { fetchQuiz(); }, [fetchQuiz]);
 
   useEffect(() => {
     if (tab === "history") fetchHistory();
-  }, [tab, fetchHistory]);
+    if (tab === "past") fetchPastQuizzes();
+  }, [tab, fetchHistory, fetchPastQuizzes]);
 
   const handleOptionToggle = (questionId: number, optionIndex: number, correctCount: number) => {
     const key = String(questionId);
@@ -260,17 +292,25 @@ export default function Knowledge() {
       <div className="flex gap-2">
         <button
           onClick={() => setTab("quiz")}
-          className={cn("flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors", tab === "quiz" ? "bg-primary text-white" : "bg-muted text-muted-foreground")}
+          className={cn("flex-1 py-2.5 text-xs font-semibold rounded-lg transition-colors", tab === "quiz" ? "bg-primary text-white" : "bg-muted text-muted-foreground")}
           data-testid="tab-quiz"
         >
           Today's Quiz
         </button>
         <button
+          onClick={() => setTab("past")}
+          className={cn("flex-1 py-2.5 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1", tab === "past" ? "bg-primary text-white" : "bg-muted text-muted-foreground")}
+          data-testid="tab-past"
+        >
+          <Library className="w-3.5 h-3.5" />
+          Past Quizzes
+        </button>
+        <button
           onClick={() => setTab("history")}
-          className={cn("flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5", tab === "history" ? "bg-primary text-white" : "bg-muted text-muted-foreground")}
+          className={cn("flex-1 py-2.5 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1", tab === "history" ? "bg-primary text-white" : "bg-muted text-muted-foreground")}
           data-testid="tab-history"
         >
-          <History className="w-4 h-4" />
+          <History className="w-3.5 h-3.5" />
           My Scores
         </button>
       </div>
@@ -520,6 +560,56 @@ export default function Knowledge() {
             </div>
           )}
         </>
+      )}
+
+      {tab === "past" && (
+        <div className="space-y-3">
+          {pastLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : pastQuizzes.length === 0 ? (
+            <div className="text-center py-16 space-y-3">
+              <Library className="w-12 h-12 text-muted-foreground/50 mx-auto" />
+              <p className="text-muted-foreground font-medium">No past quizzes yet</p>
+              <p className="text-sm text-muted-foreground/70">Check back after more quizzes are published!</p>
+            </div>
+          ) : (
+            pastQuizzes.map((pq) => (
+              <button
+                key={pq.id}
+                onClick={() => setLocation(`/knowledge/${pq.id}`)}
+                className="w-full bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between text-left hover:border-primary/30 transition-colors"
+                data-testid={`past-quiz-${pq.id}`}
+              >
+                <div className="space-y-0.5 flex-1">
+                  <h3 className="font-serif font-semibold text-sm">{pq.title}</h3>
+                  {pq.subtitle && <p className="text-xs text-muted-foreground">{pq.subtitle}</p>}
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground/70 mt-1">
+                    <span>{new Date(pq.publishDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                    {pq.questionCount > 0 && <span>{pq.questionCount} question{pq.questionCount > 1 ? "s" : ""}</span>}
+                  </div>
+                </div>
+                <div className="shrink-0 ml-3">
+                  {pq.attempted ? (
+                    <div className={cn(
+                      "text-center px-3 py-1.5 rounded-lg text-xs font-bold",
+                      pq.score === pq.totalQuestions ? "bg-green-50 text-green-600" :
+                      (pq.score ?? 0) >= (pq.totalQuestions ?? 1) / 2 ? "bg-amber-50 text-amber-600" :
+                      "bg-red-50 text-red-500"
+                    )}>
+                      {pq.score}/{pq.totalQuestions}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-primary font-semibold px-3 py-1.5 rounded-lg bg-primary/10">
+                      Take Quiz
+                    </div>
+                  )}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
       )}
 
       {tab === "history" && (
