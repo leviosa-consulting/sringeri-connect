@@ -159,7 +159,7 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-8 pb-24 lg:pb-8 w-full">
       {/* Guru Banner - Mobile */}
-      <div className="lg:hidden w-screen relative left-1/2 -translate-x-1/2 h-[120px] overflow-hidden">
+      <div className="lg:hidden w-screen relative left-1/2 -translate-x-1/2 h-[120px] sm:h-[180px] overflow-hidden">
         <img 
           src={guruBanner} 
           alt="Sri Sharada Devi and Jagadgurus" 
