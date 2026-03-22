@@ -678,7 +678,7 @@ function QuestionCard({ question, selected, onToggle, submitted, questionNumber 
     <div className="bg-card rounded-xl border border-border/50 p-4 space-y-3" data-testid={`question-card-${question.id}`}>
       <div className="space-y-1">
         {questionNumber && <span className="text-xs font-semibold text-primary">Question {questionNumber}</span>}
-        <p className="font-medium text-sm leading-relaxed">{question.questionText}</p>
+        <p className="font-semibold text-base leading-relaxed">{question.questionText}</p>
         {!submitted && question.correctCount > 1 && (
           <p className="text-xs text-primary/80 font-medium">Select {question.correctCount} answers</p>
         )}
