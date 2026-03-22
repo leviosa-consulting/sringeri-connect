@@ -108,3 +108,15 @@ export type QuizQuestion = typeof quizQuestions.$inferSelect;
 export const insertQuizAttemptSchema = createInsertSchema(quizAttempts).omit({ id: true, completedAt: true });
 export type InsertQuizAttempt = z.infer<typeof insertQuizAttemptSchema>;
 export type QuizAttempt = typeof quizAttempts.$inferSelect;
+
+export const userBadges = pgTable("user_badges", {
+  id: serial("id").primaryKey(),
+  odUserId: text("od_user_id").notNull(),
+  badgeId: text("badge_id").notNull(),
+  earnedAt: timestamp("earned_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("user_badges_user_badge_idx").on(table.odUserId, table.badgeId),
+  index("user_badges_user_idx").on(table.odUserId),
+]);
+
+export type UserBadge = typeof userBadges.$inferSelect;

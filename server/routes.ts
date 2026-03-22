@@ -2313,6 +2313,32 @@ export async function registerRoutes(
     return QUIZ_ADMIN_UIDS.includes(uid);
   }
 
+  function getISTDate(): string {
+    return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  }
+
+  function computeStreak(sortedDatesDesc: string[]): number {
+    if (sortedDatesDesc.length === 0) return 0;
+    const today = getISTDate();
+    const uniqueSorted = [...new Set(sortedDatesDesc)].sort().reverse();
+    if (uniqueSorted[0] !== today && uniqueSorted[0] !== getPreviousDate(today)) return 0;
+    let streak = 1;
+    for (let i = 1; i < uniqueSorted.length; i++) {
+      if (uniqueSorted[i] === getPreviousDate(uniqueSorted[i - 1])) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  function getPreviousDate(dateStr: string): string {
+    const d = new Date(dateStr + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().split("T")[0];
+  }
+
   async function getFirebaseUid(req: any): Promise<string | null> {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
@@ -2563,6 +2589,52 @@ export async function registerRoutes(
         totalQuestions: questions.length,
         answers,
       });
+
+      const newBadges: string[] = [];
+      try {
+        const existingBadges = await storage.getUserBadges(uid);
+        const earned = new Set(existingBadges.map(b => b.badgeId));
+
+        if (!earned.has("first_steps")) {
+          const b = await storage.awardBadge(uid, "first_steps");
+          if (b) newBadges.push("first_steps");
+        }
+
+        if (!earned.has("perfect_score") && score === questions.length) {
+          const b = await storage.awardBadge(uid, "perfect_score");
+          if (b) newBadges.push("perfect_score");
+        }
+
+        const attemptDates = await storage.getUserAttemptDates(uid);
+        const uniqueDates = [...new Set(attemptDates)];
+        const totalAttempted = uniqueDates.length;
+
+        if (!earned.has("quiz_explorer") && totalAttempted >= 10) {
+          const b = await storage.awardBadge(uid, "quiz_explorer");
+          if (b) newBadges.push("quiz_explorer");
+        }
+        if (!earned.has("knowledge_seeker") && totalAttempted >= 25) {
+          const b = await storage.awardBadge(uid, "knowledge_seeker");
+          if (b) newBadges.push("knowledge_seeker");
+        }
+
+        const streak = computeStreak(uniqueDates);
+        if (!earned.has("week_warrior") && streak >= 7) {
+          const b = await storage.awardBadge(uid, "week_warrior");
+          if (b) newBadges.push("week_warrior");
+        }
+        if (!earned.has("fortnight_scholar") && streak >= 14) {
+          const b = await storage.awardBadge(uid, "fortnight_scholar");
+          if (b) newBadges.push("fortnight_scholar");
+        }
+        if (!earned.has("month_master") && streak >= 30) {
+          const b = await storage.awardBadge(uid, "month_master");
+          if (b) newBadges.push("month_master");
+        }
+      } catch (badgeErr) {
+        console.error("Error awarding badges:", badgeErr);
+      }
+
       const questionsWithCorrect = questions.map(q => ({
         id: q.id,
         questionText: q.questionText,
@@ -2570,7 +2642,7 @@ export async function registerRoutes(
         correctCount: q.correctCount,
         sortOrder: q.sortOrder,
       }));
-      res.json({ attempt, questions: questionsWithCorrect });
+      res.json({ attempt, questions: questionsWithCorrect, newBadges });
     } catch (error: any) {
       if (error?.code === "23505") {
         return res.status(409).json({ error: "Already submitted" });
@@ -2622,6 +2694,66 @@ export async function registerRoutes(
       res.json(history);
     } catch (error) {
       console.error("Error getting quiz history:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/quiz/gamification", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+
+      const [badges, attemptDates, hasPerfect, totalAttempted] = await Promise.all([
+        storage.getUserBadges(uid),
+        storage.getUserAttemptDates(uid),
+        storage.hasUserPerfectScore(uid),
+        storage.getUserAttemptCount(uid),
+      ]);
+
+      const uniqueDates = [...new Set(attemptDates)];
+      const currentStreak = computeStreak(uniqueDates);
+      const earnedSet = new Set(badges.map(b => b.badgeId));
+
+      const badgeDefs = [
+        { id: "first_steps", check: totalAttempted >= 1 },
+        { id: "perfect_score", check: hasPerfect },
+        { id: "week_warrior", check: currentStreak >= 7 },
+        { id: "fortnight_scholar", check: currentStreak >= 14 },
+        { id: "month_master", check: currentStreak >= 30 },
+        { id: "quiz_explorer", check: totalAttempted >= 10 },
+        { id: "knowledge_seeker", check: totalAttempted >= 25 },
+      ];
+      for (const def of badgeDefs) {
+        if (def.check && !earnedSet.has(def.id)) {
+          const b = await storage.awardBadge(uid, def.id);
+          if (b) {
+            earnedSet.add(def.id);
+            badges.push(b);
+          }
+        }
+      }
+
+      const allBadges = [
+        { id: "first_steps", name: "First Steps", description: "Complete your first quiz", emoji: "👣", progress: Math.min(totalAttempted, 1), target: 1 },
+        { id: "perfect_score", name: "Perfect Score", description: "Score 100% on any quiz", emoji: "💯", progress: hasPerfect ? 1 : 0, target: 1 },
+        { id: "week_warrior", name: "Week Warrior", description: "7-day streak", emoji: "🔥", progress: Math.min(currentStreak, 7), target: 7 },
+        { id: "fortnight_scholar", name: "Fortnight Scholar", description: "14-day streak", emoji: "📚", progress: Math.min(currentStreak, 14), target: 14 },
+        { id: "month_master", name: "Month Master", description: "30-day streak", emoji: "🏆", progress: Math.min(currentStreak, 30), target: 30 },
+        { id: "quiz_explorer", name: "Quiz Explorer", description: "Attempt 10 quizzes", emoji: "🧭", progress: Math.min(totalAttempted, 10), target: 10 },
+        { id: "knowledge_seeker", name: "Knowledge Seeker", description: "Attempt 25 quizzes", emoji: "🎓", progress: Math.min(totalAttempted, 25), target: 25 },
+      ].map(b => ({
+        ...b,
+        earned: earnedSet.has(b.id),
+        earnedAt: badges.find(eb => eb.badgeId === b.id)?.earnedAt || null,
+      }));
+
+      res.json({
+        currentStreak,
+        totalAttempted,
+        badges: allBadges,
+      });
+    } catch (error) {
+      console.error("Error getting gamification data:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

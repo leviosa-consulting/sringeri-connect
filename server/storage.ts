@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt } from "@shared/schema";
+import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql, eq, and, gte, lte, desc, asc, count, countDistinct, avg } from "drizzle-orm";
@@ -28,6 +28,11 @@ export interface IStorage {
   saveAttempt(attempt: InsertQuizAttempt): Promise<QuizAttempt>;
   getAttemptByUserAndQuiz(odUserId: string, quizId: number): Promise<QuizAttempt | undefined>;
   getUserAttemptHistory(odUserId: string, limit?: number): Promise<(QuizAttempt & { quizTitle: string; quizPublishDate: string })[]>;
+  getUserBadges(odUserId: string): Promise<UserBadge[]>;
+  awardBadge(odUserId: string, badgeId: string): Promise<UserBadge | null>;
+  getUserAttemptDates(odUserId: string): Promise<string[]>;
+  hasUserPerfectScore(odUserId: string): Promise<boolean>;
+  getUserAttemptCount(odUserId: string): Promise<number>;
 }
 
 export class MemStorage implements IStorage {
@@ -74,6 +79,11 @@ export class MemStorage implements IStorage {
   async saveAttempt(_attempt: InsertQuizAttempt): Promise<QuizAttempt> { throw new Error("Not implemented"); }
   async getAttemptByUserAndQuiz(_odUserId: string, _quizId: number): Promise<QuizAttempt | undefined> { return undefined; }
   async getUserAttemptHistory(_odUserId: string, _limit?: number): Promise<(QuizAttempt & { quizTitle: string; quizPublishDate: string })[]> { return []; }
+  async getUserBadges(_odUserId: string): Promise<UserBadge[]> { return []; }
+  async awardBadge(_odUserId: string, _badgeId: string): Promise<UserBadge | null> { return null; }
+  async getUserAttemptDates(_odUserId: string): Promise<string[]> { return []; }
+  async hasUserPerfectScore(_odUserId: string): Promise<boolean> { return false; }
+  async getUserAttemptCount(_odUserId: string): Promise<number> { return 0; }
 }
 
 let storage: IStorage;
@@ -357,6 +367,44 @@ if (process.env.DATABASE_URL) {
         .orderBy(desc(quizAttempts.completedAt))
         .limit(limitNum);
       return results;
+    }
+
+    async getUserBadges(odUserId: string): Promise<UserBadge[]> {
+      return db.select().from(userBadges).where(eq(userBadges.odUserId, odUserId)).orderBy(asc(userBadges.earnedAt));
+    }
+
+    async awardBadge(odUserId: string, badgeId: string): Promise<UserBadge | null> {
+      try {
+        const [result] = await db.insert(userBadges).values({ odUserId, badgeId }).returning();
+        return result;
+      } catch (err: any) {
+        if (err?.code === "23505") return null;
+        throw err;
+      }
+    }
+
+    async getUserAttemptDates(odUserId: string): Promise<string[]> {
+      const results = await db.select({
+        dateStr: sql<string>`DATE(${quizAttempts.completedAt} AT TIME ZONE 'Asia/Kolkata')::text`,
+      }).from(quizAttempts)
+        .where(eq(quizAttempts.odUserId, odUserId))
+        .orderBy(desc(quizAttempts.completedAt));
+      return results.map(r => r.dateStr);
+    }
+
+    async hasUserPerfectScore(odUserId: string): Promise<boolean> {
+      const [result] = await db.select({ cnt: count() }).from(quizAttempts)
+        .where(and(
+          eq(quizAttempts.odUserId, odUserId),
+          sql`${quizAttempts.score} = ${quizAttempts.totalQuestions}`
+        ));
+      return (result?.cnt ?? 0) > 0;
+    }
+
+    async getUserAttemptCount(odUserId: string): Promise<number> {
+      const [result] = await db.select({ cnt: count() }).from(quizAttempts)
+        .where(eq(quizAttempts.odUserId, odUserId));
+      return result?.cnt ?? 0;
     }
   }
 

@@ -1,10 +1,27 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useParams, useLocation } from "wouter";
-import { BookOpenCheck, ChevronLeft, ChevronRight, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check, Library } from "lucide-react";
+import { BookOpenCheck, ChevronLeft, ChevronRight, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check, Library, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
+
+interface BadgeData {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  earned: boolean;
+  earnedAt: string | null;
+  progress: number;
+  target: number;
+}
+
+interface GamificationData {
+  currentStreak: number;
+  totalAttempted: number;
+  badges: BadgeData[];
+}
 
 const markdownComponents = {
   a: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
@@ -153,6 +170,24 @@ export default function Knowledge() {
   const [showResultContent, setShowResultContent] = useState(false);
   const [reviewQuiz, setReviewQuiz] = useState<QuizData | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [gamification, setGamification] = useState<GamificationData | null>(null);
+  const [newBadges, setNewBadges] = useState<string[]>([]);
+
+  const fetchGamification = useCallback(async () => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch("/api/quiz/gamification", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGamification(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch gamification:", err);
+    }
+  }, [getToken]);
 
   const fetchQuiz = useCallback(async () => {
     try {
@@ -212,12 +247,12 @@ export default function Knowledge() {
     }
   }, [getToken]);
 
-  useEffect(() => { fetchQuiz(); }, [fetchQuiz]);
+  useEffect(() => { fetchQuiz(); fetchGamification(); }, [fetchQuiz, fetchGamification]);
 
   useEffect(() => {
-    if (tab === "history") fetchHistory();
+    if (tab === "history") { fetchHistory(); fetchGamification(); }
     if (tab === "past") fetchPastQuizzes();
-  }, [tab, fetchHistory, fetchPastQuizzes]);
+  }, [tab, fetchHistory, fetchPastQuizzes, fetchGamification]);
 
   const handleOptionToggle = (questionId: number, optionIndex: number, correctCount: number) => {
     const key = String(questionId);
@@ -257,6 +292,10 @@ export default function Knowledge() {
         setSubmitted(true);
         setShowContent(false);
         setResult({ score: data.attempt.score, totalQuestions: data.attempt.totalQuestions, questions: data.questions });
+        if (data.newBadges && data.newBadges.length > 0) {
+          setNewBadges(data.newBadges);
+          fetchGamification();
+        }
       }
     } catch (err) {
       console.error("Failed to submit quiz:", err);
@@ -287,6 +326,13 @@ export default function Knowledge() {
           </h1>
           <p className="text-sm text-muted-foreground">Test your knowledge daily</p>
         </div>
+        {gamification && gamification.currentStreak > 0 && (
+          <div className="flex items-center gap-1.5 bg-gradient-to-r from-orange-100 to-amber-50 px-3 py-1.5 rounded-full border border-orange-200" data-testid="streak-counter">
+            <Flame className="w-5 h-5 text-orange-500" />
+            <span className="text-lg font-bold text-orange-600">{gamification.currentStreak}</span>
+            <span className="text-xs text-orange-500 font-medium">day{gamification.currentStreak !== 1 ? "s" : ""}</span>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2">
@@ -494,6 +540,26 @@ export default function Knowledge() {
                     </p>
                   </div>
 
+                  {newBadges.length > 0 && gamification && (
+                    <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-200 p-4 space-y-3" data-testid="new-badges-celebration">
+                      <p className="text-sm font-bold text-amber-700 text-center">New Badge{newBadges.length > 1 ? "s" : ""} Earned!</p>
+                      <div className="flex justify-center gap-3 flex-wrap">
+                        {newBadges.map(badgeId => {
+                          const badge = gamification.badges.find(b => b.id === badgeId);
+                          if (!badge) return null;
+                          return (
+                            <div key={badgeId} className="flex flex-col items-center gap-1 animate-bounce" data-testid={`new-badge-${badgeId}`}>
+                              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-2xl shadow-lg ring-2 ring-amber-300">
+                                {badge.emoji}
+                              </div>
+                              <span className="text-xs font-semibold text-amber-700">{badge.name}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {hasContent && (
                     <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
                       <button
@@ -654,6 +720,61 @@ export default function Knowledge() {
                   </div>
                 );
               })()}
+
+              {gamification && gamification.badges.length > 0 && (
+                <div className="space-y-3" data-testid="badges-section">
+                  <h3 className="font-serif font-bold text-base flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-primary" />
+                    Badges
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {gamification.badges.map(badge => (
+                      <div
+                        key={badge.id}
+                        className={cn(
+                          "rounded-xl border p-3 space-y-2 transition-all",
+                          badge.earned
+                            ? "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200"
+                            : "bg-muted/30 border-border/50 opacity-60"
+                        )}
+                        data-testid={`badge-${badge.id}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center text-lg",
+                            badge.earned
+                              ? "bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm"
+                              : "bg-muted"
+                          )}>
+                            {badge.earned ? badge.emoji : "🔒"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("text-xs font-bold truncate", badge.earned ? "text-amber-800" : "text-muted-foreground")}>{badge.name}</p>
+                            <p className="text-[10px] text-muted-foreground leading-tight">{badge.description}</p>
+                          </div>
+                        </div>
+                        {!badge.earned && badge.target > 1 && (
+                          <div className="space-y-1">
+                            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all"
+                                style={{ width: `${Math.round((badge.progress / badge.target) * 100)}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground text-right">{badge.progress}/{badge.target}</p>
+                          </div>
+                        )}
+                        {badge.earned && badge.earnedAt && (
+                          <p className="text-[10px] text-amber-600">
+                            {new Date(badge.earnedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             {history.map((item) => (
               <button
                 key={item.id}

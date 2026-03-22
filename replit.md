@@ -150,6 +150,14 @@ Preferred communication style: Simple, everyday language.
 - Admin page at `/admin/quizzes` — full CRUD for quizzes and questions with bulk question save
 - Quiz scoring: 1 point per question (all-or-nothing); radio for single answer, checkboxes for multi-answer
 - Submit endpoint returns 409 if already attempted (dedup via unique index)
-- User APIs: `GET /api/quiz/today`, `POST /api/quiz/:id/submit`, `GET /api/quiz/history` (all require Firebase auth)
+- User APIs: `GET /api/quiz/today`, `POST /api/quiz/:id/submit`, `GET /api/quiz/history`, `GET /api/quiz/gamification` (all require Firebase auth)
 - Admin APIs: `GET/POST /api/admin/quizzes`, `GET/PUT/DELETE /api/admin/quizzes/:id`, `PUT /api/admin/quizzes/:id/questions/bulk` (admin-only)
 - Navigation: "Knowledge" tab in both mobile bottom nav and desktop sidebar
+
+### Gamification (Streaks & Badges)
+- PostgreSQL table: `user_badges` (odUserId, badgeId, earnedAt) with unique index on `(odUserId, badgeId)`
+- Streak computed from IST-converted attempt dates (using `AT TIME ZONE 'Asia/Kolkata'`); consecutive-day counting from today/yesterday backward
+- 7 badges: first_steps (1st quiz), perfect_score (100%), week_warrior (7-day), fortnight_scholar (14-day), month_master (30-day), quiz_explorer (10 quizzes), knowledge_seeker (25 quizzes)
+- Badges awarded on quiz submit AND self-healed on gamification endpoint read (covers backfill and transient failures)
+- Frontend: flame icon streak counter in Knowledge page header; badges grid on My Scores tab; post-submit celebration with bouncing animation for new badges
+- Optimized queries: `hasUserPerfectScore` (COUNT where score=totalQuestions), `getUserAttemptCount` (COUNT), `getUserAttemptDates` (IST DATE extraction)
