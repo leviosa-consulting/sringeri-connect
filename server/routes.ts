@@ -2605,9 +2605,10 @@ export async function registerRoutes(
           if (b) newBadges.push("perfect_score");
         }
 
-        const attemptDates = await storage.getUserAttemptDates(uid);
-        const uniqueDates = [...new Set(attemptDates)];
-        const totalAttempted = uniqueDates.length;
+        const [attemptDates, totalAttempted] = await Promise.all([
+          storage.getUserAttemptDates(uid),
+          storage.getUserAttemptCount(uid),
+        ]);
 
         if (!earned.has("quiz_explorer") && totalAttempted >= 10) {
           const b = await storage.awardBadge(uid, "quiz_explorer");
@@ -2618,6 +2619,7 @@ export async function registerRoutes(
           if (b) newBadges.push("knowledge_seeker");
         }
 
+        const uniqueDates = [...new Set(attemptDates)];
         const streak = computeStreak(uniqueDates);
         if (!earned.has("week_warrior") && streak >= 7) {
           const b = await storage.awardBadge(uid, "week_warrior");

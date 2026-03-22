@@ -294,8 +294,8 @@ export default function Knowledge() {
         setResult({ score: data.attempt.score, totalQuestions: data.attempt.totalQuestions, questions: data.questions });
         if (data.newBadges && data.newBadges.length > 0) {
           setNewBadges(data.newBadges);
-          fetchGamification();
         }
+        fetchGamification();
       }
     } catch (err) {
       console.error("Failed to submit quiz:", err);
