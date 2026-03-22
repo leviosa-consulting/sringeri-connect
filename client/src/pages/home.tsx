@@ -157,7 +157,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col gap-8 pb-24 lg:pb-8 w-full overflow-hidden">
+    <div className="flex flex-col gap-8 pb-24 lg:pb-8 w-full">
       {/* Guru Banner - Mobile */}
       <div className="lg:hidden w-screen relative left-1/2 -translate-x-1/2 h-[120px] overflow-hidden">
         <img 
