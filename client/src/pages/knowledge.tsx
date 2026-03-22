@@ -771,53 +771,64 @@ export default function Knowledge() {
                 const earned = gamification.badges.filter(b => b.earned);
                 const unearned = gamification.badges.filter(b => !b.earned);
                 return (
-                  <div className="space-y-4" data-testid="badges-section">
+                  <div className="space-y-5" data-testid="badges-section">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-serif font-bold text-base flex items-center gap-2">
-                        <Trophy className="w-4 h-4 text-primary" />
+                      <h3 className="text-xl font-serif font-bold text-foreground flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+                          <Trophy className="w-4.5 h-4.5 text-white" />
+                        </div>
                         Badges
                       </h3>
-                      <span className="text-xs bg-primary/10 text-primary font-bold px-2.5 py-1 rounded-full">
+                      <span className="text-xs bg-primary/10 text-primary font-bold px-3 py-1.5 rounded-full">
                         {earned.length} of {gamification.badges.length}
                       </span>
                     </div>
 
                     {earned.length > 0 && (
-                      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+                      <div className="space-y-3">
                         {earned.map(badge => (
                           <div
                             key={badge.id}
-                            className="flex flex-col items-center gap-1.5 min-w-[72px]"
+                            className="flex items-center gap-4 bg-gradient-to-r from-amber-50 via-orange-50/80 to-yellow-50/60 rounded-2xl border border-amber-200/70 p-4 shadow-sm"
                             data-testid={`badge-${badge.id}`}
                           >
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-400 to-amber-500 flex items-center justify-center text-2xl shadow-lg shadow-orange-200/40 ring-2 ring-amber-200/50">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-400 to-amber-500 flex items-center justify-center text-3xl shadow-lg shadow-orange-200/50 ring-2 ring-amber-300/30 shrink-0">
                               {badge.emoji}
                             </div>
-                            <p className="text-[10px] font-bold text-center text-foreground leading-tight w-16">{badge.name}</p>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-amber-900">{badge.name}</p>
+                              <p className="text-xs text-amber-700/80 mt-0.5">{badge.description}</p>
+                              {badge.earnedAt && (
+                                <p className="text-[10px] text-amber-600/70 mt-1.5 flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Earned {new Date(badge.earnedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
                     )}
 
                     {unearned.length > 0 && (
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         {earned.length > 0 && (
-                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Up Next</p>
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-1">Up Next</p>
                         )}
                         {unearned.map(badge => (
                           <div
                             key={badge.id}
-                            className="flex items-center gap-3 bg-card rounded-xl border border-border/50 p-3"
+                            className="flex items-center gap-3.5 bg-card rounded-xl border border-border/50 p-3.5"
                             data-testid={`badge-${badge.id}`}
                           >
-                            <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center text-lg shrink-0 opacity-50">
+                            <div className="w-12 h-12 rounded-xl bg-muted/40 flex items-center justify-center text-xl shrink-0 opacity-40">
                               {badge.emoji}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-bold text-muted-foreground">{badge.name}</p>
-                              <p className="text-[10px] text-muted-foreground/70 leading-snug">{badge.description}</p>
+                              <p className="text-[10px] text-muted-foreground/70 leading-snug mt-0.5">{badge.description}</p>
                               {badge.target > 1 && (
-                                <div className="flex items-center gap-2 mt-1.5">
+                                <div className="flex items-center gap-2 mt-2">
                                   <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                                     <div
                                       className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all duration-500"
