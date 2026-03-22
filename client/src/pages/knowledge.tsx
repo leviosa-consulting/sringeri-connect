@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { BookOpenCheck, ChevronLeft, ChevronRight, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,72 @@ const markdownComponents = {
     <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
   ),
 };
+
+function ImageGallery({ images, testId }: { images: string[]; testId?: string }) {
+  const [index, setIndex] = useState(0);
+  const touchStart = useRef<number | null>(null);
+  const touchEnd = useRef<number | null>(null);
+  const minSwipe = 50;
+
+  const prev = () => setIndex(i => (i - 1 + images.length) % images.length);
+  const next = () => setIndex(i => (i + 1) % images.length);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchEnd.current = null;
+    touchStart.current = e.targetTouches[0].clientX;
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    touchEnd.current = e.targetTouches[0].clientX;
+  };
+  const onTouchEnd = () => {
+    if (!touchStart.current || !touchEnd.current) return;
+    const distance = touchStart.current - touchEnd.current;
+    if (Math.abs(distance) >= minSwipe) {
+      if (distance > 0) next();
+      else prev();
+    }
+    touchStart.current = null;
+    touchEnd.current = null;
+  };
+
+  return (
+    <div className="space-y-2" data-testid={testId}>
+      <div
+        className="relative rounded-lg overflow-hidden bg-muted"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        <img
+          src={images[index]}
+          alt={`Image ${index + 1}`}
+          className="w-full max-h-[300px] object-contain mx-auto"
+        />
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={prev}
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+              {images.map((_, i) => (
+                <div key={i} className={cn("w-2 h-2 rounded-full", i === index ? "bg-white" : "bg-white/50")} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface QuizOption {
   text: string;
@@ -67,7 +133,6 @@ export default function Knowledge() {
   const [result, setResult] = useState<{ score: number; totalQuestions: number; questions: QuizQuestion[] } | null>(null);
   const [showContent, setShowContent] = useState(true);
   const [showResultContent, setShowResultContent] = useState(false);
-  const [galleryIndex, setGalleryIndex] = useState(0);
   const [reviewQuiz, setReviewQuiz] = useState<QuizData | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
 
@@ -253,36 +318,7 @@ export default function Knowledge() {
                   )}
 
                   {quiz.imageUrls && quiz.imageUrls.length > 0 && (
-                    <div className="space-y-2" data-testid="quiz-gallery">
-                      <div className="relative rounded-lg overflow-hidden bg-muted">
-                        <img
-                          src={quiz.imageUrls[galleryIndex]}
-                          alt={`Image ${galleryIndex + 1}`}
-                          className="w-full max-h-[300px] object-contain mx-auto"
-                        />
-                        {quiz.imageUrls.length > 1 && (
-                          <>
-                            <button
-                              onClick={() => setGalleryIndex(i => (i - 1 + quiz.imageUrls!.length) % quiz.imageUrls!.length)}
-                              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1"
-                            >
-                              <ChevronLeft className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setGalleryIndex(i => (i + 1) % quiz.imageUrls!.length)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1"
-                            >
-                              <ChevronRight className="w-4 h-4" />
-                            </button>
-                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                              {quiz.imageUrls.map((_, i) => (
-                                <div key={i} className={cn("w-2 h-2 rounded-full", i === galleryIndex ? "bg-white" : "bg-white/50")} />
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                    <ImageGallery images={quiz.imageUrls} testId="quiz-gallery" />
                   )}
 
                 </div>
@@ -433,20 +469,7 @@ export default function Knowledge() {
                             </div>
                           )}
                           {quiz.imageUrls && quiz.imageUrls.length > 0 && (
-                            <div className="rounded-lg overflow-hidden bg-muted">
-                              <img
-                                src={quiz.imageUrls[galleryIndex]}
-                                alt={`Image ${galleryIndex + 1}`}
-                                className="w-full max-h-[300px] object-contain mx-auto"
-                              />
-                              {quiz.imageUrls.length > 1 && (
-                                <div className="flex justify-center gap-1 py-2">
-                                  {quiz.imageUrls.map((_, i) => (
-                                    <button key={i} onClick={() => setGalleryIndex(i)} className={cn("w-2 h-2 rounded-full", i === galleryIndex ? "bg-primary" : "bg-muted-foreground/30")} />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                            <ImageGallery images={quiz.imageUrls} />
                           )}
                         </div>
                       )}
@@ -478,8 +501,6 @@ export default function Knowledge() {
           {reviewQuiz ? (
             <HistoryReview
               quiz={reviewQuiz}
-              galleryIndex={galleryIndex}
-              setGalleryIndex={setGalleryIndex}
               onBack={() => { setReviewQuiz(null); setShowResultContent(false); }}
               showResultContent={showResultContent}
               setShowResultContent={setShowResultContent}
@@ -509,7 +530,6 @@ export default function Knowledge() {
                       const data = await res.json();
                       setReviewQuiz(data);
                       setShowResultContent(false);
-                      setGalleryIndex(0);
                     }
                   } catch (err) {
                     console.error("Failed to load quiz review:", err);
@@ -547,10 +567,8 @@ export default function Knowledge() {
   );
 }
 
-function HistoryReview({ quiz, galleryIndex, setGalleryIndex, onBack, showResultContent, setShowResultContent }: {
+function HistoryReview({ quiz, onBack, showResultContent, setShowResultContent }: {
   quiz: QuizData;
-  galleryIndex: number;
-  setGalleryIndex: (i: number) => void;
   onBack: () => void;
   showResultContent: boolean;
   setShowResultContent: (v: boolean) => void;
@@ -626,20 +644,7 @@ function HistoryReview({ quiz, galleryIndex, setGalleryIndex, onBack, showResult
                 </div>
               )}
               {quiz.imageUrls && quiz.imageUrls.length > 0 && (
-                <div className="rounded-lg overflow-hidden bg-muted">
-                  <img
-                    src={quiz.imageUrls[galleryIndex]}
-                    alt={`Image ${galleryIndex + 1}`}
-                    className="w-full max-h-[300px] object-contain mx-auto"
-                  />
-                  {quiz.imageUrls.length > 1 && (
-                    <div className="flex justify-center gap-1 py-2">
-                      {quiz.imageUrls.map((_, i) => (
-                        <button key={i} onClick={() => setGalleryIndex(i)} className={cn("w-2 h-2 rounded-full", i === galleryIndex ? "bg-primary" : "bg-muted-foreground/30")} />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <ImageGallery images={quiz.imageUrls} />
               )}
             </div>
           )}
