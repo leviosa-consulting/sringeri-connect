@@ -163,7 +163,7 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
     <Sheet open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <SheetContent
         side="bottom"
-        className="rounded-t-3xl max-h-[85vh] bg-gradient-to-b from-[#FFF9F0] to-[#F0E6D6] flex flex-col p-0 [&>button:last-child]:top-3 [&>button:last-child]:right-4"
+        className="rounded-t-3xl h-[75vh] max-h-[85vh] bg-gradient-to-b from-[#FFF9F0] to-[#F0E6D6] flex flex-col p-0 [&>button:last-child]:top-3 [&>button:last-child]:right-4"
         data-testid="today-carousel-sheet"
       >
         <VisuallyHidden>
@@ -180,7 +180,7 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
 
         <div className="w-12 h-1 bg-foreground/15 rounded-full mx-auto mb-3 shrink-0" />
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <Carousel
             opts={{ loop: true, skipSnaps: false }}
             setApi={setApi}

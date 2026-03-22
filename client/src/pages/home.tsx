@@ -111,8 +111,8 @@ export default function Home() {
         });
         if (res.ok) {
           const data = await res.json();
-          if (data?.quiz) {
-            setTodayQuiz({ id: data.quiz.id, title: data.quiz.title, subtitle: data.quiz.subtitle });
+          if (data?.id) {
+            setTodayQuiz({ id: data.id, title: data.title, subtitle: data.subtitle });
           }
         }
       } catch {}
