@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Eye, MousePointerClick, Clock, ArrowDown, Users, Activity, RefreshCw, Loader2, ShieldX } from "lucide-react";
+import { BarChart3, Eye, Clock, ArrowDown, Users, Activity, RefreshCw, Loader2, ShieldX } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
 
 const ADMIN_UIDS = (import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
@@ -22,14 +22,14 @@ function getDateRange(period: string): { from: string; to: string } {
   return { from: formatDate(from), to: formatDate(to) };
 }
 
-async function fetchAnalytics(url: string, uid: string) {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${uid}` } });
+async function fetchAnalytics(url: string, idToken: string) {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
 export default function Analytics() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, getToken } = useAuth();
   const [period, setPeriod] = useState("7d");
   const [pageFilter, setPageFilter] = useState("all");
   const [pageStats, setPageStats] = useState<any[]>([]);
@@ -42,17 +42,46 @@ export default function Analytics() {
   const isAdmin = user && ADMIN_UIDS.includes(user.uid);
   const { from, to } = useMemo(() => getDateRange(period), [period]);
 
-  async function loadData() {
-    if (!user || !isAdmin) return;
+  const totals = useMemo(() => {
+    const t = { views: 0, users: 0, avgTime: 0, avgScroll: 0 };
+    if (pageStats.length === 0) return t;
+    t.views = pageStats.reduce((s, p) => s + (p.views || 0), 0);
+    t.users = pageStats.reduce((s, p) => s + (p.uniqueUsers || 0), 0);
+    const timePages = pageStats.filter((p: any) => p.avgTimeSpent > 0);
+    t.avgTime = timePages.length > 0 ? Math.round(timePages.reduce((s: number, p: any) => s + p.avgTimeSpent, 0) / timePages.length) : 0;
+    const scrollPages = pageStats.filter((p: any) => p.avgScrollDepth > 0);
+    t.avgScroll = scrollPages.length > 0 ? Math.round(scrollPages.reduce((s: number, p: any) => s + p.avgScrollDepth, 0) / scrollPages.length) : 0;
+    return t;
+  }, [pageStats]);
+
+  const dailyChartData = useMemo(() => {
+    const grouped = new Map<string, number>();
+    dailySummary.forEach((s: any) => {
+      const d = s.date;
+      grouped.set(d, (grouped.get(d) || 0) + s.totalPageViews);
+    });
+    return Array.from(grouped.entries())
+      .map(([date, views]) => ({ date, views }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [dailySummary]);
+
+  const availablePages = useMemo(() => {
+    return pageStats.map((p: any) => p.page);
+  }, [pageStats]);
+
+  const loadData = useCallback(async () => {
+    if (!user || !isAdmin || !getToken) return;
     setLoading(true);
     setError("");
     try {
+      const idToken = await getToken();
+      if (!idToken) throw new Error("Failed to get auth token");
       const pageParam = pageFilter !== "all" ? `&page=${encodeURIComponent(pageFilter)}` : "";
       const [stats, elements, live, summary] = await Promise.all([
-        fetchAnalytics(`/api/analytics/page-stats?from=${from}&to=${to}`, user.uid),
-        fetchAnalytics(`/api/analytics/top-elements?from=${from}&to=${to}${pageParam}&limit=15`, user.uid),
-        fetchAnalytics(`/api/analytics/live`, user.uid),
-        fetchAnalytics(`/api/analytics/summary?from=${from}&to=${to}${pageParam}`, user.uid),
+        fetchAnalytics(`/api/analytics/page-stats?from=${from}&to=${to}`, idToken),
+        fetchAnalytics(`/api/analytics/top-elements?from=${from}&to=${to}${pageParam}&limit=15`, idToken),
+        fetchAnalytics(`/api/analytics/live`, idToken),
+        fetchAnalytics(`/api/analytics/summary?from=${from}&to=${to}${pageParam}`, idToken),
       ]);
       setPageStats(stats);
       setTopElements(elements);
@@ -63,11 +92,11 @@ export default function Analytics() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [user, isAdmin, getToken, from, to, pageFilter]);
 
   useEffect(() => {
     if (isAdmin) loadData();
-  }, [period, pageFilter, isAdmin]);
+  }, [isAdmin, loadData]);
 
   if (authLoading) {
     return (
@@ -86,33 +115,6 @@ export default function Analytics() {
       </div>
     );
   }
-
-  const totals = useMemo(() => {
-    const t = { views: 0, users: 0, avgTime: 0, avgScroll: 0 };
-    if (pageStats.length === 0) return t;
-    t.views = pageStats.reduce((s, p) => s + (p.views || 0), 0);
-    t.users = pageStats.reduce((s, p) => s + (p.uniqueUsers || 0), 0);
-    const timePages = pageStats.filter(p => p.avgTimeSpent > 0);
-    t.avgTime = timePages.length > 0 ? Math.round(timePages.reduce((s, p) => s + p.avgTimeSpent, 0) / timePages.length) : 0;
-    const scrollPages = pageStats.filter(p => p.avgScrollDepth > 0);
-    t.avgScroll = scrollPages.length > 0 ? Math.round(scrollPages.reduce((s, p) => s + p.avgScrollDepth, 0) / scrollPages.length) : 0;
-    return t;
-  }, [pageStats]);
-
-  const dailyChartData = useMemo(() => {
-    const grouped = new Map<string, number>();
-    dailySummary.forEach((s: any) => {
-      const d = s.date;
-      grouped.set(d, (grouped.get(d) || 0) + s.totalPageViews);
-    });
-    return Array.from(grouped.entries())
-      .map(([date, views]) => ({ date, views }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [dailySummary]);
-
-  const availablePages = useMemo(() => {
-    return pageStats.map(p => p.page);
-  }, [pageStats]);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 max-w-6xl mx-auto" data-testid="analytics-page">
@@ -308,14 +310,14 @@ export default function Analytics() {
           <p className="text-sm text-muted-foreground mb-3">
             Run daily aggregation to pre-compute summary stats for faster loading.
           </p>
-          <AggregateButton uid={user.uid} />
+          <AggregateButton getToken={getToken} />
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function AggregateButton({ uid }: { uid: string }) {
+function AggregateButton({ getToken }: { getToken: () => Promise<string | null> }) {
   const [aggregating, setAggregating] = useState(false);
   const [result, setResult] = useState("");
 
@@ -323,10 +325,12 @@ function AggregateButton({ uid }: { uid: string }) {
     setAggregating(true);
     setResult("");
     try {
+      const idToken = await getToken();
+      if (!idToken) throw new Error("No auth token");
       const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
       const res = await fetch("/api/analytics/aggregate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${uid}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ date: yesterday }),
       });
       if (!res.ok) throw new Error("Failed");

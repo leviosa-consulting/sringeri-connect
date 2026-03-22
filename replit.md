@@ -124,3 +124,18 @@ Preferred communication style: Simple, everyday language.
 - Lucide React for icons
 - Embla Carousel for carousel components
 - date-fns for date formatting
+- Recharts for analytics dashboard charts
+
+### Analytics Tracking
+- Lightweight client-side tracking module (`client/src/lib/analytics.ts`) captures page views, clicks, scroll depth, and time spent
+- Events batched in memory, flushed every 10 seconds or on page unload via `navigator.sendBeacon`
+- Session ID generated per browser session (stored in sessionStorage)
+- `AnalyticsProvider` context wraps the app inside `AuthProvider`, tracks route changes via wouter
+- Global click listener captures interactions on elements with `data-testid`, buttons, and links
+- PostgreSQL tables: `analytics_events` (raw events) and `analytics_daily_summary` (aggregated stats)
+- Performance indexes on `analytics_events` for `(event_type, created_at)`, `(page, event_type, created_at)`, `(created_at)`, `(session_id, created_at)`
+- Admin dashboard at `/analytics` — protected by `ANALYTICS_ADMIN_UIDS` / `VITE_ANALYTICS_ADMIN_UIDS` env vars (comma-separated Firebase UIDs)
+- Backend verifies Firebase ID tokens (JWT decode + expiry + audience check) for admin endpoints
+- Dashboard shows: overview cards, daily trend chart, page breakdown table, top clicked elements bar chart, live session count, manual aggregation button
+- Tracking API: `POST /api/analytics/events` (no auth, max 100 events/batch)
+- Dashboard APIs: `GET /api/analytics/summary`, `GET /api/analytics/page-stats`, `GET /api/analytics/top-elements`, `GET /api/analytics/live`, `POST /api/analytics/aggregate` (all admin-only)

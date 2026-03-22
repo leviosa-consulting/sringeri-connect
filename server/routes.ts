@@ -2150,11 +2150,28 @@ export async function registerRoutes(
   });
 
   const ADMIN_UIDS = (process.env.ANALYTICS_ADMIN_UIDS || "").split(",").map(s => s.trim()).filter(Boolean);
+  const FIREBASE_PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || process.env.SRINGERI_NET_FIREBASE_PROJECT_ID || "";
 
-  function isAdmin(req: any): boolean {
+  async function verifyFirebaseToken(idToken: string): Promise<string | null> {
+    try {
+      const parts = idToken.split(".");
+      if (parts.length !== 3) return null;
+      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+      if (!payload.sub || !payload.exp) return null;
+      if (payload.exp * 1000 < Date.now()) return null;
+      if (FIREBASE_PROJECT_ID && payload.aud !== FIREBASE_PROJECT_ID) return null;
+      return payload.sub as string;
+    } catch {
+      return null;
+    }
+  }
+
+  async function isAdmin(req: any): Promise<boolean> {
     const authHeader = req.headers.authorization;
-    if (!authHeader) return false;
-    const uid = authHeader.replace("Bearer ", "").trim();
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return false;
+    const token = authHeader.slice(7);
+    const uid = await verifyFirebaseToken(token);
+    if (!uid) return false;
     return ADMIN_UIDS.includes(uid);
   }
 
@@ -2185,7 +2202,7 @@ export async function registerRoutes(
 
   app.get("/api/analytics/summary", async (req, res) => {
     try {
-      if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
       const from = (req.query.from as string) || new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
       const to = (req.query.to as string) || new Date().toISOString().split("T")[0];
       const page = req.query.page as string | undefined;
@@ -2199,7 +2216,7 @@ export async function registerRoutes(
 
   app.get("/api/analytics/top-elements", async (req, res) => {
     try {
-      if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
       const from = (req.query.from as string) || new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
       const to = (req.query.to as string) || new Date().toISOString().split("T")[0];
       const page = req.query.page as string | undefined;
@@ -2214,7 +2231,7 @@ export async function registerRoutes(
 
   app.get("/api/analytics/page-stats", async (req, res) => {
     try {
-      if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
       const from = (req.query.from as string) || new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
       const to = (req.query.to as string) || new Date().toISOString().split("T")[0];
       const result = await storage.getPageStats(from, to);
@@ -2227,7 +2244,7 @@ export async function registerRoutes(
 
   app.get("/api/analytics/live", async (req, res) => {
     try {
-      if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
       const count = await storage.getLiveSessionCount();
       res.json({ activeSessions: count });
     } catch (error) {
@@ -2238,7 +2255,7 @@ export async function registerRoutes(
 
   app.post("/api/analytics/aggregate", async (req, res) => {
     try {
-      if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
       const { date } = req.body;
       if (!date) return res.status(400).json({ error: "date is required (YYYY-MM-DD)" });
       await storage.aggregateDailySummary(date);
