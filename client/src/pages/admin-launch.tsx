@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { Rocket, CheckCircle2, ShieldAlert, Loader2, LogIn } from "lucide-react";
+import { CheckCircle2, ShieldAlert, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getIdToken, loginWithEmail } from "@/lib/firebase";
@@ -22,7 +22,7 @@ export default function AdminLaunch() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F2EC]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -43,9 +43,9 @@ export default function AdminLaunch() {
     };
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#FFF8F0] via-[#F7F2EC] to-[#F0E8DC] px-6">
-        <img src="/assets/logo.webp" alt="Sringeri" className="h-16 w-auto object-contain mb-6" />
-        <p className="text-sm text-muted-foreground mb-6">Admin sign in required</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#FFF8F0] via-[#F7F2EC] to-[#EDE4D8] px-6">
+        <img src="/assets/logo.webp" alt="Sringeri" className="h-20 w-auto object-contain mb-6 drop-shadow-md" />
+        <p className="text-sm text-muted-foreground mb-6 font-medium">Admin sign in required</p>
         <form onSubmit={handleLogin} className="w-full max-w-xs space-y-3">
           <Input
             type="email"
@@ -75,7 +75,7 @@ export default function AdminLaunch() {
 
   if (!ADMIN_UIDS.includes(user.uid)) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6 text-center gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F2EC] px-6 text-center gap-4">
         <ShieldAlert className="w-16 h-16 text-muted-foreground/40" />
         <p className="text-lg text-muted-foreground font-medium">Access Denied</p>
         <p className="text-sm text-muted-foreground/60">This page is only for authorized administrators.</p>
@@ -112,77 +112,111 @@ export default function AdminLaunch() {
 
   if (launched) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-green-50 to-emerald-50 px-6 text-center gap-6" data-testid="launch-success">
-        <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center animate-bounce">
-          <CheckCircle2 className="w-12 h-12 text-green-600" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#FFF8F0] via-[#F7F2EC] to-[#EDE4D8] px-6 text-center relative overflow-hidden" data-testid="launch-success">
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23996633' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
+        <div className="relative z-10 space-y-6">
+          <img src="/assets/logo.webp" alt="Sringeri" className="h-24 w-auto object-contain mx-auto drop-shadow-lg" />
+          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-10 h-10 text-green-600" />
+          </div>
+          <div>
+            <p className="text-sm text-primary/50 italic mb-2" style={{ fontFamily: "'Noto Serif Devanagari', serif" }}>
+              {"श्री शारदाम्बा प्रसन्ना"}
+            </p>
+            <h1 className="text-2xl font-serif font-bold text-foreground">The Portal is Now Open</h1>
+            <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
+              With the blessings of Sri Sharadamba, the devotee services portal is now live.
+            </p>
+          </div>
+          <Button
+            onClick={() => window.location.href = "/"}
+            className="bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white px-8 shadow-lg"
+            data-testid="button-go-to-app"
+          >
+            Enter the App
+          </Button>
         </div>
-        <h1 className="text-3xl font-serif font-bold text-green-900">App Launched!</h1>
-        <p className="text-green-700 max-w-sm">
-          The app is now live. All visitors will see the full application.
-        </p>
-        <Button
-          onClick={() => window.location.href = "/home"}
-          className="mt-4 bg-green-600 hover:bg-green-700"
-          data-testid="button-go-to-app"
-        >
-          Go to App
-        </Button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#FFF8F0] via-[#F7F2EC] to-[#F0E8DC] px-6 text-center" data-testid="admin-launch-page">
-      <img
-        src="/assets/logo.webp"
-        alt="Sri Sringeri Sharada Peetham"
-        className="h-24 w-auto object-contain mx-auto mb-8 drop-shadow-md"
-      />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#FFF8F0] via-[#F7F2EC] to-[#EDE4D8] px-6 text-center relative overflow-hidden" data-testid="admin-launch-page">
+      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23996633' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
 
-      <h1 className="text-2xl font-serif font-bold text-foreground mb-2">App Launch Control</h1>
-      <p className="text-sm text-muted-foreground mb-10 max-w-xs">
-        Press the button below to make the app available to all devotees.
-      </p>
+      <div className="relative z-10">
+        <img
+          src="/assets/logo.webp"
+          alt="Sri Sringeri Sharada Peetham"
+          className="h-28 w-auto object-contain mx-auto mb-6 drop-shadow-lg"
+        />
 
-      {!confirmStep ? (
-        <Button
-          onClick={() => setConfirmStep(true)}
-          className="h-20 w-20 rounded-full bg-gradient-to-br from-primary via-orange-500 to-amber-500 hover:from-primary/90 hover:via-orange-500/90 hover:to-amber-500/90 shadow-xl shadow-orange-200/60 text-white transition-all hover:scale-105 active:scale-95"
-          data-testid="button-launch-init"
-        >
-          <Rocket className="w-8 h-8" />
-        </Button>
-      ) : (
-        <div className="space-y-4 animate-in fade-in duration-300">
-          <p className="text-sm font-medium text-foreground">Are you sure? This will open the app to everyone.</p>
-          <div className="flex gap-3 justify-center">
-            <Button
-              onClick={handleLaunch}
-              disabled={launching}
-              className="bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white px-8 shadow-lg"
-              data-testid="button-launch-confirm"
-            >
-              {launching ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Rocket className="w-4 h-4 mr-2" />
-              )}
-              {launching ? "Launching..." : "Launch Now"}
-            </Button>
-            <Button
-              onClick={() => setConfirmStep(false)}
-              variant="outline"
-              data-testid="button-launch-cancel"
-            >
-              Cancel
-            </Button>
-          </div>
+        <p className="text-sm text-primary/50 italic mb-4" style={{ fontFamily: "'Noto Serif Devanagari', serif" }}>
+          {"श्री गुरुभ्यो नमः"}
+        </p>
+
+        <h1 className="text-xl font-serif font-bold text-foreground mb-2">Devotee Services Portal</h1>
+
+        <div className="flex items-center justify-center gap-3 my-5">
+          <div className="w-10 h-px bg-gradient-to-r from-transparent to-primary/30" />
+          <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+          <div className="w-10 h-px bg-gradient-to-l from-transparent to-primary/30" />
         </div>
-      )}
 
-      {error && (
-        <p className="mt-4 text-sm text-destructive" data-testid="text-launch-error">{error}</p>
-      )}
+        <p className="text-sm text-muted-foreground mb-10 max-w-xs mx-auto leading-relaxed">
+          With the blessings of the Jagadguru, inaugurate the devotee services portal by pressing the button below.
+        </p>
+
+        {!confirmStep ? (
+          <div className="space-y-4">
+            <button
+              onClick={() => setConfirmStep(true)}
+              className="group relative mx-auto block"
+              data-testid="button-launch-init"
+            >
+              <div className="absolute -inset-3 bg-gradient-to-br from-primary/20 to-amber-400/20 rounded-full blur-xl group-hover:blur-2xl transition-all duration-500 animate-pulse" />
+              <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-primary via-orange-500 to-amber-500 flex items-center justify-center shadow-2xl shadow-orange-300/40 transition-all duration-300 group-hover:scale-105 group-active:scale-95 ring-4 ring-white/80">
+                <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313-12.454Z M12 8v4l3 3" />
+                </svg>
+              </div>
+            </button>
+            <p className="text-xs text-muted-foreground/60 font-medium">Tap to inaugurate</p>
+          </div>
+        ) : (
+          <div className="space-y-5 animate-in fade-in duration-300">
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-primary/10 p-5 max-w-xs mx-auto space-y-3">
+              <p className="text-sm font-serif font-semibold text-foreground">Ready to open the portal?</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                This will make the app available to all devotees immediately.
+              </p>
+            </div>
+            <div className="flex gap-3 justify-center">
+              <Button
+                onClick={handleLaunch}
+                disabled={launching}
+                className="bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white px-8 shadow-lg text-base h-12"
+                data-testid="button-launch-confirm"
+              >
+                {launching && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                {launching ? "Opening..." : "Open the Portal"}
+              </Button>
+              <Button
+                onClick={() => setConfirmStep(false)}
+                variant="outline"
+                className="h-12"
+                data-testid="button-launch-cancel"
+              >
+                Not yet
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <p className="mt-4 text-sm text-destructive" data-testid="text-launch-error">{error}</p>
+        )}
+      </div>
     </div>
   );
 }
