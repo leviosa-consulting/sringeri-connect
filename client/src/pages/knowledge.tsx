@@ -632,7 +632,29 @@ export default function Knowledge() {
               <p className="text-sm text-muted-foreground/70">Complete today's quiz to see your scores here</p>
             </div>
           ) : (
-            history.map((item) => (
+            <>
+              {(() => {
+                const totalScore = history.reduce((s, h) => s + h.score, 0);
+                const totalQuestions = history.reduce((s, h) => s + h.totalQuestions, 0);
+                const pct = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+                return (
+                  <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 flex items-center gap-4" data-testid="total-score-card">
+                    <div className={cn(
+                      "w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold font-serif border-3",
+                      pct >= 80 ? "border-green-500 text-green-600" :
+                      pct >= 50 ? "border-amber-500 text-amber-600" :
+                      "border-red-400 text-red-500"
+                    )}>
+                      {pct}%
+                    </div>
+                    <div className="flex-1 space-y-0.5">
+                      <p className="font-serif font-bold text-base">Total Score</p>
+                      <p className="text-sm text-muted-foreground">{totalScore}/{totalQuestions} correct across {history.length} quiz{history.length > 1 ? "zes" : ""}</p>
+                    </div>
+                  </div>
+                );
+              })()}
+            {history.map((item) => (
               <button
                 key={item.id}
                 onClick={async () => {
@@ -675,7 +697,8 @@ export default function Knowledge() {
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </div>
               </button>
-            ))
+            ))}
+            </>
           )}
         </div>
       )}
