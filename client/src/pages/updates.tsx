@@ -159,7 +159,7 @@ export default function Updates() {
 
       <div className="flex items-center gap-2 mb-5 px-1 overflow-x-auto" data-testid="filter-bar">
         {([
-          { key: "all", label: "All", icon: Filter },
+          // { key: "all", label: "All", icon: Filter },
           { key: "event", label: "Events", icon: Calendar },
           { key: "announcement", label: "Announcements", icon: Megaphone },
           { key: "video", label: "Videos", icon: Play },
