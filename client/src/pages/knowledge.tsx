@@ -732,108 +732,109 @@ export default function Knowledge() {
               {(() => {
                 const totalScore = history.reduce((s, h) => s + h.score, 0);
                 const totalQuestions = history.reduce((s, h) => s + h.totalQuestions, 0);
-                const pct = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
                 const perfectCount = history.filter(h => h.score === h.totalQuestions).length;
-                const colorClass = pct >= 80 ? "from-green-500 to-emerald-600" : pct >= 50 ? "from-amber-500 to-orange-500" : "from-red-400 to-rose-500";
-                const ringColor = pct >= 80 ? "text-green-500" : pct >= 50 ? "text-amber-500" : "text-red-400";
+                const streak = gamification?.currentStreak ?? 0;
+                const earnedBadges = gamification?.badges.filter(b => b.earned).length ?? 0;
                 return (
                   <div className="rounded-2xl overflow-hidden border border-border/50 shadow-sm" data-testid="total-score-card">
-                    <div className={cn("bg-gradient-to-r p-5 text-white", colorClass)}>
-                      <div className="flex items-center gap-5">
-                        <div className="relative">
-                          <svg className="w-20 h-20 -rotate-90" viewBox="0 0 36 36">
-                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
-                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="white" strokeWidth="3" strokeDasharray={`${pct} ${100 - pct}`} strokeLinecap="round" className="transition-all duration-1000" />
-                          </svg>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-xl font-bold font-serif">{pct}%</span>
-                          </div>
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <p className="font-serif font-bold text-lg">Overall Score</p>
-                          <p className="text-sm text-white/80">{totalScore} of {totalQuestions} correct</p>
-                        </div>
+                    <div className="bg-gradient-to-br from-primary via-orange-500 to-amber-500 p-6 text-white text-center relative overflow-hidden">
+                      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 60% 80%, white 1px, transparent 1px)", backgroundSize: "60px 60px, 40px 40px, 50px 50px" }} />
+                      <div className="relative">
+                        <p className="text-sm font-medium text-white/70 uppercase tracking-widest mb-1">Total Points</p>
+                        <p className="text-5xl font-bold font-serif tracking-tight">{totalScore}</p>
+                        <p className="text-sm text-white/70 mt-1">out of {totalQuestions}</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 divide-x divide-border/50 bg-card">
-                      <div className="p-3 text-center">
-                        <p className="text-lg font-bold font-serif text-foreground">{history.length}</p>
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Quizzes</p>
+                    <div className="grid grid-cols-4 divide-x divide-border/30 bg-card">
+                      <div className="py-3 text-center">
+                        <p className="text-base font-bold font-serif text-foreground">{history.length}</p>
+                        <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Played</p>
                       </div>
-                      <div className="p-3 text-center">
-                        <p className="text-lg font-bold font-serif text-foreground">{perfectCount}</p>
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Perfect</p>
+                      <div className="py-3 text-center">
+                        <p className="text-base font-bold font-serif text-green-600">{perfectCount}</p>
+                        <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Perfect</p>
                       </div>
-                      <div className="p-3 text-center">
-                        <p className={cn("text-lg font-bold font-serif", ringColor)}>{gamification?.currentStreak ?? 0}</p>
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Streak</p>
+                      <div className="py-3 text-center">
+                        <p className="text-base font-bold font-serif text-orange-500">{streak}</p>
+                        <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Streak</p>
+                      </div>
+                      <div className="py-3 text-center">
+                        <p className="text-base font-bold font-serif text-amber-500">{earnedBadges}</p>
+                        <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Badges</p>
                       </div>
                     </div>
                   </div>
                 );
               })()}
 
-              {gamification && gamification.badges.length > 0 && (
-                <div className="space-y-3" data-testid="badges-section">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-serif font-bold text-base flex items-center gap-2">
-                      <Trophy className="w-4 h-4 text-primary" />
-                      Badges
-                    </h3>
-                    <span className="text-xs text-muted-foreground font-medium">
-                      {gamification.badges.filter(b => b.earned).length}/{gamification.badges.length} earned
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {gamification.badges.map(badge => (
-                      <div
-                        key={badge.id}
-                        className={cn(
-                          "rounded-2xl border p-3.5 space-y-2.5 transition-all",
-                          badge.earned
-                            ? "bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 border-amber-200 shadow-sm"
-                            : "bg-card border-border/50"
-                        )}
-                        data-testid={`badge-${badge.id}`}
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <div className={cn(
-                            "w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0",
-                            badge.earned
-                              ? "bg-gradient-to-br from-amber-400 to-orange-500 shadow-md shadow-orange-200/50"
-                              : "bg-muted/60"
-                          )}>
-                            {badge.earned ? badge.emoji : "🔒"}
-                          </div>
-                          <div className="flex-1 min-w-0 pt-0.5">
-                            <p className={cn("text-xs font-bold truncate", badge.earned ? "text-amber-900" : "text-muted-foreground")}>{badge.name}</p>
-                            <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">{badge.description}</p>
-                          </div>
-                        </div>
-                        {!badge.earned && (
-                          <div className="space-y-1">
-                            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all duration-500"
-                                style={{ width: `${Math.max(Math.round((badge.progress / badge.target) * 100), badge.progress > 0 ? 8 : 0)}%` }}
-                              />
+              {gamification && gamification.badges.length > 0 && (() => {
+                const earned = gamification.badges.filter(b => b.earned);
+                const unearned = gamification.badges.filter(b => !b.earned);
+                return (
+                  <div className="space-y-4" data-testid="badges-section">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-serif font-bold text-base flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-primary" />
+                        Badges
+                      </h3>
+                      <span className="text-xs bg-primary/10 text-primary font-bold px-2.5 py-1 rounded-full">
+                        {earned.length} of {gamification.badges.length}
+                      </span>
+                    </div>
+
+                    {earned.length > 0 && (
+                      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+                        {earned.map(badge => (
+                          <div
+                            key={badge.id}
+                            className="flex flex-col items-center gap-1.5 min-w-[72px]"
+                            data-testid={`badge-${badge.id}`}
+                          >
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-400 to-amber-500 flex items-center justify-center text-2xl shadow-lg shadow-orange-200/40 ring-2 ring-amber-200/50">
+                              {badge.emoji}
                             </div>
-                            <p className="text-[10px] text-muted-foreground text-right font-medium">{badge.progress}/{badge.target}</p>
+                            <p className="text-[10px] font-bold text-center text-foreground leading-tight w-16">{badge.name}</p>
                           </div>
-                        )}
-                        {badge.earned && badge.earnedAt && (
-                          <div className="flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-amber-600" />
-                            <p className="text-[10px] text-amber-700 font-medium">
-                              Earned {new Date(badge.earnedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                            </p>
-                          </div>
-                        )}
+                        ))}
                       </div>
-                    ))}
+                    )}
+
+                    {unearned.length > 0 && (
+                      <div className="space-y-2">
+                        {earned.length > 0 && (
+                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Up Next</p>
+                        )}
+                        {unearned.map(badge => (
+                          <div
+                            key={badge.id}
+                            className="flex items-center gap-3 bg-card rounded-xl border border-border/50 p-3"
+                            data-testid={`badge-${badge.id}`}
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center text-lg shrink-0 opacity-50">
+                              {badge.emoji}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-muted-foreground">{badge.name}</p>
+                              <p className="text-[10px] text-muted-foreground/70 leading-snug">{badge.description}</p>
+                              {badge.target > 1 && (
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all duration-500"
+                                      style={{ width: `${Math.max(Math.round((badge.progress / badge.target) * 100), badge.progress > 0 ? 6 : 0)}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground font-medium shrink-0">{badge.progress}/{badge.target}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </>
           )}
         </div>
