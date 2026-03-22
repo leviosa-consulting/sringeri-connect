@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Sun, Sunrise, Sunset, Calendar, BookOpen, Quote, Image, Sparkles, BookOpenCheck, ArrowRight } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
@@ -108,52 +108,102 @@ function getDailyIndex(arrayLength: number, offset = 0): number {
 const BASE_SLIDE_LABELS = ["Panchanga", "Occasion", "Shloka", "Quote", "Darshan"];
 const BASE_SLIDE_ICONS = [Calendar, Sparkles, BookOpen, Quote, Image];
 
+const SLIDE_DURATION = 5000;
+
 export default function TodayCarousel({ open, onClose, todayDetails, formattedDate, todayQuiz }: TodayCarouselProps) {
   const hasQuiz = !!todayQuiz;
   const SLIDE_LABELS = hasQuiz ? [...BASE_SLIDE_LABELS, "Quiz"] : BASE_SLIDE_LABELS;
   const SLIDE_ICONS = hasQuiz ? [...BASE_SLIDE_ICONS, BookOpenCheck] : BASE_SLIDE_ICONS;
+  const slideCount = SLIDE_LABELS.length;
   const [api, setApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const rafRef = useRef<number>(0);
+  const startTimeRef = useRef<number>(0);
+  const pausedAtRef = useRef<number>(0);
 
   const onSelect = useCallback(() => {
     if (!api) return;
     setActiveIndex(api.selectedScrollSnap());
   }, [api]);
 
-  const handlePointerDown = useCallback(() => setIsUserInteracting(true), []);
+  useEffect(() => {
+    if (!api) return;
+    api.on("select", onSelect);
+    onSelect();
+    return () => { api.off("select", onSelect); };
+  }, [api, onSelect]);
+
+  useEffect(() => {
+    if (!open || !api) return;
+    setProgress(0);
+    startTimeRef.current = performance.now();
+    pausedAtRef.current = 0;
+  }, [activeIndex, open, api]);
+
+  useEffect(() => {
+    if (!open || !api || isPaused) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      return;
+    }
+
+    if (pausedAtRef.current > 0) {
+      startTimeRef.current = performance.now() - pausedAtRef.current;
+      pausedAtRef.current = 0;
+    }
+
+    const tick = (now: number) => {
+      const elapsed = now - startTimeRef.current;
+      const pct = Math.min(elapsed / SLIDE_DURATION, 1);
+      setProgress(pct);
+      if (pct >= 1) {
+        api.scrollNext();
+        return;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [open, api, isPaused, activeIndex]);
+
+  const handlePointerDown = useCallback(() => {
+    pausedAtRef.current = performance.now() - startTimeRef.current;
+    setIsPaused(true);
+  }, []);
   const handlePointerUp = useCallback(() => {
-    setTimeout(() => setIsUserInteracting(false), 8000);
+    setTimeout(() => setIsPaused(false), 300);
   }, []);
 
   useEffect(() => {
     if (!api) return;
-    api.on("select", onSelect);
     api.on("pointerDown", handlePointerDown);
     api.on("pointerUp", handlePointerUp);
-    onSelect();
     return () => {
-      api.off("select", onSelect);
       api.off("pointerDown", handlePointerDown);
       api.off("pointerUp", handlePointerUp);
     };
-  }, [api, onSelect, handlePointerDown, handlePointerUp]);
-
-  useEffect(() => {
-    if (!api || !open || isUserInteracting) return;
-    const interval = setInterval(() => {
-      api.scrollNext();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [api, open, isUserInteracting]);
+  }, [api, handlePointerDown, handlePointerUp]);
 
   useEffect(() => {
     if (open && api) {
       api.scrollTo(0, true);
       setActiveIndex(0);
-      setIsUserInteracting(false);
+      setProgress(0);
+      setIsPaused(false);
+      startTimeRef.current = performance.now();
+      pausedAtRef.current = 0;
     }
   }, [open, api]);
+
+  const goToSlide = useCallback((idx: number) => {
+    if (!api) return;
+    api.scrollTo(idx);
+    setProgress(0);
+    startTimeRef.current = performance.now();
+    pausedAtRef.current = 0;
+    setIsPaused(false);
+  }, [api]);
 
   const todayShloka = SHLOKAS[getDailyIndex(SHLOKAS.length)];
   const todayQuote = QUOTES[getDailyIndex(QUOTES.length, 3)];
@@ -178,7 +228,28 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
           <span className="text-xs font-semibold text-primary uppercase tracking-wider">{SLIDE_LABELS[activeIndex]}</span>
         </div>
 
-        <div className="w-12 h-1 bg-foreground/15 rounded-full mx-auto mb-3 shrink-0" />
+        <div className="flex gap-1 px-5 mb-3 shrink-0">
+          {SLIDE_LABELS.map((label, idx) => (
+            <button
+              key={label}
+              onClick={() => goToSlide(idx)}
+              className="flex-1 h-[3px] rounded-full bg-foreground/10 overflow-hidden relative"
+              data-testid={`progress-today-${label.toLowerCase()}`}
+            >
+              <div
+                className="absolute inset-y-0 left-0 bg-primary rounded-full"
+                style={{
+                  width: idx < activeIndex
+                    ? "100%"
+                    : idx === activeIndex
+                      ? `${progress * 100}%`
+                      : "0%",
+                  transition: idx === activeIndex ? "none" : "width 0.3s ease",
+                }}
+              />
+            </button>
+          ))}
+        </div>
 
         <div className="flex-1 min-h-0 overflow-hidden">
           <Carousel
@@ -211,22 +282,7 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
           </Carousel>
         </div>
 
-        <div className="flex justify-center gap-2 py-4 shrink-0">
-          {SLIDE_LABELS.map((label, idx) => (
-            <button
-              key={label}
-              onClick={() => {
-                api?.scrollTo(idx);
-                setIsUserInteracting(true);
-                setTimeout(() => setIsUserInteracting(false), 8000);
-              }}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                idx === activeIndex ? "w-6 bg-primary" : "w-2 bg-foreground/20"
-              }`}
-              data-testid={`dot-today-${label.toLowerCase()}`}
-            />
-          ))}
-        </div>
+        <div className="h-4 shrink-0" />
       </SheetContent>
     </Sheet>
   );
