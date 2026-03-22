@@ -157,12 +157,16 @@ export default function AdminQuizzes() {
     }]);
   };
 
-  const updateQuestion = (idx: number, field: string, value: any) => {
+  const updateQuestionText = (idx: number, text: string) => {
     const updated = [...questions];
-    (updated[idx] as any)[field] = value;
-    if (field === "options") {
-      updated[idx].correctCount = value.filter((o: QuizOption) => o.isCorrect).length || 1;
-    }
+    updated[idx].questionText = text;
+    setQuestions(updated);
+  };
+
+  const updateQuestionOptions = (idx: number, options: QuizOption[]) => {
+    const updated = [...questions];
+    updated[idx].options = options;
+    updated[idx].correctCount = options.filter(o => o.isCorrect).length || 1;
     setQuestions(updated);
   };
 
@@ -281,7 +285,7 @@ export default function AdminQuizzes() {
                   <label className="text-xs font-semibold text-muted-foreground mb-1 block">Question {qIdx + 1}</label>
                   <Input
                     value={q.questionText}
-                    onChange={e => updateQuestion(qIdx, "questionText", e.target.value)}
+                    onChange={e => updateQuestionText(qIdx, e.target.value)}
                     placeholder="Question text"
                     data-testid={`input-question-text-${qIdx}`}
                   />

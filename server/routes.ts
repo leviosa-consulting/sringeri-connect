@@ -2440,7 +2440,7 @@ export async function registerRoutes(
       const safeQuestions = questions.map(q => ({
         id: q.id,
         questionText: q.questionText,
-        options: (q.options as any[]).map((o: any) => ({ text: o.text })),
+        options: (q.options as { text: string; isCorrect: boolean }[]).map((o) => ({ text: o.text })),
         correctCount: q.correctCount,
         sortOrder: q.sortOrder,
       }));
@@ -2486,7 +2486,7 @@ export async function registerRoutes(
       let score = 0;
       for (const q of questions) {
         const userAnswers: number[] = answers[String(q.id)] || [];
-        const correctIndices = (q.options as any[]).map((o: any, i: number) => o.isCorrect ? i : -1).filter((i: number) => i !== -1);
+        const correctIndices = (q.options as { text: string; isCorrect: boolean }[]).map((o, i) => o.isCorrect ? i : -1).filter((i) => i !== -1);
         if (userAnswers.length === correctIndices.length && correctIndices.every((ci: number) => userAnswers.includes(ci))) {
           score++;
         }

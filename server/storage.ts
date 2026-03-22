@@ -340,7 +340,7 @@ if (process.env.DATABASE_URL) {
       return result;
     }
 
-    async getUserAttemptHistory(odUserId: string, limitNum: number = 50): Promise<(QuizAttempt & { quizTitle: string; quizPublishDate: string })[]> {
+    async getUserAttemptHistory(odUserId: string, limitNum: number = 50): Promise<{ id: number; odUserId: string; quizId: number; score: number; totalQuestions: number; answers: Record<string, number[]>; completedAt: Date; quizTitle: string; quizPublishDate: string }[]> {
       const results = await db.select({
         id: quizAttempts.id,
         odUserId: quizAttempts.odUserId,
@@ -356,7 +356,7 @@ if (process.env.DATABASE_URL) {
         .where(eq(quizAttempts.odUserId, odUserId))
         .orderBy(desc(quizAttempts.completedAt))
         .limit(limitNum);
-      return results as any;
+      return results;
     }
   }
 

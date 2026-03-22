@@ -77,7 +77,7 @@ export const quizzes = pgTable("quizzes", {
 
 export const quizQuestions = pgTable("quiz_questions", {
   id: serial("id").primaryKey(),
-  quizId: integer("quiz_id").notNull(),
+  quizId: integer("quiz_id").notNull().references(() => quizzes.id, { onDelete: "cascade" }),
   questionText: text("question_text").notNull(),
   options: jsonb("options").notNull().$type<{ text: string; isCorrect: boolean }[]>(),
   correctCount: integer("correct_count").notNull().default(1),
@@ -87,7 +87,7 @@ export const quizQuestions = pgTable("quiz_questions", {
 export const quizAttempts = pgTable("quiz_attempts", {
   id: serial("id").primaryKey(),
   odUserId: text("od_user_id").notNull(),
-  quizId: integer("quiz_id").notNull(),
+  quizId: integer("quiz_id").notNull().references(() => quizzes.id, { onDelete: "cascade" }),
   score: integer("score").notNull(),
   totalQuestions: integer("total_questions").notNull(),
   answers: jsonb("answers").notNull().$type<Record<string, number[]>>(),
