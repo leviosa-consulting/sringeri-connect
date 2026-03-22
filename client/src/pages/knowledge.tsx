@@ -248,7 +248,19 @@ export default function Knowledge() {
     }
   }, [getToken]);
 
-  useEffect(() => { fetchQuiz(); fetchGamification(); }, [fetchQuiz, fetchGamification]);
+  useEffect(() => {
+    setCurrentQuestion(0);
+    setAnswers({});
+    setSubmitted(false);
+    setResult(null);
+    setShowContent(true);
+    setShowResultContent(false);
+    setReviewQuiz(null);
+    setNewBadges([]);
+    setShowCelebration(false);
+    fetchQuiz();
+    fetchGamification();
+  }, [fetchQuiz, fetchGamification]);
 
   useEffect(() => {
     if (tab === "history") { fetchHistory(); fetchGamification(); }
