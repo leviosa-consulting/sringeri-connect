@@ -370,7 +370,7 @@ export default function Home() {
                   onClick={() => event.url && window.open(event.url, "_blank")}
                   data-testid={`card-featured-event-${event.id}`}
                 >
-                  <div className="relative h-[220px] overflow-hidden rounded-lg">
+                  <div className="relative h-[220px] sm:h-[300px] overflow-hidden rounded-lg">
                     {event.featuredImage ? (
                       <img
                         src={event.featuredImage}
