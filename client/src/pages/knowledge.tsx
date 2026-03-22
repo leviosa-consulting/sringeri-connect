@@ -318,7 +318,13 @@ export default function Knowledge() {
                   <div className="flex gap-3">
                     <Button
                       variant="outline"
-                      onClick={() => currentQuestion > 0 ? setCurrentQuestion(c => c - 1) : (hasContent && setShowContent(true))}
+                      onClick={() => {
+                        if (currentQuestion > 0) {
+                          setCurrentQuestion(c => c - 1);
+                        } else if (hasContent) {
+                          setShowContent(true);
+                        }
+                      }}
                       disabled={currentQuestion === 0 && !hasContent}
                       className="flex-1"
                       data-testid="button-prev-question"

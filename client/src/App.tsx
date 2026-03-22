@@ -54,7 +54,7 @@ function Router() {
         <Route path="/knowledge">{() => <ProtectedRoute component={Knowledge} />}</Route>
         <Route path="/fastline" component={Fastline} />
         <Route path="/analytics" component={Analytics} />
-        <Route path="/admin/quizzes" component={AdminQuizzes} />
+        <Route path="/admin/quizzes">{() => <ProtectedRoute component={AdminQuizzes} />}</Route>
         <Route component={NotFound} />
       </Switch>
     </Layout>
