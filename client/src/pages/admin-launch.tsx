@@ -38,36 +38,6 @@ export default function AdminLaunch() {
     );
   }
 
-  if (alreadyLaunched || launched) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#FFF8F0] via-[#F7F2EC] to-[#EDE4D8] px-6 text-center relative overflow-hidden" data-testid="launch-success">
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23996633' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
-        <div className="relative z-10 space-y-6">
-          <img src="/assets/logo.webp" alt="Sringeri" className="h-24 w-auto object-contain mx-auto drop-shadow-lg" />
-          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-10 h-10 text-green-600" />
-          </div>
-          <div>
-            <p className="text-sm text-primary/50 italic mb-2" style={{ fontFamily: "'Noto Serif Devanagari', serif" }}>
-              {"श्री शारदाम्बा प्रसन्ना"}
-            </p>
-            <h1 className="text-2xl font-serif font-bold text-foreground">The Portal is Live</h1>
-            <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
-              The devotee services portal has been inaugurated and is open to all.
-            </p>
-          </div>
-          <Button
-            onClick={() => window.location.href = "/"}
-            className="bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white px-8 shadow-lg"
-            data-testid="button-go-to-app"
-          >
-            Enter the App
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   if (!user) {
     const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -119,6 +89,36 @@ export default function AdminLaunch() {
         <ShieldAlert className="w-16 h-16 text-muted-foreground/40" />
         <p className="text-lg text-muted-foreground font-medium">Access Denied</p>
         <p className="text-sm text-muted-foreground/60">This page is only for authorized administrators.</p>
+      </div>
+    );
+  }
+
+  if (alreadyLaunched || launched) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#FFF8F0] via-[#F7F2EC] to-[#EDE4D8] px-6 text-center relative overflow-hidden" data-testid="launch-success">
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23996633' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
+        <div className="relative z-10 space-y-6">
+          <img src="/assets/logo.webp" alt="Sringeri" className="h-24 w-auto object-contain mx-auto drop-shadow-lg" />
+          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-10 h-10 text-green-600" />
+          </div>
+          <div>
+            <p className="text-sm text-primary/50 italic mb-2" style={{ fontFamily: "'Noto Serif Devanagari', serif" }}>
+              {"श्री शारदाम्बा प्रसन्ना"}
+            </p>
+            <h1 className="text-2xl font-serif font-bold text-foreground">The Portal is Live</h1>
+            <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
+              The devotee services portal has been inaugurated and is open to all.
+            </p>
+          </div>
+          <Button
+            onClick={() => window.location.href = "/"}
+            className="bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white px-8 shadow-lg"
+            data-testid="button-go-to-app"
+          >
+            Enter the App
+          </Button>
+        </div>
       </div>
     );
   }
