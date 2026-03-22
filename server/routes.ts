@@ -71,6 +71,33 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/launch/reset", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const token = authHeader.split(" ")[1];
+      const parts = token.split(".");
+      if (parts.length !== 3) return res.status(401).json({ error: "Invalid token" });
+      const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
+      const uid = payload.user_id || payload.sub;
+      if (!uid) return res.status(401).json({ error: "Invalid token" });
+
+      const LAUNCH_ADMIN_UIDS = (process.env.ANALYTICS_ADMIN_UIDS || "").split(",").map(s => s.trim()).filter(Boolean);
+      if (!LAUNCH_ADMIN_UIDS.includes(uid)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      await storage.setAppSetting("isLaunched", "false");
+      console.log(`[Launch] App reset to pre-launch by admin UID: ${uid}`);
+      res.json({ success: true, isLaunched: false });
+    } catch (error) {
+      console.error("[Launch Reset] Error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/user/profile", async (req, res) => {
     try {
       const authHeader = req.headers.authorization;
