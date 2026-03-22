@@ -60,6 +60,7 @@ export default function Knowledge() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ score: number; totalQuestions: number; questions: QuizQuestion[] } | null>(null);
   const [showContent, setShowContent] = useState(true);
+  const [showResultContent, setShowResultContent] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
 
   const fetchQuiz = useCallback(async () => {
@@ -381,6 +382,67 @@ export default function Knowledge() {
                        "Keep trying! You'll do better next time!"}
                     </p>
                   </div>
+
+                  {hasContent && (
+                    <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+                      <button
+                        onClick={() => setShowResultContent(v => !v)}
+                        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-primary hover:bg-muted/50 transition-colors"
+                        data-testid="button-toggle-content"
+                      >
+                        <span className="flex items-center gap-2">
+                          <BookOpenCheck className="w-4 h-4" />
+                          {showResultContent ? "Hide Content" : "Read Content"}
+                        </span>
+                        <ChevronRight className={cn("w-4 h-4 transition-transform", showResultContent && "rotate-90")} />
+                      </button>
+                      {showResultContent && (
+                        <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-3">
+                          {quiz.description && (
+                            <div className="prose prose-sm max-w-none text-foreground">
+                              <ReactMarkdown>{quiz.description}</ReactMarkdown>
+                            </div>
+                          )}
+                          {quiz.videoUrl && (
+                            <div className="rounded-lg overflow-hidden">
+                              {getYouTubeId(quiz.videoUrl) ? (
+                                <iframe
+                                  src={`https://www.youtube.com/embed/${getYouTubeId(quiz.videoUrl)}`}
+                                  className="w-full aspect-video"
+                                  allowFullScreen
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                />
+                              ) : (
+                                <video src={quiz.videoUrl} controls className="w-full rounded-lg" />
+                              )}
+                            </div>
+                          )}
+                          {quiz.audioUrl && (
+                            <div className="flex items-center gap-3 bg-muted/50 rounded-lg p-3">
+                              <Volume2 className="w-5 h-5 text-primary shrink-0" />
+                              <audio src={quiz.audioUrl} controls className="w-full h-8" />
+                            </div>
+                          )}
+                          {quiz.imageUrls && quiz.imageUrls.length > 0 && (
+                            <div className="rounded-lg overflow-hidden bg-muted">
+                              <img
+                                src={quiz.imageUrls[galleryIndex]}
+                                alt={`Image ${galleryIndex + 1}`}
+                                className="w-full max-h-[300px] object-contain mx-auto"
+                              />
+                              {quiz.imageUrls.length > 1 && (
+                                <div className="flex justify-center gap-1 py-2">
+                                  {quiz.imageUrls.map((_, i) => (
+                                    <button key={i} onClick={() => setGalleryIndex(i)} className={cn("w-2 h-2 rounded-full", i === galleryIndex ? "bg-primary" : "bg-muted-foreground/30")} />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     <h3 className="font-serif font-bold text-base">Review Answers</h3>
