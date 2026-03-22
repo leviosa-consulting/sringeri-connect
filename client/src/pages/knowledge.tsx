@@ -337,16 +337,16 @@ export default function Knowledge() {
     <div className="px-4 py-6 pb-24 lg:pb-8 space-y-5" data-testid="knowledge-page">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-serif font-bold text-primary flex items-center gap-2" data-testid="text-knowledge-title">
-            <BookOpenCheck className="w-6 h-6" />
+          <h1 className="text-xl font-serif font-bold text-primary flex items-center gap-2" data-testid="text-knowledge-title">
+            <BookOpenCheck className="w-5 h-5" />
             Knowledge Corner
           </h1>
-          <p className="text-sm text-muted-foreground">Test your knowledge daily</p>
+          <p className="text-xs text-muted-foreground">Test your knowledge daily</p>
         </div>
         {gamification && gamification.currentStreak > 0 && (
-          <div className="flex items-center gap-1.5 bg-gradient-to-r from-orange-100 to-amber-50 px-3 py-1.5 rounded-full border border-orange-200" data-testid="streak-counter">
-            <Flame className="w-5 h-5 text-orange-500" />
-            <span className="text-lg font-bold text-orange-600">{gamification.currentStreak}</span>
+          <div className="flex items-center gap-1 bg-gradient-to-r from-orange-100 to-amber-50 px-2.5 py-1 rounded-full border border-orange-200" data-testid="streak-counter">
+            <Flame className="w-3.5 h-3.5 text-orange-500" />
+            <span className="text-sm font-bold text-orange-600">{gamification.currentStreak}</span>
             <span className="text-xs text-orange-500 font-medium">day{gamification.currentStreak !== 1 ? "s" : ""}</span>
           </div>
         )}
