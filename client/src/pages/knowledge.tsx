@@ -172,6 +172,7 @@ export default function Knowledge() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [gamification, setGamification] = useState<GamificationData | null>(null);
   const [newBadges, setNewBadges] = useState<string[]>([]);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const fetchGamification = useCallback(async () => {
     try {
@@ -294,6 +295,8 @@ export default function Knowledge() {
         setResult({ score: data.attempt.score, totalQuestions: data.attempt.totalQuestions, questions: data.questions });
         if (data.newBadges && data.newBadges.length > 0) {
           setNewBadges(data.newBadges);
+          setShowCelebration(true);
+          setTimeout(() => setShowCelebration(false), 5000);
         }
         fetchGamification();
       }
@@ -540,7 +543,7 @@ export default function Knowledge() {
                     </p>
                   </div>
 
-                  {newBadges.length > 0 && gamification && (
+                  {newBadges.length > 0 && showCelebration && gamification && (
                     <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-200 p-4 space-y-3" data-testid="new-badges-celebration">
                       <p className="text-sm font-bold text-amber-700 text-center">New Badge{newBadges.length > 1 ? "s" : ""} Earned!</p>
                       <div className="flex justify-center gap-3 flex-wrap">
