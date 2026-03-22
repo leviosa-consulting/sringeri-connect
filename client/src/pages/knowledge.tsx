@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 
+const markdownComponents = {
+  a: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
+  ),
+};
+
 interface QuizOption {
   text: string;
   isCorrect?: boolean;
@@ -220,7 +226,7 @@ export default function Knowledge() {
                 <div className="space-y-4 bg-card rounded-xl border border-border/50 p-4">
                   {quiz.description && (
                     <div className="quiz-content" data-testid="text-quiz-description">
-                      <ReactMarkdown>{quiz.description}</ReactMarkdown>
+                      <ReactMarkdown components={markdownComponents}>{quiz.description}</ReactMarkdown>
                     </div>
                   )}
 
@@ -279,16 +285,17 @@ export default function Knowledge() {
                     </div>
                   )}
 
-                  {hasQuestions && (
-                    <Button
-                      onClick={() => setShowContent(false)}
-                      className="w-full bg-primary hover:bg-primary/90"
-                      data-testid="button-start-quiz"
-                    >
-                      Start Quiz
-                    </Button>
-                  )}
                 </div>
+              )}
+
+              {hasContent && showContent && !submitted && hasQuestions && (
+                <Button
+                  onClick={() => setShowContent(false)}
+                  className="w-full bg-primary hover:bg-primary/90 text-lg py-6 font-bold shadow-lg"
+                  data-testid="button-start-quiz"
+                >
+                  Start Quiz
+                </Button>
               )}
 
               {hasQuestions && quizStarted && !submitted && (
@@ -402,7 +409,7 @@ export default function Knowledge() {
                         <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-3">
                           {quiz.description && (
                             <div className="quiz-content">
-                              <ReactMarkdown>{quiz.description}</ReactMarkdown>
+                              <ReactMarkdown components={markdownComponents}>{quiz.description}</ReactMarkdown>
                             </div>
                           )}
                           {quiz.videoUrl && (
@@ -595,7 +602,7 @@ function HistoryReview({ quiz, galleryIndex, setGalleryIndex, onBack, showResult
             <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-3">
               {quiz.description && (
                 <div className="quiz-content">
-                  <ReactMarkdown>{quiz.description}</ReactMarkdown>
+                  <ReactMarkdown components={markdownComponents}>{quiz.description}</ReactMarkdown>
                 </div>
               )}
               {quiz.videoUrl && (
