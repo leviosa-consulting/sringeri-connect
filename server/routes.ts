@@ -2566,9 +2566,8 @@ export async function registerRoutes(
       const { answers } = req.body;
       if (!answers || typeof answers !== "object") return res.status(400).json({ error: "answers required" });
 
-      const today = new Date().toISOString().split("T")[0];
-      const quiz = await storage.getQuizByDate(today);
-      if (!quiz || quiz.id !== quizId) return res.status(403).json({ error: "Quiz not available for submission" });
+      const quiz = await storage.getQuizById(quizId);
+      if (!quiz || !quiz.isActive) return res.status(403).json({ error: "Quiz not available for submission" });
 
       const existing = await storage.getAttemptByUserAndQuiz(uid, quizId);
       if (existing) return res.status(409).json({ error: "Already submitted", attempt: existing });
