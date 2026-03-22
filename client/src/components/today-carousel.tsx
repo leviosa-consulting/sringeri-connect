@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { Sun, Sunrise, Sunset, Calendar, BookOpen, Quote, Image, Sparkles } from "lucide-react";
+import { Sun, Sunrise, Sunset, Calendar, BookOpen, Quote, Image, Sparkles, BookOpenCheck, ArrowRight } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { Link } from "wouter";
 
 interface TodayDetails {
   todayWebsiteKannada?: string;
@@ -19,11 +20,18 @@ interface TodayDetails {
   nakshatraK?: string;
 }
 
+interface TodayQuiz {
+  id: number;
+  title: string;
+  subtitle?: string | null;
+}
+
 interface TodayCarouselProps {
   open: boolean;
   onClose: () => void;
   todayDetails: TodayDetails | null;
   formattedDate: string;
+  todayQuiz?: TodayQuiz | null;
 }
 
 const SHLOKAS = [
@@ -97,10 +105,13 @@ function getDailyIndex(arrayLength: number, offset = 0): number {
   return (dayIndex + offset) % arrayLength;
 }
 
-const SLIDE_LABELS = ["Panchanga", "Occasion", "Shloka", "Quote", "Darshan"];
-const SLIDE_ICONS = [Calendar, Sparkles, BookOpen, Quote, Image];
+const BASE_SLIDE_LABELS = ["Panchanga", "Occasion", "Shloka", "Quote", "Darshan"];
+const BASE_SLIDE_ICONS = [Calendar, Sparkles, BookOpen, Quote, Image];
 
-export default function TodayCarousel({ open, onClose, todayDetails, formattedDate }: TodayCarouselProps) {
+export default function TodayCarousel({ open, onClose, todayDetails, formattedDate, todayQuiz }: TodayCarouselProps) {
+  const hasQuiz = !!todayQuiz;
+  const SLIDE_LABELS = hasQuiz ? [...BASE_SLIDE_LABELS, "Quiz"] : BASE_SLIDE_LABELS;
+  const SLIDE_ICONS = hasQuiz ? [...BASE_SLIDE_ICONS, BookOpenCheck] : BASE_SLIDE_ICONS;
   const [api, setApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isUserInteracting, setIsUserInteracting] = useState(false);
@@ -191,6 +202,11 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
               <CarouselItem className="pl-0 px-5">
                 <DarshanSlide imageUrl={todayImage} />
               </CarouselItem>
+              {todayQuiz && (
+                <CarouselItem className="pl-0 px-5">
+                  <QuizSlide quiz={todayQuiz} onClose={onClose} />
+                </CarouselItem>
+              )}
             </CarouselContent>
           </Carousel>
         </div>
@@ -356,6 +372,42 @@ function QuoteSlide({ quote }: { quote: typeof QUOTES[0] }) {
       <div className="text-xs text-foreground/50 font-medium">
         — {quote.attribution}
       </div>
+    </div>
+  );
+}
+
+function QuizSlide({ quiz, onClose }: { quiz: TodayQuiz; onClose: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-quiz">
+      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-amber-100 flex items-center justify-center mb-4">
+        <BookOpenCheck className="w-8 h-8 text-primary" />
+      </div>
+
+      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-3">Today's Quiz</div>
+
+      <h3 className="text-xl font-serif font-bold text-foreground mb-2 px-4 leading-snug">
+        {quiz.title}
+      </h3>
+
+      {quiz.subtitle && (
+        <p className="text-sm text-foreground/60 mb-4 px-6">{quiz.subtitle}</p>
+      )}
+
+      <div className="h-px w-16 bg-gradient-to-r from-transparent via-primary/30 to-transparent my-3" />
+
+      <p className="text-xs text-foreground/50 mb-6 px-8 leading-relaxed">
+        Test your knowledge and earn streaks by taking the daily quiz.
+      </p>
+
+      <Link
+        href={`/knowledge/${quiz.id}`}
+        onClick={() => onClose()}
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-primary to-orange-500 text-white text-sm font-semibold shadow-lg shadow-primary/25 hover:shadow-xl active:scale-95 transition-all"
+        data-testid="link-today-quiz"
+      >
+        Take the Quiz
+        <ArrowRight className="w-4 h-4" />
+      </Link>
     </div>
   );
 }

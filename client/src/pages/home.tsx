@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Info, Megaphone, Play, Globe, BookOpen, CalendarDays, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/contexts/auth-context";
+import { getIdToken } from "@/lib/firebase";
 import FontSizeToggle from "@/components/font-size-toggle";
 import TodayCarousel from "@/components/today-carousel";
 import guruBanner from "@assets/footer-collage-web_(1)_1773382448292.webp";
@@ -72,6 +73,7 @@ export default function Home() {
   const [youtubeVideos, setYoutubeVideos] = useState<YouTubeVideo[]>([]);
   const [activeEventIndex, setActiveEventIndex] = useState(0);
   const [todaySheetOpen, setTodaySheetOpen] = useState(false);
+  const [todayQuiz, setTodayQuiz] = useState<{ id: number; title: string; subtitle?: string | null } | null>(null);
   const eventScrollRef = useRef<HTMLDivElement>(null);
   const displayName = profile?.name || user?.displayName || "Devotee";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
@@ -97,6 +99,26 @@ export default function Home() {
     
     fetchTodayDetails();
   }, []);
+
+  useEffect(() => {
+    const fetchTodayQuiz = async () => {
+      if (!user) return;
+      try {
+        const token = await getIdToken();
+        if (!token) return;
+        const res = await fetch("/api/quiz/today", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.quiz) {
+            setTodayQuiz({ id: data.quiz.id, title: data.quiz.title, subtitle: data.quiz.subtitle });
+          }
+        }
+      } catch {}
+    };
+    fetchTodayQuiz();
+  }, [user]);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -243,6 +265,7 @@ export default function Home() {
         onClose={() => setTodaySheetOpen(false)}
         todayDetails={todayDetails}
         formattedDate={formatTodayDate()}
+        todayQuiz={todayQuiz}
       />
 
       {/* Desktop Welcome Banner */}
