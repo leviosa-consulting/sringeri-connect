@@ -2431,6 +2431,42 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/quiz/by-id/:id", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const quizId = Number(req.params.id);
+      const quiz = await storage.getQuiz(quizId);
+      if (!quiz || !quiz.isActive) return res.status(404).json({ error: "Quiz not found" });
+      const questions = await storage.getQuestionsByQuizId(quiz.id);
+      const attempt = await storage.getAttemptByUserAndQuiz(uid, quiz.id);
+      const mappedQuestions = questions.map(q => ({
+        id: q.id,
+        questionText: q.questionText,
+        options: attempt
+          ? q.options as { text: string; isCorrect: boolean }[]
+          : (q.options as { text: string; isCorrect: boolean }[]).map((o) => ({ text: o.text })),
+        correctCount: q.correctCount,
+        sortOrder: q.sortOrder,
+      }));
+      res.json({
+        id: quiz.id,
+        title: quiz.title,
+        subtitle: quiz.subtitle,
+        description: quiz.description,
+        videoUrl: quiz.videoUrl,
+        audioUrl: quiz.audioUrl,
+        imageUrls: quiz.imageUrls,
+        publishDate: quiz.publishDate,
+        questions: mappedQuestions,
+        attempt: attempt ? { score: attempt.score, totalQuestions: attempt.totalQuestions, answers: attempt.answers, completedAt: attempt.completedAt } : null,
+      });
+    } catch (error) {
+      console.error("Error getting quiz by id:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/quiz/today", async (req, res) => {
     try {
       const uid = await getFirebaseUid(req);

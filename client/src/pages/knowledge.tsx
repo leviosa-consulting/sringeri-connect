@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { BookOpenCheck, ChevronLeft, ChevronRight, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2 } from "lucide-react";
+import { useParams } from "wouter";
+import { BookOpenCheck, ChevronLeft, ChevronRight, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -120,11 +121,14 @@ function getYouTubeId(url: string): string | null {
 
 export default function Knowledge() {
   const { getToken } = useAuth();
+  const params = useParams<{ id?: string }>();
+  const permalinkId = params.id ? Number(params.id) : null;
   const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"quiz" | "history">("quiz");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number[]>>({});
@@ -140,9 +144,11 @@ export default function Knowledge() {
     try {
       setLoading(true);
       const token = await getToken();
-      const res = await fetch("/api/quiz/today", {
+      const url = permalinkId ? `/api/quiz/by-id/${permalinkId}` : "/api/quiz/today";
+      const res = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
+      if (!res.ok) { setQuiz(null); return; }
       const data = await res.json();
       setQuiz(data);
       if (data?.attempt) {
@@ -156,7 +162,7 @@ export default function Knowledge() {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, permalinkId]);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -280,11 +286,31 @@ export default function Knowledge() {
           ) : (
             <div className="space-y-5">
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 space-y-1">
-                <h2 className="font-serif font-bold text-lg text-foreground" data-testid="text-quiz-title">{quiz.title}</h2>
-                {quiz.subtitle && <p className="text-sm text-muted-foreground" data-testid="text-quiz-subtitle">{quiz.subtitle}</p>}
-                {hasQuestions && (
-                  <p className="text-xs text-primary font-medium mt-1">{quiz.questions.length} question{quiz.questions.length > 1 ? "s" : ""}</p>
-                )}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1 flex-1">
+                    <h2 className="font-serif font-bold text-lg text-foreground" data-testid="text-quiz-title">{quiz.title}</h2>
+                    {quiz.subtitle && <p className="text-sm text-muted-foreground" data-testid="text-quiz-subtitle">{quiz.subtitle}</p>}
+                    {hasQuestions && (
+                      <p className="text-xs text-primary font-medium mt-1">{quiz.questions.length} question{quiz.questions.length > 1 ? "s" : ""}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}/knowledge/${quiz.id}`;
+                      if (navigator.share) {
+                        navigator.share({ title: quiz.title, text: quiz.subtitle || "Take this quiz!", url: shareUrl });
+                      } else {
+                        navigator.clipboard.writeText(shareUrl);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }
+                    }}
+                    className="shrink-0 p-2 rounded-full hover:bg-primary/10 transition-colors text-primary"
+                    data-testid="button-share-quiz"
+                  >
+                    {copied ? <Check className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
 
               {hasContent && showContent && !submitted && (
