@@ -132,30 +132,34 @@ export function trackPageView(page: string) {
 }
 
 export function startTracking() {
-  document.addEventListener("click", handleGlobalClick, { capture: true, passive: true });
+  const clickOptions: AddEventListenerOptions = { capture: true, passive: true };
+  document.addEventListener("click", handleGlobalClick, clickOptions);
 
   scrollHandler = updateScrollDepth;
   window.addEventListener("scroll", scrollHandler, { passive: true });
 
   flushTimer = setInterval(flushEvents, 10000);
 
-  const handleUnload = () => {
+  function handleUnload() {
     sendPageLeaveEvents();
     flushEvents();
-  };
+  }
 
-  window.addEventListener("beforeunload", handleUnload);
-  document.addEventListener("visibilitychange", () => {
+  function handleVisibilityChange() {
     if (document.visibilityState === "hidden") {
       sendPageLeaveEvents();
       flushEvents();
     }
-  });
+  }
+
+  window.addEventListener("beforeunload", handleUnload);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 
   return () => {
-    document.removeEventListener("click", handleGlobalClick, { capture: true } as any);
+    document.removeEventListener("click", handleGlobalClick, clickOptions);
     if (scrollHandler) window.removeEventListener("scroll", scrollHandler);
     if (flushTimer) clearInterval(flushTimer);
     window.removeEventListener("beforeunload", handleUnload);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
   };
 }

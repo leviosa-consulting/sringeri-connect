@@ -2150,17 +2150,19 @@ export async function registerRoutes(
   });
 
   const ADMIN_UIDS = (process.env.ANALYTICS_ADMIN_UIDS || "").split(",").map(s => s.trim()).filter(Boolean);
-  const FIREBASE_PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || process.env.SRINGERI_NET_FIREBASE_PROJECT_ID || "";
+
+  const firebaseAdmin = await import("firebase-admin");
+  if (!firebaseAdmin.default.apps.length) {
+    firebaseAdmin.default.initializeApp({
+      projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.SRINGERI_NET_FIREBASE_PROJECT_ID || undefined,
+    });
+  }
+  const adminAuth = firebaseAdmin.default.auth();
 
   async function verifyFirebaseToken(idToken: string): Promise<string | null> {
     try {
-      const parts = idToken.split(".");
-      if (parts.length !== 3) return null;
-      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
-      if (!payload.sub || !payload.exp) return null;
-      if (payload.exp * 1000 < Date.now()) return null;
-      if (FIREBASE_PROJECT_ID && payload.aud !== FIREBASE_PROJECT_ID) return null;
-      return payload.sub as string;
+      const decoded = await adminAuth.verifyIdToken(idToken);
+      return decoded.uid;
     } catch {
       return null;
     }
@@ -2175,7 +2177,26 @@ export async function registerRoutes(
     return ADMIN_UIDS.includes(uid);
   }
 
+  const analyticsRateLimit = new Map<string, { count: number; resetAt: number }>();
+  function checkAnalyticsRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const windowMs = 60000;
+    const maxRequests = 30;
+    const entry = analyticsRateLimit.get(ip);
+    if (!entry || now > entry.resetAt) {
+      analyticsRateLimit.set(ip, { count: 1, resetAt: now + windowMs });
+      return true;
+    }
+    if (entry.count >= maxRequests) return false;
+    entry.count++;
+    return true;
+  }
+
   app.post("/api/analytics/events", async (req, res) => {
+    const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+    if (!checkAnalyticsRateLimit(clientIp)) {
+      return res.status(429).json({ error: "Too many requests" });
+    }
     try {
       const { events } = req.body;
       if (!Array.isArray(events) || events.length === 0) {
