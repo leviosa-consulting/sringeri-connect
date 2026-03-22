@@ -2436,7 +2436,7 @@ export async function registerRoutes(
       const uid = await getFirebaseUid(req);
       if (!uid) return res.status(401).json({ error: "Authentication required" });
       const quizId = Number(req.params.id);
-      const quiz = await storage.getQuiz(quizId);
+      const quiz = await storage.getQuizById(quizId);
       if (!quiz || !quiz.isActive) return res.status(404).json({ error: "Quiz not found" });
       const questions = await storage.getQuestionsByQuizId(quiz.id);
       const attempt = await storage.getAttemptByUserAndQuiz(uid, quiz.id);
