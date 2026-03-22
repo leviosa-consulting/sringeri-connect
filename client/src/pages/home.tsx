@@ -157,9 +157,9 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col gap-8 pb-24 md:pb-8 w-full overflow-hidden">
+    <div className="flex flex-col gap-8 pb-24 lg:pb-8 w-full overflow-hidden">
       {/* Guru Banner - Mobile */}
-      <div className="md:hidden w-screen relative left-1/2 -translate-x-1/2 h-[120px] overflow-hidden">
+      <div className="lg:hidden w-screen relative left-1/2 -translate-x-1/2 h-[120px] overflow-hidden">
         <img 
           src={guruBanner} 
           alt="Sri Sharada Devi and Jagadgurus" 
@@ -169,7 +169,7 @@ export default function Home() {
       </div>
 
       {/* Header + Panchanga gradient wrapper (mobile) */}
-      <div className="md:hidden -mt-8 w-screen relative left-1/2 -translate-x-1/2" style={{ background: 'linear-gradient(to bottom, #ffffff, #d9cfc3)' }}>
+      <div className="lg:hidden -mt-8 w-screen relative left-1/2 -translate-x-1/2" style={{ background: 'linear-gradient(to bottom, #ffffff, #d9cfc3)' }}>
         {/* Header Section */}
         <div className="px-4 pt-5 pb-2">
           <div className="flex justify-between items-center">
@@ -246,7 +246,7 @@ export default function Home() {
       />
 
       {/* Desktop Welcome Banner */}
-      <div className="hidden md:block w-screen relative left-1/2 -translate-x-1/2 h-[300px] overflow-hidden">
+      <div className="hidden lg:block w-screen relative left-1/2 -translate-x-1/2 h-[300px] overflow-hidden">
         <img 
           src={guruBanner} 
           alt="Sri Sharada Devi and Jagadgurus" 
@@ -257,7 +257,7 @@ export default function Home() {
 
       {/* Desktop Hindu Calendar Strip */}
       {todayDetails && (
-        <div className="hidden md:block py-4 px-6 text-center space-y-2 bg-cover bg-center w-screen relative left-1/2 -translate-x-1/2" style={{ backgroundImage: `url(${calendarBg})` }} data-testid="card-today-calendar-desktop">
+        <div className="hidden lg:block py-4 px-6 text-center space-y-2 bg-cover bg-center w-screen relative left-1/2 -translate-x-1/2" style={{ backgroundImage: `url(${calendarBg})` }} data-testid="card-today-calendar-desktop">
           <div className="flex items-center justify-center gap-2">
             <div className="flex-1">
               {todayDetails.todayWebsiteKannada && (
@@ -328,7 +328,7 @@ export default function Home() {
 
       {/* Featured Events Hero */}
       {!eventsLoading && sringeriEvents.length > 0 && (
-        <div className="px-4 md:px-6" data-testid="section-featured-events">
+        <div className="px-4 lg:px-6" data-testid="section-featured-events">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-serif font-bold text-lg flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-[#ff6600]" />
@@ -344,7 +344,7 @@ export default function Home() {
           </div>
 
           {/* Mobile: full-width swipeable cards */}
-          <div className="md:hidden">
+          <div className="lg:hidden">
             <div
               ref={eventScrollRef}
               className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2"
@@ -421,11 +421,11 @@ export default function Home() {
           </div>
 
           {/* Desktop: large primary card + side cards */}
-          <div className="hidden md:grid md:grid-cols-3 gap-4">
+          <div className="hidden lg:grid lg:grid-cols-3 gap-4">
             {sringeriEvents.slice(0, 3).map((event, idx) => (
               <div
                 key={event.id}
-                className={`relative overflow-hidden rounded-lg group ${idx === 0 ? 'md:col-span-2 md:row-span-2' : ''} ${event.url ? 'cursor-pointer' : ''}`}
+                className={`relative overflow-hidden rounded-lg group ${idx === 0 ? 'lg:col-span-2 lg:row-span-2' : ''} ${event.url ? 'cursor-pointer' : ''}`}
                 onClick={() => event.url && window.open(event.url, "_blank")}
                 data-testid={`card-featured-event-desktop-${event.id}`}
               >
@@ -462,10 +462,10 @@ export default function Home() {
         </div>
       )}
 
-      <div className="flex flex-col md:grid md:grid-cols-12 gap-8 px-4 md:px-6">
+      <div className="flex flex-col lg:grid lg:grid-cols-12 gap-8 px-4 lg:px-6">
         
         {/* Main Content Column */}
-        <div className="md:col-span-12 space-y-8">
+        <div className="lg:col-span-12 space-y-8">
           
           {/* Online Services */}
           <section className="space-y-3">
@@ -512,7 +512,7 @@ export default function Home() {
 
 
         {announcements.length > 0 && (
-          <div className="md:col-span-12">
+          <div className="lg:col-span-12">
             <section>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -521,7 +521,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="md:hidden">
+              <div className="lg:hidden">
                 <ScrollArea className="w-full whitespace-nowrap">
                   <div className="flex gap-3 pb-2">
                     {announcements.map((item) => (
@@ -553,7 +553,7 @@ export default function Home() {
                 </ScrollArea>
               </div>
 
-              <div className="hidden md:block">
+              <div className="hidden lg:block">
                 <ScrollArea className="w-full whitespace-nowrap">
                   <div className="flex gap-4 pb-2">
                     {announcements.map((item) => (
@@ -589,7 +589,7 @@ export default function Home() {
         )}
 
         {youtubeVideos.length > 0 && (
-          <div className="mt-3 pb-3 md:col-span-12">
+          <div className="mt-3 pb-3 lg:col-span-12">
             <section>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -599,7 +599,7 @@ export default function Home() {
                 <a href="https://www.youtube.com/@SharadaPeetham" target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium" data-testid="link-youtube-channel">View Channel</a>
               </div>
 
-              <div className="md:hidden">
+              <div className="lg:hidden">
                 <ScrollArea className="w-full whitespace-nowrap">
                   <div className="flex gap-3 pb-2">
                     {youtubeVideos.map((video) => (
@@ -634,7 +634,7 @@ export default function Home() {
                 </ScrollArea>
               </div>
 
-              <div className="hidden md:grid md:grid-cols-3 gap-4">
+              <div className="hidden lg:grid lg:grid-cols-3 gap-4">
                 {youtubeVideos.slice(0, 6).map((video) => (
                   <div
                     key={video.videoId}

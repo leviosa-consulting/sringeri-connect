@@ -467,7 +467,7 @@ export default function Accommodation() {
 
   if (paymentSuccess && ackData) {
     return (
-      <div className="pb-24 md:pb-8">
+      <div className="pb-24 lg:pb-8">
         <div className="bg-primary pt-8 pb-6 px-6 text-primary-foreground relative overflow-hidden">
           <div className="absolute inset-0 bg-black/10" />
           <div className="relative z-10">
@@ -549,7 +549,7 @@ export default function Accommodation() {
   // Terms and conditions screen
   if (!termsAccepted) {
     return (
-      <div className="pb-24 md:pb-8">
+      <div className="pb-24 lg:pb-8">
         <div className="bg-primary pt-8 pb-6 px-6 text-primary-foreground relative overflow-hidden">
           <div className="absolute inset-0 bg-black/10" />
           <div className="relative z-10">
@@ -625,7 +625,7 @@ export default function Accommodation() {
   }
 
   return (
-    <div className="pb-24 md:pb-8">
+    <div className="pb-24 lg:pb-8">
       {/* Header */}
       <div className="bg-primary pt-8 pb-6 px-6 text-primary-foreground relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10" />

@@ -16,6 +16,7 @@ Preferred communication style: Simple, everyday language.
 - **State Management**: TanStack React Query for server state, React Context for auth state and font size preference
 - **Styling**: Tailwind CSS v4 with shadcn/ui component library (New York style)
 - **Build Tool**: Vite with custom plugins for Replit integration
+- **Responsive Breakpoint**: Desktop layout activates at `lg:` (1024px+); below 1024px shows mobile layout with bottom nav. This ensures iPad portrait (768-810px) gets the mobile experience. Mobile content uses `max-w-lg sm:max-w-2xl` for proper tablet width.
 
 ### Backend Architecture
 - **Framework**: Express 5 on Node.js

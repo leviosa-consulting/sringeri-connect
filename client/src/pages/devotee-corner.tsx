@@ -70,7 +70,7 @@ export default function DevoteeCorner() {
   const { item: discourse, loading: discourseLoading, fetchItem: fetchDiscourse } = useFetchItem<Discourse>("/api/jagadguru-anugraha", "discourse");
 
   return (
-    <div className="px-4 py-8 pb-24 md:pb-8 space-y-6">
+    <div className="px-4 py-8 pb-24 lg:pb-8 space-y-6">
 
       <div className="space-y-2 px-2">
         <h1 className="text-3xl font-serif font-bold text-primary" data-testid="text-devotee-corner-title">Devotee Corner</h1>

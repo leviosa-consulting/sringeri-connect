@@ -142,7 +142,7 @@ export default function Profile() {
   }, [devoteeData?.pastAccommodations, accomFromDate, accomToDate]);
 
   return (
-    <div className="pb-24 md:pb-8">
+    <div className="pb-24 lg:pb-8">
       {/* Profile Header */}
       <div className="bg-primary pt-12 pb-20 px-6 text-primary-foreground relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10" />

@@ -8,7 +8,7 @@ import { useMedia } from "react-use";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const isDesktop = useMedia('(min-width: 768px)', false);
+  const isDesktop = useMedia('(min-width: 1024px)', false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -31,7 +31,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <DesktopNav />
       ) : (
         /* Mobile Top Bar (Logo Only) - since Nav is at bottom */
-        <div className="md:hidden h-20 bg-background/80 backdrop-blur border-b sticky top-0 z-40 flex items-center justify-center px-4">
+        <div className="lg:hidden h-20 bg-background/80 backdrop-blur border-b sticky top-0 z-40 flex items-center justify-center px-4">
           <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
         </div>
       )}
@@ -39,7 +39,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <main className={cn(
         "flex-1 w-full mx-auto",
-        isDesktop ? "max-w-7xl px-6 py-8" : "max-w-lg"
+        isDesktop ? "max-w-7xl px-6 py-8" : "max-w-lg sm:max-w-2xl"
       )}>
         {children}
       </main>
@@ -49,7 +49,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         "bg-[#fcfbf7] border-t border-border/50",
         !isDesktop && "mb-16"
       )}>
-        <div className="flex justify-center items-center gap-4 py-3 max-w-md mx-auto">
+        <div className="flex justify-center items-center gap-4 py-3 max-w-md sm:max-w-2xl mx-auto">
           <a href="https://www.youtube.com/@SharadaPeetham" target="_blank" rel="noopener noreferrer" aria-label="YouTube" data-testid="link-social-youtube">
             <svg viewBox="0 0 24 24" className="w-6 h-6 text-[#ff6600]" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
           </a>
@@ -77,7 +77,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile Bottom Navigation */}
       {!isDesktop && (
         <nav className="fixed bottom-0 w-full bg-white/90 backdrop-blur-lg border-t border-border z-40 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-          <div className="flex justify-around items-center h-16 max-w-md mx-auto">
+          <div className="flex justify-around items-center h-16 max-w-md sm:max-w-2xl mx-auto">
             {navItems.map((item) => {
               const isActive = location === item.path;
               return (

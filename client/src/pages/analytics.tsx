@@ -117,7 +117,7 @@ export default function Analytics() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6 max-w-6xl mx-auto" data-testid="analytics-page">
+    <div className="min-h-screen bg-background p-4 lg:p-6 max-w-6xl mx-auto" data-testid="analytics-page">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="analytics-title">
@@ -163,7 +163,7 @@ export default function Analytics() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <Card data-testid="card-total-views">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
@@ -225,7 +225,7 @@ export default function Analytics() {
         </Card>
       )}
 
-      <div className="grid md:grid-cols-2 gap-6 mb-6">
+      <div className="grid lg:grid-cols-2 gap-6 mb-6">
         <Card data-testid="card-page-breakdown">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Page Breakdown</CardTitle>
