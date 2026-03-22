@@ -152,6 +152,8 @@ export default function Knowledge() {
   const params = useParams<{ id?: string }>();
   const [, setLocation] = useLocation();
   const permalinkId = params.id ? Number(params.id) : null;
+  const [selectedPastQuizId, setSelectedPastQuizId] = useState<number | null>(null);
+  const activeQuizId = selectedPastQuizId || permalinkId;
   const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"quiz" | "history" | "past">("quiz");
@@ -194,7 +196,7 @@ export default function Knowledge() {
     try {
       setLoading(true);
       const token = await getToken();
-      const url = permalinkId ? `/api/quiz/by-id/${permalinkId}` : "/api/quiz/today";
+      const url = activeQuizId ? `/api/quiz/by-id/${activeQuizId}` : "/api/quiz/today";
       const res = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -212,7 +214,7 @@ export default function Knowledge() {
     } finally {
       setLoading(false);
     }
-  }, [getToken, permalinkId]);
+  }, [getToken, activeQuizId]);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -352,11 +354,11 @@ export default function Knowledge() {
 
       <div className="flex gap-2">
         <button
-          onClick={() => setTab("quiz")}
+          onClick={() => { setSelectedPastQuizId(null); setTab("quiz"); }}
           className={cn("flex-1 py-2.5 text-xs font-semibold rounded-lg transition-colors", tab === "quiz" ? "bg-primary text-white" : "bg-muted text-muted-foreground")}
           data-testid="tab-quiz"
         >
-          Today's Quiz
+          {activeQuizId ? "Quiz" : "Today's Quiz"}
         </button>
         <button
           onClick={() => setTab("past")}
@@ -386,6 +388,16 @@ export default function Knowledge() {
             </div>
           ) : (
             <div className="space-y-5">
+              {selectedPastQuizId && (
+                <button
+                  onClick={() => { setSelectedPastQuizId(null); setTab("past"); }}
+                  className="flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
+                  data-testid="button-back-to-past"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Past Quizzes
+                </button>
+              )}
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 space-y-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1 flex-1">
@@ -659,7 +671,10 @@ export default function Knowledge() {
             pastQuizzes.map((pq) => (
               <button
                 key={pq.id}
-                onClick={() => setLocation(`/knowledge/${pq.id}`)}
+                onClick={() => {
+                  setSelectedPastQuizId(pq.id);
+                  setTab("quiz");
+                }}
                 className="w-full bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between text-left hover:border-primary/30 transition-colors"
                 data-testid={`past-quiz-${pq.id}`}
               >
