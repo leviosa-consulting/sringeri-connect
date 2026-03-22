@@ -2439,14 +2439,16 @@ export async function registerRoutes(
       const quiz = await storage.getQuizByDate(today);
       if (!quiz) return res.json(null);
       const questions = await storage.getQuestionsByQuizId(quiz.id);
-      const safeQuestions = questions.map(q => ({
+      const attempt = await storage.getAttemptByUserAndQuiz(uid, quiz.id);
+      const mappedQuestions = questions.map(q => ({
         id: q.id,
         questionText: q.questionText,
-        options: (q.options as { text: string; isCorrect: boolean }[]).map((o) => ({ text: o.text })),
+        options: attempt
+          ? q.options as { text: string; isCorrect: boolean }[]
+          : (q.options as { text: string; isCorrect: boolean }[]).map((o) => ({ text: o.text })),
         correctCount: q.correctCount,
         sortOrder: q.sortOrder,
       }));
-      const attempt = await storage.getAttemptByUserAndQuiz(uid, quiz.id);
       res.json({
         id: quiz.id,
         title: quiz.title,
@@ -2456,7 +2458,7 @@ export async function registerRoutes(
         audioUrl: quiz.audioUrl,
         imageUrls: quiz.imageUrls,
         publishDate: quiz.publishDate,
-        questions: safeQuestions,
+        questions: mappedQuestions,
         attempt: attempt ? { score: attempt.score, totalQuestions: attempt.totalQuestions, answers: attempt.answers, completedAt: attempt.completedAt } : null,
       });
     } catch (error) {
