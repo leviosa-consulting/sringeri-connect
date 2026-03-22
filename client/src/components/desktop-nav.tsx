@@ -33,7 +33,7 @@ export default function DesktopNav() {
 
         <div className="flex items-center gap-6">
           {navItems.map((item) => {
-            const isActive = location === item.path;
+            const isActive = location === item.path || location.startsWith(item.path + "/");
             return (
               <Link key={item.path} href={item.path} className={cn(
                   "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",

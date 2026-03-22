@@ -80,7 +80,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <nav className="fixed bottom-0 w-full bg-white/90 backdrop-blur-lg border-t border-border z-40 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
           <div className="flex justify-around items-center h-16 max-w-md sm:max-w-2xl mx-auto">
             {navItems.map((item) => {
-              const isActive = location === item.path;
+              const isActive = location === item.path || location.startsWith(item.path + "/");
               return (
                 <Link key={item.path} href={item.path} className={cn(
                     "flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors duration-200",
