@@ -219,7 +219,7 @@ export default function Knowledge() {
               {hasContent && showContent && !submitted && (
                 <div className="space-y-4 bg-card rounded-xl border border-border/50 p-4">
                   {quiz.description && (
-                    <div className="prose prose-sm max-w-none text-foreground" data-testid="text-quiz-description">
+                    <div className="quiz-content" data-testid="text-quiz-description">
                       <ReactMarkdown>{quiz.description}</ReactMarkdown>
                     </div>
                   )}
@@ -401,7 +401,7 @@ export default function Knowledge() {
                       {showResultContent && (
                         <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-3">
                           {quiz.description && (
-                            <div className="prose prose-sm max-w-none text-foreground">
+                            <div className="quiz-content">
                               <ReactMarkdown>{quiz.description}</ReactMarkdown>
                             </div>
                           )}
@@ -594,7 +594,7 @@ function HistoryReview({ quiz, galleryIndex, setGalleryIndex, onBack, showResult
           {showResultContent && (
             <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-3">
               {quiz.description && (
-                <div className="prose prose-sm max-w-none text-foreground">
+                <div className="quiz-content">
                   <ReactMarkdown>{quiz.description}</ReactMarkdown>
                 </div>
               )}
