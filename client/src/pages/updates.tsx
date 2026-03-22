@@ -195,7 +195,7 @@ export default function Updates() {
         {groups.map((group, gi) => (
           <div key={gi} className="mb-6 last:mb-0">
             <div className="relative flex items-center mb-3">
-              <div className="absolute -left-6 w-[19px] h-[19px] rounded-full bg-[#e8a735] border-2 border-white shadow-sm flex items-center justify-center">
+              <div className="absolute -left-6 w-[19px] h-[19px] rounded-full bg-[#8B7D6B] border-2 border-white shadow-sm flex items-center justify-center">
                 <div className="w-2 h-2 rounded-full bg-white" />
               </div>
               <span className="text-sm font-semibold text-foreground/80 tracking-wide">{group.label}</span>
