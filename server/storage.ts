@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge } from "@shared/schema";
+import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql, eq, and, gte, lte, desc, asc, count, countDistinct, avg } from "drizzle-orm";
@@ -33,6 +33,8 @@ export interface IStorage {
   getUserAttemptDates(odUserId: string): Promise<string[]>;
   hasUserPerfectScore(odUserId: string): Promise<boolean>;
   getUserAttemptCount(odUserId: string): Promise<number>;
+  getAppSetting(key: string): Promise<string | null>;
+  setAppSetting(key: string, value: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -84,6 +86,8 @@ export class MemStorage implements IStorage {
   async getUserAttemptDates(_odUserId: string): Promise<string[]> { return []; }
   async hasUserPerfectScore(_odUserId: string): Promise<boolean> { return false; }
   async getUserAttemptCount(_odUserId: string): Promise<number> { return 0; }
+  async getAppSetting(_key: string): Promise<string | null> { return null; }
+  async setAppSetting(_key: string, _value: string): Promise<void> {}
 }
 
 let storage: IStorage;
@@ -405,6 +409,17 @@ if (process.env.DATABASE_URL) {
       const [result] = await db.select({ cnt: count() }).from(quizAttempts)
         .where(eq(quizAttempts.odUserId, odUserId));
       return result?.cnt ?? 0;
+    }
+
+    async getAppSetting(key: string): Promise<string | null> {
+      const [row] = await db.select().from(appSettings).where(eq(appSettings.key, key));
+      return row?.value ?? null;
+    }
+
+    async setAppSetting(key: string, value: string): Promise<void> {
+      await db.insert(appSettings)
+        .values({ key, value, updatedAt: new Date() })
+        .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
     }
   }
 

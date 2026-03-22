@@ -1,6 +1,6 @@
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Layout from "@/components/layout";
@@ -19,6 +19,8 @@ import { AnalyticsProvider } from "@/contexts/analytics-context";
 import Analytics from "@/pages/analytics";
 import Knowledge from "@/pages/knowledge";
 import AdminQuizzes from "@/pages/admin-quizzes";
+import AdminLaunch from "@/pages/admin-launch";
+import ComingSoon from "@/pages/coming-soon";
 import { Loader2 } from "lucide-react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -62,6 +64,38 @@ function Router() {
   );
 }
 
+function LaunchGate() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/launch-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/launch-status");
+      return res.json() as Promise<{ isLaunched: boolean }>;
+    },
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F2EC]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (data?.isLaunched) {
+    return <Router />;
+  }
+
+  return (
+    <Switch>
+      <Route path="/admin/launch" component={AdminLaunch} />
+      <Route path="/fastline" component={Fastline} />
+      <Route component={ComingSoon} />
+    </Switch>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -69,7 +103,7 @@ function App() {
         <AuthProvider>
           <AnalyticsProvider>
             <Toaster />
-            <Router />
+            <LaunchGate />
           </AnalyticsProvider>
         </AuthProvider>
       </FontSizeProvider>

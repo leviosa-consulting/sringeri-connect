@@ -120,3 +120,11 @@ export const userBadges = pgTable("user_badges", {
 ]);
 
 export type UserBadge = typeof userBadges.$inferSelect;
+
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type AppSetting = typeof appSettings.$inferSelect;

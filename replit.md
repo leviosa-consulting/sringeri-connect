@@ -36,6 +36,14 @@ Preferred communication style: Simple, everyday language.
 - Middleware in `server/index.ts` handles detection; API and asset paths pass through
 - Enables future custom domain support (e.g., `fastline.sringeri.net`)
 
+### Launch Gate
+- **Table**: `app_settings` stores key-value pairs; `isLaunched` key controls the gate
+- **Pre-launch**: All routes show a "Coming Soon" page with logo, except `/admin/launch` (admin launch control) and `/fastline` (standalone seva booking)
+- **Admin launch page**: `/admin/launch` — admin logs in, clicks launch button → sets `isLaunched=true` in DB → app opens to all visitors
+- **Admin check**: Uses `ANALYTICS_ADMIN_UIDS` env var for both backend and frontend (via `VITE_ANALYTICS_ADMIN_UIDS`)
+- **Post-launch**: `LaunchGate` component in `App.tsx` checks `/api/launch-status` and renders full router when launched
+- **APIs**: `GET /api/launch-status` (public), `POST /api/launch` (admin-only)
+
 ### Data Storage
 - **ORM**: Drizzle ORM with PostgreSQL dialect
 - **Schema Location**: `shared/schema.ts`
