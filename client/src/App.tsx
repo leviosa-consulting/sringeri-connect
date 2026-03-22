@@ -17,6 +17,8 @@ import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { FontSizeProvider } from "@/contexts/font-size-context";
 import { AnalyticsProvider } from "@/contexts/analytics-context";
 import Analytics from "@/pages/analytics";
+import Knowledge from "@/pages/knowledge";
+import AdminQuizzes from "@/pages/admin-quizzes";
 import { Loader2 } from "lucide-react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -49,8 +51,10 @@ function Router() {
         <Route path="/accommodation">{() => <ProtectedRoute component={Accommodation} />}</Route>
         <Route path="/donation">{() => <ProtectedRoute component={Donation} />}</Route>
         <Route path="/seva">{() => <ProtectedRoute component={Seva} />}</Route>
+        <Route path="/knowledge">{() => <ProtectedRoute component={Knowledge} />}</Route>
         <Route path="/fastline" component={Fastline} />
         <Route path="/analytics" component={Analytics} />
+        <Route path="/admin/quizzes" component={AdminQuizzes} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

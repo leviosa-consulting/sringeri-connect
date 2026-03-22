@@ -2302,5 +2302,230 @@ export async function registerRoutes(
     }
   });
 
+  const QUIZ_ADMIN_UIDS = (process.env.QUIZ_ADMIN_UIDS || process.env.ANALYTICS_ADMIN_UIDS || "").split(",").map(s => s.trim()).filter(Boolean);
+
+  async function isQuizAdmin(req: any): Promise<boolean> {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return false;
+    const token = authHeader.slice(7);
+    const uid = await verifyFirebaseToken(token);
+    if (!uid) return false;
+    return QUIZ_ADMIN_UIDS.includes(uid);
+  }
+
+  async function getFirebaseUid(req: any): Promise<string | null> {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+    const token = authHeader.slice(7);
+    return verifyFirebaseToken(token);
+  }
+
+  app.get("/api/admin/quizzes", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const allQuizzes = await storage.listQuizzes();
+      res.json(allQuizzes);
+    } catch (error) {
+      console.error("Error listing quizzes:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/quizzes", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const quiz = await storage.createQuiz(req.body);
+      res.json(quiz);
+    } catch (error) {
+      console.error("Error creating quiz:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/admin/quizzes/:id", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const quiz = await storage.updateQuiz(Number(req.params.id), req.body);
+      if (!quiz) return res.status(404).json({ error: "Quiz not found" });
+      res.json(quiz);
+    } catch (error) {
+      console.error("Error updating quiz:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/admin/quizzes/:id", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      await storage.deleteQuiz(Number(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting quiz:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/quizzes/:id", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const quiz = await storage.getQuizById(Number(req.params.id));
+      if (!quiz) return res.status(404).json({ error: "Quiz not found" });
+      const questions = await storage.getQuestionsByQuizId(quiz.id);
+      res.json({ ...quiz, questions });
+    } catch (error) {
+      console.error("Error getting quiz:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/quizzes/:id/questions", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const question = await storage.createQuestion({ ...req.body, quizId: Number(req.params.id) });
+      res.json(question);
+    } catch (error) {
+      console.error("Error creating question:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/admin/questions/:id", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const question = await storage.updateQuestion(Number(req.params.id), req.body);
+      if (!question) return res.status(404).json({ error: "Question not found" });
+      res.json(question);
+    } catch (error) {
+      console.error("Error updating question:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/admin/questions/:id", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      await storage.deleteQuestion(Number(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/admin/quizzes/:id/questions/bulk", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const quizId = Number(req.params.id);
+      const { questions } = req.body;
+      if (!Array.isArray(questions)) return res.status(400).json({ error: "questions array required" });
+      await storage.deleteQuestionsByQuizId(quizId);
+      const created = [];
+      for (const q of questions) {
+        const question = await storage.createQuestion({ ...q, quizId });
+        created.push(question);
+      }
+      res.json(created);
+    } catch (error) {
+      console.error("Error bulk updating questions:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/quiz/today", async (req, res) => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const quiz = await storage.getQuizByDate(today);
+      if (!quiz) return res.json(null);
+      const questions = await storage.getQuestionsByQuizId(quiz.id);
+      const safeQuestions = questions.map(q => ({
+        id: q.id,
+        questionText: q.questionText,
+        options: (q.options as any[]).map((o: any) => ({ text: o.text })),
+        correctCount: q.correctCount,
+        sortOrder: q.sortOrder,
+      }));
+      const uid = await getFirebaseUid(req);
+      let attempt = null;
+      if (uid) {
+        attempt = await storage.getAttemptByUserAndQuiz(uid, quiz.id);
+      }
+      res.json({
+        id: quiz.id,
+        title: quiz.title,
+        subtitle: quiz.subtitle,
+        description: quiz.description,
+        videoUrl: quiz.videoUrl,
+        audioUrl: quiz.audioUrl,
+        imageUrls: quiz.imageUrls,
+        publishDate: quiz.publishDate,
+        questions: safeQuestions,
+        attempt: attempt ? { score: attempt.score, totalQuestions: attempt.totalQuestions, answers: attempt.answers, completedAt: attempt.completedAt } : null,
+      });
+    } catch (error) {
+      console.error("Error getting today's quiz:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/quiz/:id/submit", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const quizId = Number(req.params.id);
+      const { answers } = req.body;
+      if (!answers || typeof answers !== "object") return res.status(400).json({ error: "answers required" });
+
+      const today = new Date().toISOString().split("T")[0];
+      const quiz = await storage.getQuizByDate(today);
+      if (!quiz || quiz.id !== quizId) return res.status(403).json({ error: "Quiz not available for submission" });
+
+      const existing = await storage.getAttemptByUserAndQuiz(uid, quizId);
+      if (existing) return res.status(409).json({ error: "Already submitted", attempt: existing });
+      const questions = await storage.getQuestionsByQuizId(quizId);
+      if (questions.length === 0) return res.status(404).json({ error: "Quiz not found" });
+      let score = 0;
+      for (const q of questions) {
+        const userAnswers: number[] = answers[String(q.id)] || [];
+        const correctIndices = (q.options as any[]).map((o: any, i: number) => o.isCorrect ? i : -1).filter((i: number) => i !== -1);
+        if (userAnswers.length === correctIndices.length && correctIndices.every((ci: number) => userAnswers.includes(ci))) {
+          score++;
+        }
+      }
+      const attempt = await storage.saveAttempt({
+        odUserId: uid,
+        quizId,
+        score,
+        totalQuestions: questions.length,
+        answers,
+      });
+      const questionsWithCorrect = questions.map(q => ({
+        id: q.id,
+        questionText: q.questionText,
+        options: q.options,
+        correctCount: q.correctCount,
+        sortOrder: q.sortOrder,
+      }));
+      res.json({ attempt, questions: questionsWithCorrect });
+    } catch (error: any) {
+      if (error?.code === "23505") {
+        return res.status(409).json({ error: "Already submitted" });
+      }
+      console.error("Error submitting quiz:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/quiz/history", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const history = await storage.getUserAttemptHistory(uid);
+      res.json(history);
+    } catch (error) {
+      console.error("Error getting quiz history:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   return httpServer;
 }

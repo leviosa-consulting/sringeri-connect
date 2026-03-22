@@ -126,6 +126,7 @@ Preferred communication style: Simple, everyday language.
 - Embla Carousel for carousel components
 - date-fns for date formatting
 - Recharts for analytics dashboard charts
+- react-markdown for rendering markdown content (quiz descriptions)
 
 ### Analytics Tracking
 - Lightweight client-side tracking module (`client/src/lib/analytics.ts`) captures page views, clicks, scroll depth, and time spent
@@ -140,3 +141,15 @@ Preferred communication style: Simple, everyday language.
 - Dashboard shows: overview cards, daily trend chart, page breakdown table, top clicked elements bar chart, live session count, manual aggregation button
 - Tracking API: `POST /api/analytics/events` (no auth, max 100 events/batch)
 - Dashboard APIs: `GET /api/analytics/summary`, `GET /api/analytics/page-stats`, `GET /api/analytics/top-elements`, `GET /api/analytics/live`, `POST /api/analytics/aggregate` (all admin-only)
+
+### Knowledge Corner (Daily Quiz)
+- PostgreSQL tables: `quizzes` (title, subtitle, description, videoUrl, audioUrl, imageUrls, publishDate, isActive), `quiz_questions` (questionText, options JSON, correctCount, sortOrder), `quiz_attempts` (odUserId, score, totalQuestions, answers JSON, completedAt)
+- Unique index on `quiz_attempts(odUserId, quizId)` prevents duplicate submissions
+- Admin access: `QUIZ_ADMIN_UIDS` env var (falls back to `ANALYTICS_ADMIN_UIDS`); frontend uses `VITE_QUIZ_ADMIN_UIDS` (falls back to `VITE_ANALYTICS_ADMIN_UIDS`)
+- User page at `/knowledge` — shows today's quiz with content (markdown, video, audio, image gallery), multi-step quiz flow, results with answer review, and score history tab
+- Admin page at `/admin/quizzes` — full CRUD for quizzes and questions with bulk question save
+- Quiz scoring: 1 point per question (all-or-nothing); radio for single answer, checkboxes for multi-answer
+- Submit endpoint returns 409 if already attempted (dedup via unique index)
+- User APIs: `GET /api/quiz/today`, `POST /api/quiz/:id/submit`, `GET /api/quiz/history` (all require Firebase auth)
+- Admin APIs: `GET/POST /api/admin/quizzes`, `GET/PUT/DELETE /api/admin/quizzes/:id`, `PUT /api/admin/quizzes/:id/questions/bulk` (admin-only)
+- Navigation: "Knowledge" tab in both mobile bottom nav and desktop sidebar

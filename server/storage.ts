@@ -1,7 +1,7 @@
-import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary } from "@shared/schema";
+import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { sql, eq, and, gte, lte, desc, count, countDistinct, avg } from "drizzle-orm";
+import { sql, eq, and, gte, lte, desc, asc, count, countDistinct, avg } from "drizzle-orm";
 import pg from "pg";
 
 export interface IStorage {
@@ -14,6 +14,20 @@ export interface IStorage {
   getPageStats(from: string, to: string): Promise<any[]>;
   getLiveSessionCount(): Promise<number>;
   aggregateDailySummary(dateStr: string): Promise<void>;
+  createQuiz(quiz: InsertQuiz): Promise<Quiz>;
+  updateQuiz(id: number, quiz: Partial<InsertQuiz>): Promise<Quiz | undefined>;
+  deleteQuiz(id: number): Promise<void>;
+  getQuizById(id: number): Promise<Quiz | undefined>;
+  getQuizByDate(dateStr: string): Promise<Quiz | undefined>;
+  listQuizzes(): Promise<Quiz[]>;
+  createQuestion(question: InsertQuizQuestion): Promise<QuizQuestion>;
+  updateQuestion(id: number, question: Partial<InsertQuizQuestion>): Promise<QuizQuestion | undefined>;
+  deleteQuestion(id: number): Promise<void>;
+  getQuestionsByQuizId(quizId: number): Promise<QuizQuestion[]>;
+  deleteQuestionsByQuizId(quizId: number): Promise<void>;
+  saveAttempt(attempt: InsertQuizAttempt): Promise<QuizAttempt>;
+  getAttemptByUserAndQuiz(odUserId: string, quizId: number): Promise<QuizAttempt | undefined>;
+  getUserAttemptHistory(odUserId: string, limit?: number): Promise<(QuizAttempt & { quizTitle: string; quizPublishDate: string })[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -46,6 +60,20 @@ export class MemStorage implements IStorage {
   async getPageStats(_from: string, _to: string): Promise<any[]> { return []; }
   async getLiveSessionCount(): Promise<number> { return 0; }
   async aggregateDailySummary(_dateStr: string): Promise<void> {}
+  async createQuiz(_quiz: InsertQuiz): Promise<Quiz> { throw new Error("Not implemented"); }
+  async updateQuiz(_id: number, _quiz: Partial<InsertQuiz>): Promise<Quiz | undefined> { return undefined; }
+  async deleteQuiz(_id: number): Promise<void> {}
+  async getQuizById(_id: number): Promise<Quiz | undefined> { return undefined; }
+  async getQuizByDate(_dateStr: string): Promise<Quiz | undefined> { return undefined; }
+  async listQuizzes(): Promise<Quiz[]> { return []; }
+  async createQuestion(_question: InsertQuizQuestion): Promise<QuizQuestion> { throw new Error("Not implemented"); }
+  async updateQuestion(_id: number, _question: Partial<InsertQuizQuestion>): Promise<QuizQuestion | undefined> { return undefined; }
+  async deleteQuestion(_id: number): Promise<void> {}
+  async getQuestionsByQuizId(_quizId: number): Promise<QuizQuestion[]> { return []; }
+  async deleteQuestionsByQuizId(_quizId: number): Promise<void> {}
+  async saveAttempt(_attempt: InsertQuizAttempt): Promise<QuizAttempt> { throw new Error("Not implemented"); }
+  async getAttemptByUserAndQuiz(_odUserId: string, _quizId: number): Promise<QuizAttempt | undefined> { return undefined; }
+  async getUserAttemptHistory(_odUserId: string, _limit?: number): Promise<(QuizAttempt & { quizTitle: string; quizPublishDate: string })[]> { return []; }
 }
 
 let storage: IStorage;
@@ -248,6 +276,87 @@ if (process.env.DATABASE_URL) {
           },
         });
       }
+    }
+
+    async createQuiz(quiz: InsertQuiz): Promise<Quiz> {
+      const [result] = await db.insert(quizzes).values(quiz).returning();
+      return result;
+    }
+
+    async updateQuiz(id: number, updates: Partial<InsertQuiz>): Promise<Quiz | undefined> {
+      const [result] = await db.update(quizzes).set({ ...updates, updatedAt: new Date() }).where(eq(quizzes.id, id)).returning();
+      return result;
+    }
+
+    async deleteQuiz(id: number): Promise<void> {
+      await db.delete(quizQuestions).where(eq(quizQuestions.quizId, id));
+      await db.delete(quizAttempts).where(eq(quizAttempts.quizId, id));
+      await db.delete(quizzes).where(eq(quizzes.id, id));
+    }
+
+    async getQuizById(id: number): Promise<Quiz | undefined> {
+      const [result] = await db.select().from(quizzes).where(eq(quizzes.id, id));
+      return result;
+    }
+
+    async getQuizByDate(dateStr: string): Promise<Quiz | undefined> {
+      const [result] = await db.select().from(quizzes).where(and(eq(quizzes.publishDate, dateStr), eq(quizzes.isActive, true)));
+      return result;
+    }
+
+    async listQuizzes(): Promise<Quiz[]> {
+      return db.select().from(quizzes).orderBy(desc(quizzes.publishDate));
+    }
+
+    async createQuestion(question: InsertQuizQuestion): Promise<QuizQuestion> {
+      const [result] = await db.insert(quizQuestions).values(question).returning();
+      return result;
+    }
+
+    async updateQuestion(id: number, updates: Partial<InsertQuizQuestion>): Promise<QuizQuestion | undefined> {
+      const [result] = await db.update(quizQuestions).set(updates).where(eq(quizQuestions.id, id)).returning();
+      return result;
+    }
+
+    async deleteQuestion(id: number): Promise<void> {
+      await db.delete(quizQuestions).where(eq(quizQuestions.id, id));
+    }
+
+    async getQuestionsByQuizId(quizId: number): Promise<QuizQuestion[]> {
+      return db.select().from(quizQuestions).where(eq(quizQuestions.quizId, quizId)).orderBy(asc(quizQuestions.sortOrder));
+    }
+
+    async deleteQuestionsByQuizId(quizId: number): Promise<void> {
+      await db.delete(quizQuestions).where(eq(quizQuestions.quizId, quizId));
+    }
+
+    async saveAttempt(attempt: InsertQuizAttempt): Promise<QuizAttempt> {
+      const [result] = await db.insert(quizAttempts).values(attempt).returning();
+      return result;
+    }
+
+    async getAttemptByUserAndQuiz(odUserId: string, quizId: number): Promise<QuizAttempt | undefined> {
+      const [result] = await db.select().from(quizAttempts).where(and(eq(quizAttempts.odUserId, odUserId), eq(quizAttempts.quizId, quizId)));
+      return result;
+    }
+
+    async getUserAttemptHistory(odUserId: string, limitNum: number = 50): Promise<(QuizAttempt & { quizTitle: string; quizPublishDate: string })[]> {
+      const results = await db.select({
+        id: quizAttempts.id,
+        odUserId: quizAttempts.odUserId,
+        quizId: quizAttempts.quizId,
+        score: quizAttempts.score,
+        totalQuestions: quizAttempts.totalQuestions,
+        answers: quizAttempts.answers,
+        completedAt: quizAttempts.completedAt,
+        quizTitle: quizzes.title,
+        quizPublishDate: quizzes.publishDate,
+      }).from(quizAttempts)
+        .innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id))
+        .where(eq(quizAttempts.odUserId, odUserId))
+        .orderBy(desc(quizAttempts.completedAt))
+        .limit(limitNum);
+      return results as any;
     }
   }
 

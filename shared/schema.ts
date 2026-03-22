@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, jsonb, timestamp, date, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, integer, jsonb, timestamp, date, uniqueIndex, index, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -58,3 +58,53 @@ export const insertAnalyticsEventSchema = z.object({
 export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type AnalyticsDailySummary = typeof analyticsDailySummary.$inferSelect;
+
+export const quizzes = pgTable("quizzes", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  description: text("description"),
+  videoUrl: text("video_url"),
+  audioUrl: text("audio_url"),
+  imageUrls: text("image_urls").array(),
+  publishDate: date("publish_date").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("quizzes_publish_date_idx").on(table.publishDate),
+]);
+
+export const quizQuestions = pgTable("quiz_questions", {
+  id: serial("id").primaryKey(),
+  quizId: integer("quiz_id").notNull(),
+  questionText: text("question_text").notNull(),
+  options: jsonb("options").notNull().$type<{ text: string; isCorrect: boolean }[]>(),
+  correctCount: integer("correct_count").notNull().default(1),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const quizAttempts = pgTable("quiz_attempts", {
+  id: serial("id").primaryKey(),
+  odUserId: text("od_user_id").notNull(),
+  quizId: integer("quiz_id").notNull(),
+  score: integer("score").notNull(),
+  totalQuestions: integer("total_questions").notNull(),
+  answers: jsonb("answers").notNull().$type<Record<string, number[]>>(),
+  completedAt: timestamp("completed_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("quiz_attempts_user_quiz_idx").on(table.odUserId, table.quizId),
+  index("quiz_attempts_user_completed_idx").on(table.odUserId, table.completedAt),
+]);
+
+export const insertQuizSchema = createInsertSchema(quizzes).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertQuiz = z.infer<typeof insertQuizSchema>;
+export type Quiz = typeof quizzes.$inferSelect;
+
+export const insertQuizQuestionSchema = createInsertSchema(quizQuestions).omit({ id: true });
+export type InsertQuizQuestion = z.infer<typeof insertQuizQuestionSchema>;
+export type QuizQuestion = typeof quizQuestions.$inferSelect;
+
+export const insertQuizAttemptSchema = createInsertSchema(quizAttempts).omit({ id: true, completedAt: true });
+export type InsertQuizAttempt = z.infer<typeof insertQuizAttemptSchema>;
+export type QuizAttempt = typeof quizAttempts.$inferSelect;

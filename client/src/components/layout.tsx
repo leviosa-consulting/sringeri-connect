@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Bell, Users, User } from "lucide-react";
+import { Home, Bell, Users, User, BookOpenCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DesktopNav from "./desktop-nav";
 import ChatbotWidget from "./chatbot-widget";
@@ -17,6 +17,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { icon: Home, label: "Home", path: "/home" },
     { icon: Bell, label: "Updates", path: "/updates" },
+    { icon: BookOpenCheck, label: "Knowledge", path: "/knowledge" },
     { icon: Users, label: "Devotee", path: "/devotee" },
     { icon: User, label: "Account", path: "/profile" },
   ];
