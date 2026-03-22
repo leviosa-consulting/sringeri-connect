@@ -58,6 +58,7 @@ function Router() {
         <Route path="/fastline" component={Fastline} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/admin/quizzes">{() => <ProtectedRoute component={AdminQuizzes} />}</Route>
+        <Route path="/admin/launch" component={AdminLaunch} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

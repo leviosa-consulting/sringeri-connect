@@ -4,13 +4,11 @@ import { CheckCircle2, ShieldAlert, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getIdToken, loginWithEmail } from "@/lib/firebase";
-import { useQueryClient } from "@tanstack/react-query";
 
 const ADMIN_UIDS = (import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
 
 export default function AdminLaunch() {
   const { user, loading: authLoading } = useAuth();
-  const queryClient = useQueryClient();
   const [launching, setLaunching] = useState(false);
   const [launched, setLaunched] = useState(false);
   const [error, setError] = useState("");
@@ -102,7 +100,6 @@ export default function AdminLaunch() {
       }
 
       setLaunched(true);
-      queryClient.invalidateQueries({ queryKey: ["/api/launch-status"] });
     } catch (err: any) {
       setError(err.message || "Something went wrong");
     } finally {
