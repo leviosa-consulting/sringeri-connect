@@ -733,19 +733,41 @@ export default function Knowledge() {
                 const totalScore = history.reduce((s, h) => s + h.score, 0);
                 const totalQuestions = history.reduce((s, h) => s + h.totalQuestions, 0);
                 const pct = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+                const perfectCount = history.filter(h => h.score === h.totalQuestions).length;
+                const colorClass = pct >= 80 ? "from-green-500 to-emerald-600" : pct >= 50 ? "from-amber-500 to-orange-500" : "from-red-400 to-rose-500";
+                const ringColor = pct >= 80 ? "text-green-500" : pct >= 50 ? "text-amber-500" : "text-red-400";
                 return (
-                  <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 flex items-center gap-4" data-testid="total-score-card">
-                    <div className={cn(
-                      "w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold font-serif border-3",
-                      pct >= 80 ? "border-green-500 text-green-600" :
-                      pct >= 50 ? "border-amber-500 text-amber-600" :
-                      "border-red-400 text-red-500"
-                    )}>
-                      {pct}%
+                  <div className="rounded-2xl overflow-hidden border border-border/50 shadow-sm" data-testid="total-score-card">
+                    <div className={cn("bg-gradient-to-r p-5 text-white", colorClass)}>
+                      <div className="flex items-center gap-5">
+                        <div className="relative">
+                          <svg className="w-20 h-20 -rotate-90" viewBox="0 0 36 36">
+                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
+                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="white" strokeWidth="3" strokeDasharray={`${pct} ${100 - pct}`} strokeLinecap="round" className="transition-all duration-1000" />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-xl font-bold font-serif">{pct}%</span>
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <p className="font-serif font-bold text-lg">Overall Score</p>
+                          <p className="text-sm text-white/80">{totalScore} of {totalQuestions} correct</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 space-y-0.5">
-                      <p className="font-serif font-bold text-base">Total Score</p>
-                      <p className="text-sm text-muted-foreground">{totalScore}/{totalQuestions} correct across {history.length} quiz{history.length > 1 ? "zes" : ""}</p>
+                    <div className="grid grid-cols-3 divide-x divide-border/50 bg-card">
+                      <div className="p-3 text-center">
+                        <p className="text-lg font-bold font-serif text-foreground">{history.length}</p>
+                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Quizzes</p>
+                      </div>
+                      <div className="p-3 text-center">
+                        <p className="text-lg font-bold font-serif text-foreground">{perfectCount}</p>
+                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Perfect</p>
+                      </div>
+                      <div className="p-3 text-center">
+                        <p className={cn("text-lg font-bold font-serif", ringColor)}>{gamification?.currentStreak ?? 0}</p>
+                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Streak</p>
+                      </div>
                     </div>
                   </div>
                 );
@@ -753,102 +775,65 @@ export default function Knowledge() {
 
               {gamification && gamification.badges.length > 0 && (
                 <div className="space-y-3" data-testid="badges-section">
-                  <h3 className="font-serif font-bold text-base flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-primary" />
-                    Badges
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-serif font-bold text-base flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-primary" />
+                      Badges
+                    </h3>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {gamification.badges.filter(b => b.earned).length}/{gamification.badges.length} earned
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     {gamification.badges.map(badge => (
                       <div
                         key={badge.id}
                         className={cn(
-                          "rounded-xl border p-3 space-y-2 transition-all",
+                          "rounded-2xl border p-3.5 space-y-2.5 transition-all",
                           badge.earned
-                            ? "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200"
-                            : "bg-muted/30 border-border/50 opacity-60"
+                            ? "bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 border-amber-200 shadow-sm"
+                            : "bg-card border-border/50"
                         )}
                         data-testid={`badge-${badge.id}`}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start gap-2.5">
                           <div className={cn(
-                            "w-10 h-10 rounded-full flex items-center justify-center text-lg",
+                            "w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0",
                             badge.earned
-                              ? "bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm"
-                              : "bg-muted"
+                              ? "bg-gradient-to-br from-amber-400 to-orange-500 shadow-md shadow-orange-200/50"
+                              : "bg-muted/60"
                           )}>
                             {badge.earned ? badge.emoji : "🔒"}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn("text-xs font-bold truncate", badge.earned ? "text-amber-800" : "text-muted-foreground")}>{badge.name}</p>
-                            <p className="text-[10px] text-muted-foreground leading-tight">{badge.description}</p>
+                          <div className="flex-1 min-w-0 pt-0.5">
+                            <p className={cn("text-xs font-bold truncate", badge.earned ? "text-amber-900" : "text-muted-foreground")}>{badge.name}</p>
+                            <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">{badge.description}</p>
                           </div>
                         </div>
-                        {!badge.earned && badge.target > 1 && (
+                        {!badge.earned && (
                           <div className="space-y-1">
-                            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all"
-                                style={{ width: `${Math.round((badge.progress / badge.target) * 100)}%` }}
+                                className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all duration-500"
+                                style={{ width: `${Math.max(Math.round((badge.progress / badge.target) * 100), badge.progress > 0 ? 8 : 0)}%` }}
                               />
                             </div>
-                            <p className="text-[10px] text-muted-foreground text-right">{badge.progress}/{badge.target}</p>
+                            <p className="text-[10px] text-muted-foreground text-right font-medium">{badge.progress}/{badge.target}</p>
                           </div>
                         )}
                         {badge.earned && badge.earnedAt && (
-                          <p className="text-[10px] text-amber-600">
-                            {new Date(badge.earnedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                          </p>
+                          <div className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-amber-600" />
+                            <p className="text-[10px] text-amber-700 font-medium">
+                              Earned {new Date(badge.earnedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                            </p>
+                          </div>
                         )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
-            {history.map((item) => (
-              <button
-                key={item.id}
-                onClick={async () => {
-                  setReviewLoading(true);
-                  try {
-                    const token = await getToken();
-                    const res = await fetch(`/api/quiz/${item.quizId}/review`, {
-                      headers: { Authorization: `Bearer ${token}` },
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      setReviewQuiz(data);
-                      setShowResultContent(false);
-                    }
-                  } catch (err) {
-                    console.error("Failed to load quiz review:", err);
-                  } finally {
-                    setReviewLoading(false);
-                  }
-                }}
-                disabled={reviewLoading}
-                className="w-full bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between text-left hover:border-primary/30 transition-colors"
-                data-testid={`history-item-${item.id}`}
-              >
-                <div className="space-y-0.5">
-                  <h3 className="font-serif font-semibold text-sm">{item.quizTitle}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(item.quizPublishDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={cn(
-                    "text-lg font-bold font-serif px-3 py-1 rounded-lg",
-                    item.score === item.totalQuestions ? "bg-green-100 text-green-700" :
-                    item.score >= item.totalQuestions / 2 ? "bg-amber-100 text-amber-700" :
-                    "bg-red-100 text-red-600"
-                  )}>
-                    {item.score}/{item.totalQuestions}
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </div>
-              </button>
-            ))}
             </>
           )}
         </div>
