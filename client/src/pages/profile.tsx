@@ -220,7 +220,9 @@ export default function Profile() {
         ]);
         if (nRes && nRes.ok) { loadedNakshatras = await nRes.json(); setNakshatras(loadedNakshatras); }
         if (rRes && rRes.ok) { loadedRashis = await rRes.json(); setRashis(loadedRashis); }
-      } catch {}
+      } catch {
+        toast({ title: "Failed to load options", description: "Could not load nakshatra/rashi options.", variant: "destructive" });
+      }
     }
     if (karta.nakshatraId && !karta.rashiId) {
       const nak = loadedNakshatras.find((n: NakshatraOption) => n.id === karta.nakshatraId);
@@ -899,7 +901,7 @@ export default function Profile() {
           </AlertDialog>
         </div>
 
-        <Dialog open={!!editingKarta} onOpenChange={(open) => { if (!open) setEditingKarta(null); }}>
+        <Dialog open={!!editingKarta} onOpenChange={(open) => { if (!open) { setEditingKarta(null); if (nameTranslitTimer) clearTimeout(nameTranslitTimer); if (gotraTranslitTimer) clearTimeout(gotraTranslitTimer); } }}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle className="font-serif">Edit Seva Karta</DialogTitle>
