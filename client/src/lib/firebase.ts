@@ -169,13 +169,30 @@ export async function loginWithGoogle(callbacks?: NativeAuthCallback) {
   return signInWithPopup(auth, googleProvider);
 }
 
-export async function loginWithApple(callbacks?: NativeAuthCallback) {
+export function loginWithApple(callbacks?: NativeAuthCallback): Promise<any> {
   if (isInReactNativeWebView()) {
-    pendingNativeAuthCallback = callbacks || null;
-    if ((window as any).ReactNativeWebView) {
-      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'APPLE_SIGNIN_REQUEST' }));
-    }
-    return;
+    return new Promise((resolve, reject) => {
+      pendingNativeAuthCallback = {
+        onSuccess: (user) => {
+          callbacks?.onSuccess?.(user);
+          resolve(user);
+        },
+        onError: (error) => {
+          callbacks?.onError?.(error);
+          reject(error);
+        },
+        onCancelled: () => {
+          callbacks?.onCancelled?.();
+          reject(new Error('Apple Sign-In was cancelled'));
+        },
+      };
+      if ((window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'APPLE_SIGNIN_REQUEST' }));
+      } else {
+        pendingNativeAuthCallback = null;
+        reject(new Error('ReactNativeWebView not available'));
+      }
+    });
   }
 
   return signInWithPopup(auth, appleProvider);

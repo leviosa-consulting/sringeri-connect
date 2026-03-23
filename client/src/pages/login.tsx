@@ -102,12 +102,16 @@ export default function Login() {
       await signInWithApple();
       setLocation("/home");
     } catch (error: any) {
-      console.error("Apple sign-in error:", error);
-      toast({
-        title: "Apple Sign-In Failed",
-        description: error.message || "Could not sign in with Apple. Please try again.",
-        variant: "destructive",
-      });
+      if (error?.message?.includes('cancelled')) {
+        console.log("Apple sign-in cancelled by user");
+      } else {
+        console.error("Apple sign-in error:", error);
+        toast({
+          title: "Apple Sign-In Failed",
+          description: error.message || "Could not sign in with Apple. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setAppleLoading(false);
     }
