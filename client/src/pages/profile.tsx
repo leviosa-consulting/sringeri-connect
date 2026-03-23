@@ -84,7 +84,7 @@ export default function Profile() {
 
   interface NakshatraOption { id: number; name: string; nameK: string; rashiIds: string; }
   interface RashiOption { id: number; name: string; nameK: string; }
-  const [editingKarta, setEditingKarta] = useState<any>(null);
+  const [editingKarta, setEditingKarta] = useState<{ id: number } | null>(null);
   const [kartaSaving, setKartaSaving] = useState(false);
   const [kartaName, setKartaName] = useState("");
   const [kartaNameK, setKartaNameK] = useState("");
@@ -95,8 +95,8 @@ export default function Profile() {
   const [kartaRashiId, setKartaRashiId] = useState<string>("");
   const [nakshatras, setNakshatras] = useState<NakshatraOption[]>([]);
   const [rashis, setRashis] = useState<RashiOption[]>([]);
-  const [nameTranslitTimer, setNameTranslitTimer] = useState<any>(null);
-  const [gotraTranslitTimer, setGotraTranslitTimer] = useState<any>(null);
+  const [nameTranslitTimer, setNameTranslitTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [gotraTranslitTimer, setGotraTranslitTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const [sevasShown, setSevasShown] = useState(PAGE_SIZE);
   const [donationsShown, setDonationsShown] = useState(PAGE_SIZE);
@@ -200,8 +200,9 @@ export default function Profile() {
     return text;
   };
 
-  const openKartaEdit = async (karta: any) => {
-    setEditingKarta(karta);
+  const openKartaEdit = async (karta: { id?: number; name?: string; nameK?: string; city?: string; gotra?: string; gotraK?: string; nakshatraId?: number; rashiId?: number }) => {
+    if (!karta.id) return;
+    setEditingKarta({ id: karta.id });
     setKartaName(karta.name || "");
     setKartaNameK(karta.nameK || "");
     setKartaCity(karta.city || "");
@@ -210,14 +211,15 @@ export default function Profile() {
     setKartaNakshatraId(karta.nakshatraId ? String(karta.nakshatraId) : "");
     setKartaRashiId(karta.rashiId ? String(karta.rashiId) : "");
     let loadedNakshatras = nakshatras;
-    if (nakshatras.length === 0) {
+    let loadedRashis = rashis;
+    if (nakshatras.length === 0 || rashis.length === 0) {
       try {
         const [nRes, rRes] = await Promise.all([
-          fetch("/api/nakshatras"),
-          fetch("/api/rashis"),
+          nakshatras.length === 0 ? fetch("/api/nakshatras") : Promise.resolve(null),
+          rashis.length === 0 ? fetch("/api/rashis") : Promise.resolve(null),
         ]);
-        if (nRes.ok) { loadedNakshatras = await nRes.json(); setNakshatras(loadedNakshatras); }
-        if (rRes.ok) setRashis(await rRes.json());
+        if (nRes && nRes.ok) { loadedNakshatras = await nRes.json(); setNakshatras(loadedNakshatras); }
+        if (rRes && rRes.ok) { loadedRashis = await rRes.json(); setRashis(loadedRashis); }
       } catch {}
     }
     if (karta.nakshatraId && !karta.rashiId) {
@@ -266,7 +268,7 @@ export default function Profile() {
     setKartaSaving(true);
     try {
       const token = await user.getIdToken();
-      const body: Record<string, any> = {
+      const body: { name: string; nameK: string; city: string; gotra: string; gotraK: string; nakshatraId?: number; rashiId?: number } = {
         name: kartaName,
         nameK: kartaNameK,
         city: kartaCity,
@@ -287,8 +289,9 @@ export default function Profile() {
       toast({ title: "Karta Updated", description: "Seva karta has been saved successfully." });
       setEditingKarta(null);
       await refreshDevoteeData();
-    } catch (err: any) {
-      toast({ title: "Update Failed", description: err.message || "Could not save karta.", variant: "destructive" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not save karta.";
+      toast({ title: "Update Failed", description: message, variant: "destructive" });
     } finally {
       setKartaSaving(false);
     }

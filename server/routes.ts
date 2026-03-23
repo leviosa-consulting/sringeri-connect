@@ -264,7 +264,7 @@ export async function registerRoutes(
         try {
           const jsonStart = kartaText.indexOf('[');
           const kartas = jsonStart !== -1 ? JSON.parse(kartaText.substring(jsonStart)) : JSON.parse(kartaText);
-          const ownsKarta = Array.isArray(kartas) && kartas.some((k: any) => String(k.id) === String(id));
+          const ownsKarta = Array.isArray(kartas) && kartas.some((k: { id?: number }) => String(k.id) === String(id));
           if (!ownsKarta) {
             return res.status(403).json({ error: "Not authorized to update this karta" });
           }
@@ -276,7 +276,7 @@ export async function registerRoutes(
       }
 
       const allowedFields = ["name", "nameK", "city", "rashiId", "gotra", "gotraK", "nakshatraId"];
-      const filtered: Record<string, any> = {};
+      const filtered: Record<string, string | number> = {};
       for (const key of allowedFields) {
         if (req.body[key] !== undefined) {
           filtered[key] = req.body[key];
