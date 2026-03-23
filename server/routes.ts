@@ -189,7 +189,7 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Not authorized to update this profile" });
       }
 
-      const allowedFields = ["name", "nameK", "mobile", "countryCode", "email", "city"];
+      const allowedFields = ["name", "nameK", "mobile", "countryCode", "city"];
       const filtered: Record<string, string> = {};
       for (const key of allowedFields) {
         if (req.body[key] !== undefined) {

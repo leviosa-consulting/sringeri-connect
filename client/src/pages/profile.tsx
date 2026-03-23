@@ -148,9 +148,8 @@ export default function Profile() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           name: editName,
-          mobile: editMobile,
           countryCode: editCountryCode,
-          email: editEmail,
+          mobile: editMobile,
           city: editCity,
         }),
       });
@@ -277,6 +276,17 @@ export default function Profile() {
               />
             </div>
             <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">Country Code</label>
+              <input
+                type="text"
+                value={editCountryCode}
+                onChange={e => setEditCountryCode(e.target.value)}
+                placeholder="+91"
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
+                data-testid="input-edit-country-code"
+              />
+            </div>
+            <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted-foreground">Mobile Number</label>
               <input
                 type="tel"
@@ -285,17 +295,6 @@ export default function Profile() {
                 placeholder="Mobile Number"
                 className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
                 data-testid="input-edit-mobile"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">Email</label>
-              <input
-                type="email"
-                value={editEmail}
-                onChange={e => setEditEmail(e.target.value)}
-                placeholder="Email"
-                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
-                data-testid="input-edit-email"
               />
             </div>
             <div className="space-y-1.5">
