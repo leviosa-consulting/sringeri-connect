@@ -26,7 +26,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication
 - **Provider**: Firebase Authentication
-- **Methods**: Email/password and Google OAuth sign-in
+- **Methods**: Email/password, Google OAuth, and Apple Sign-In (via OAuthProvider)
 - **Token Flow**: Firebase ID tokens passed to backend, then forwarded to external Sringeri API
 - **Session Management**: Client-side via Firebase Auth state observer
 - **Public Pages**: `/fastline` accessible without login (standalone Fastline seva booking)

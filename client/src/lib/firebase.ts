@@ -6,6 +6,7 @@ import {
   signInWithPopup,
   signInWithCredential,
   GoogleAuthProvider,
+  OAuthProvider,
   signOut, 
   onAuthStateChanged, 
   User,
@@ -21,6 +22,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
+const appleProvider = new OAuthProvider('apple.com');
+appleProvider.addScope('email');
+appleProvider.addScope('name');
 
 function isInReactNativeWebView(): boolean {
   return (window as any).ReactNativeWebView !== undefined;
@@ -109,6 +113,37 @@ window.addEventListener('message', (event) => {
       pendingNativeAuthCallback.onCancelled();
     }
     pendingNativeAuthCallback = null;
+  } else if (data.type === 'APPLE_SIGNIN_SUCCESS') {
+    (async () => {
+      try {
+        const credential = appleProvider.credential({
+          idToken: data.payload.idToken,
+          rawNonce: data.payload.rawNonce,
+        });
+        const result = await signInWithCredential(auth, credential);
+        if (pendingNativeAuthCallback?.onSuccess) {
+          pendingNativeAuthCallback.onSuccess(result.user);
+        }
+        pendingNativeAuthCallback = null;
+      } catch (error) {
+        console.error("Error signing in with native Apple credential:", error);
+        if (pendingNativeAuthCallback?.onError) {
+          pendingNativeAuthCallback.onError(error as Error);
+        }
+        pendingNativeAuthCallback = null;
+      }
+    })();
+  } else if (data.type === 'APPLE_SIGNIN_ERROR') {
+    console.error("Native Apple sign-in error:", data.payload?.error);
+    if (pendingNativeAuthCallback?.onError) {
+      pendingNativeAuthCallback.onError(new Error(data.payload?.error || 'Native Apple sign-in failed'));
+    }
+    pendingNativeAuthCallback = null;
+  } else if (data.type === 'APPLE_SIGNIN_CANCELLED') {
+    if (pendingNativeAuthCallback?.onCancelled) {
+      pendingNativeAuthCallback.onCancelled();
+    }
+    pendingNativeAuthCallback = null;
   }
 });
 
@@ -132,6 +167,18 @@ export async function loginWithGoogle(callbacks?: NativeAuthCallback) {
   }
   
   return signInWithPopup(auth, googleProvider);
+}
+
+export async function loginWithApple(callbacks?: NativeAuthCallback) {
+  if (isInReactNativeWebView()) {
+    pendingNativeAuthCallback = callbacks || null;
+    if ((window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'APPLE_SIGNIN_REQUEST' }));
+    }
+    return;
+  }
+
+  return signInWithPopup(auth, appleProvider);
 }
 
 export async function logout() {

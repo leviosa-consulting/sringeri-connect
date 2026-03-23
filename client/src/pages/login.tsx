@@ -11,12 +11,13 @@ export default function Login() {
   const [_, setLocation] = useLocation();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const { login, signUp, signInWithGoogle, user } = useAuth();
+  const { login, signUp, signInWithGoogle, signInWithApple, user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -95,6 +96,25 @@ export default function Login() {
     }
   };
 
+  const handleAppleSignIn = async () => {
+    setAppleLoading(true);
+    try {
+      await signInWithApple();
+      setLocation("/home");
+    } catch (error: any) {
+      console.error("Apple sign-in error:", error);
+      toast({
+        title: "Apple Sign-In Failed",
+        description: error.message || "Could not sign in with Apple. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
+  const anyLoading = loading || googleLoading || appleLoading;
+
   return (
     <div className="min-h-screen bg-[url('/assets/temple-hero.jpg')] bg-cover bg-center flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -111,10 +131,28 @@ export default function Login() {
         <CardContent className="space-y-4">
           <Button 
             type="button"
+            className="w-full h-12 font-medium bg-black text-white hover:bg-black/90 border-0"
+            onClick={handleAppleSignIn}
+            disabled={anyLoading}
+            data-testid="button-apple-signin"
+          >
+            {appleLoading ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+              <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+              </svg>
+            )}
+            Sign in with Apple
+          </Button>
+
+          <Button 
+            type="button"
             variant="outline" 
             className="w-full h-12 font-medium border-2 hover:bg-gray-50"
             onClick={handleGoogleSignIn}
-            disabled={googleLoading || loading}
+            disabled={anyLoading}
+            data-testid="button-google-signin"
           >
             {googleLoading ? (
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -182,7 +220,7 @@ export default function Login() {
             <Button 
               type="submit" 
               className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-6"
-              disabled={loading || googleLoading}
+              disabled={anyLoading}
               data-testid="button-submit"
             >
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isSignUp ? "Create Account" : "Sign In")}

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User } from "firebase/auth";
-import { auth, subscribeToAuthState, loginWithEmail, signUpWithEmail, loginWithGoogle, logout as firebaseLogout, getIdToken } from "@/lib/firebase";
+import { auth, subscribeToAuthState, loginWithEmail, signUpWithEmail, loginWithGoogle, loginWithApple, logout as firebaseLogout, getIdToken } from "@/lib/firebase";
 
 interface UserProfile {
   uid: string;
@@ -126,6 +126,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
   logout: () => Promise<void>;
   getToken: () => Promise<string | null>;
   refreshDevoteeData: () => Promise<void>;
@@ -233,6 +234,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loginWithGoogle();
   };
 
+  const signInWithApple = async () => {
+    await loginWithApple();
+  };
+
   const logout = async () => {
     await firebaseLogout();
     setProfile(null);
@@ -260,6 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login, 
       signUp, 
       signInWithGoogle, 
+      signInWithApple,
       logout, 
       getToken,
       refreshDevoteeData
