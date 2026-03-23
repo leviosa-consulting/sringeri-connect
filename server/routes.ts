@@ -15,6 +15,23 @@ export async function registerRoutes(
   const SRINGERI_API_URL = process.env.VITE_SRINGERI_API_URL || "https://dsspv2.lcpl.in";
   const SRINGERI_API_KEY = process.env.SRINGERI_API_KEY;
 
+  const firebaseAdminMod = await import("firebase-admin");
+  if (!firebaseAdminMod.default.apps.length) {
+    firebaseAdminMod.default.initializeApp({
+      projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.SRINGERI_NET_FIREBASE_PROJECT_ID || undefined,
+    });
+  }
+  const adminAuthEarly = firebaseAdminMod.default.auth();
+
+  async function verifyFirebaseTokenEarly(idToken: string): Promise<string | null> {
+    try {
+      const decoded = await adminAuthEarly.verifyIdToken(idToken);
+      return decoded.uid;
+    } catch {
+      return null;
+    }
+  }
+
   const sringeriNetConfig = {
     apiKey: process.env.SRINGERI_NET_FIREBASE_API_KEY,
     authDomain: process.env.SRINGERI_NET_FIREBASE_AUTH_DOMAIN,
@@ -160,10 +177,16 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Unauthorized" });
       }
 
+      const token = authHeader.slice(7);
+      const verifiedUid = await verifyFirebaseTokenEarly(token);
+      if (!verifiedUid) {
+        return res.status(401).json({ error: "Invalid or expired token" });
+      }
+
       const { uid } = req.params;
       
-      if (!uid) {
-        return res.status(400).json({ error: "User ID is required" });
+      if (!uid || uid !== verifiedUid) {
+        return res.status(403).json({ error: "Not authorized to update this profile" });
       }
 
       const allowedFields = ["name", "nameK", "mobile", "countryCode", "email", "city"];
@@ -2294,21 +2317,10 @@ export async function registerRoutes(
 
   const ADMIN_UIDS = (process.env.ANALYTICS_ADMIN_UIDS || "").split(",").map(s => s.trim()).filter(Boolean);
 
-  const firebaseAdmin = await import("firebase-admin");
-  if (!firebaseAdmin.default.apps.length) {
-    firebaseAdmin.default.initializeApp({
-      projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.SRINGERI_NET_FIREBASE_PROJECT_ID || undefined,
-    });
-  }
-  const adminAuth = firebaseAdmin.default.auth();
+  const adminAuth = adminAuthEarly;
 
   async function verifyFirebaseToken(idToken: string): Promise<string | null> {
-    try {
-      const decoded = await adminAuth.verifyIdToken(idToken);
-      return decoded.uid;
-    } catch {
-      return null;
-    }
+    return verifyFirebaseTokenEarly(idToken);
   }
 
   async function isAdmin(req: any): Promise<boolean> {
