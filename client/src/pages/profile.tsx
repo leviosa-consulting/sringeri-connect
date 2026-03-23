@@ -194,7 +194,7 @@ export default function Profile() {
       const res = await fetch(`/api/transliterate?text=${encodeURIComponent(text)}`);
       if (res.ok) {
         const data = await res.json();
-        return data.result || data.transliterated || text;
+        return data.transliteration || data.result || text;
       }
     } catch {}
     return text;
