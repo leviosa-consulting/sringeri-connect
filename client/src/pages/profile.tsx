@@ -569,6 +569,12 @@ export default function Profile() {
             Sign Out
           </Button>
 
+          <div className="mt-6 pt-4 border-t border-muted/30">
+            <p className="text-xs text-muted-foreground text-center mb-2">
+              If you no longer wish to keep your account data with the app, you can delete your account below.
+            </p>
+          </div>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
