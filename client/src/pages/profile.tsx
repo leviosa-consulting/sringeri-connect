@@ -6,6 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera, Trash2, Pencil, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -76,6 +79,24 @@ export default function Profile() {
   const [sevasOpen, setSevasOpen] = useState(false);
   const [donationsOpen, setDonationsOpen] = useState(false);
   const [accommodationsOpen, setAccommodationsOpen] = useState(false);
+  const [kartasOpen, setKartasOpen] = useState(false);
+  const [addressesOpen, setAddressesOpen] = useState(false);
+
+  interface NakshatraOption { id: number; name: string; nameK: string; rashiIds: string; }
+  interface RashiOption { id: number; name: string; nameK: string; }
+  const [editingKarta, setEditingKarta] = useState<any>(null);
+  const [kartaSaving, setKartaSaving] = useState(false);
+  const [kartaName, setKartaName] = useState("");
+  const [kartaNameK, setKartaNameK] = useState("");
+  const [kartaCity, setKartaCity] = useState("");
+  const [kartaGotra, setKartaGotra] = useState("");
+  const [kartaGotraK, setKartaGotraK] = useState("");
+  const [kartaNakshatraId, setKartaNakshatraId] = useState<string>("");
+  const [kartaRashiId, setKartaRashiId] = useState<string>("");
+  const [nakshatras, setNakshatras] = useState<NakshatraOption[]>([]);
+  const [rashis, setRashis] = useState<RashiOption[]>([]);
+  const [nameTranslitTimer, setNameTranslitTimer] = useState<any>(null);
+  const [gotraTranslitTimer, setGotraTranslitTimer] = useState<any>(null);
 
   const [sevasShown, setSevasShown] = useState(PAGE_SIZE);
   const [donationsShown, setDonationsShown] = useState(PAGE_SIZE);
@@ -165,6 +186,111 @@ export default function Profile() {
       toast({ title: "Update Failed", description: err.message || "Could not save profile. Please try again.", variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const transliterate = async (text: string): Promise<string> => {
+    try {
+      const res = await fetch(`/api/transliterate?text=${encodeURIComponent(text)}`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.result || data.transliterated || text;
+      }
+    } catch {}
+    return text;
+  };
+
+  const openKartaEdit = async (karta: any) => {
+    setEditingKarta(karta);
+    setKartaName(karta.name || "");
+    setKartaNameK(karta.nameK || "");
+    setKartaCity(karta.city || "");
+    setKartaGotra(karta.gotra || "");
+    setKartaGotraK(karta.gotraK || "");
+    setKartaNakshatraId(karta.nakshatraId ? String(karta.nakshatraId) : "");
+    setKartaRashiId(karta.rashiId ? String(karta.rashiId) : "");
+    let loadedNakshatras = nakshatras;
+    if (nakshatras.length === 0) {
+      try {
+        const [nRes, rRes] = await Promise.all([
+          fetch("/api/nakshatras"),
+          fetch("/api/rashis"),
+        ]);
+        if (nRes.ok) { loadedNakshatras = await nRes.json(); setNakshatras(loadedNakshatras); }
+        if (rRes.ok) setRashis(await rRes.json());
+      } catch {}
+    }
+    if (karta.nakshatraId && !karta.rashiId) {
+      const nak = loadedNakshatras.find((n: NakshatraOption) => n.id === karta.nakshatraId);
+      if (nak && nak.rashiIds) {
+        setKartaRashiId(nak.rashiIds.split(",")[0].trim());
+      }
+    }
+  };
+
+  const handleKartaNameChange = (val: string) => {
+    setKartaName(val);
+    if (nameTranslitTimer) clearTimeout(nameTranslitTimer);
+    if (val.trim()) {
+      const t = setTimeout(async () => {
+        const k = await transliterate(val);
+        setKartaNameK(k);
+      }, 500);
+      setNameTranslitTimer(t);
+    }
+  };
+
+  const handleKartaGotraChange = (val: string) => {
+    setKartaGotra(val);
+    if (gotraTranslitTimer) clearTimeout(gotraTranslitTimer);
+    if (val.trim()) {
+      const t = setTimeout(async () => {
+        const k = await transliterate(val);
+        setKartaGotraK(k);
+      }, 500);
+      setGotraTranslitTimer(t);
+    }
+  };
+
+  const handleNakshatraChange = (nakshatraIdStr: string) => {
+    setKartaNakshatraId(nakshatraIdStr);
+    const nak = nakshatras.find(n => String(n.id) === nakshatraIdStr);
+    if (nak && nak.rashiIds) {
+      const firstRashiId = nak.rashiIds.split(",")[0].trim();
+      setKartaRashiId(firstRashiId);
+    }
+  };
+
+  const handleSaveKarta = async () => {
+    if (!user || !editingKarta?.id) return;
+    setKartaSaving(true);
+    try {
+      const token = await user.getIdToken();
+      const body: Record<string, any> = {
+        name: kartaName,
+        nameK: kartaNameK,
+        city: kartaCity,
+        gotra: kartaGotra,
+        gotraK: kartaGotraK,
+      };
+      if (kartaNakshatraId) body.nakshatraId = Number(kartaNakshatraId);
+      if (kartaRashiId) body.rashiId = Number(kartaRashiId);
+      const res = await fetch(`/api/devoteeKarta/${editingKarta.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Failed to update karta");
+      }
+      toast({ title: "Karta Updated", description: "Seva karta has been saved successfully." });
+      setEditingKarta(null);
+      await refreshDevoteeData();
+    } catch (err: any) {
+      toast({ title: "Update Failed", description: err.message || "Could not save karta.", variant: "destructive" });
+    } finally {
+      setKartaSaving(false);
     }
   };
 
@@ -613,76 +739,98 @@ export default function Profile() {
               </div>
             ) : (
               <>
-                {/* Seva Kartas */}
-                <Card data-testid="card-seva-kartas">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-serif flex items-center gap-2">
-                      <Users className="h-4 w-4 text-primary" />
-                      Seva Kartas ({devoteeData?.kartas?.length || 0})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {devoteeData?.kartas && devoteeData.kartas.length > 0 ? (
-                      <div className="space-y-3">
-                        {devoteeData.kartas.map((karta, index) => (
-                          <div key={karta.id || index} className="py-2 border-b last:border-0" data-testid={`row-karta-${karta.id || index}`}>
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <div className="font-medium text-sm">{karta.name}</div>
-                                {karta.nameK && <div className="text-xs text-muted-foreground">{karta.nameK}</div>}
+                <Collapsible open={kartasOpen} onOpenChange={setKartasOpen}>
+                  <Card data-testid="card-seva-kartas">
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                        <CardTitle className="text-base font-serif flex items-center gap-2">
+                          <Users className="h-4 w-4 text-primary" />
+                          <span className="flex-1">Seva Kartas ({devoteeData?.kartas?.length || 0})</span>
+                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${kartasOpen ? 'rotate-180' : ''}`} />
+                        </CardTitle>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0">
+                        {devoteeData?.kartas && devoteeData.kartas.length > 0 ? (
+                          <div className="space-y-0">
+                            {devoteeData.kartas.map((karta, index) => (
+                              <div key={karta.id || index} className="py-2 border-b last:border-0" data-testid={`row-karta-${karta.id || index}`}>
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm">{karta.name}</div>
+                                    {karta.nameK && <div className="text-xs text-muted-foreground">{karta.nameK}</div>}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 shrink-0"
+                                    onClick={(e) => { e.stopPropagation(); openKartaEdit(karta); }}
+                                    data-testid={`button-edit-karta-${karta.id || index}`}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                  </Button>
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                                  {karta.gotra && <div>Gothra: {karta.gotra} {karta.gotraK && `(${karta.gotraK})`}</div>}
+                                  {karta.nakshatraDisp && <div>Nakshatra: {karta.nakshatraDisp}</div>}
+                                  {karta.rashiDisp && <div>Rashi: {karta.rashiDisp}</div>}
+                                  {karta.city && <div>City: {karta.city}</div>}
+                                </div>
                               </div>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                              {karta.gotra && <div>Gothra: {karta.gotra} {karta.gotraK && `(${karta.gotraK})`}</div>}
-                              {karta.nakshatraDisp && <div>Nakshatra: {karta.nakshatraDisp}</div>}
-                              {karta.rashiDisp && <div>Rashi: {karta.rashiDisp}</div>}
-                            </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-kartas">No seva kartas saved</p>
-                    )}
-                  </CardContent>
-                </Card>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-kartas">No seva kartas saved</p>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
 
-                {/* Addresses */}
-                <Card data-testid="card-addresses">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-serif flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-green-600" />
-                      Saved Addresses ({devoteeData?.addresses?.length || 0})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {devoteeData?.addresses && devoteeData.addresses.length > 0 ? (
-                      <div className="space-y-3">
-                        {devoteeData.addresses.map((address, index) => (
-                          <div key={address.id || index} className="py-2 border-b last:border-0" data-testid={`row-address-${address.id || index}`}>
-                            <div className="font-medium text-sm">{address.addresseeName || "Address"}</div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {address.addressLine1}
-                              {address.addressLine2 && <>, {address.addressLine2}</>}
-                            </div>
-                            {address.landmark && (
-                              <div className="text-xs text-muted-foreground">Near: {address.landmark}</div>
-                            )}
-                            <div className="text-xs text-muted-foreground">
-                              {[address.city, address.state, address.country, address.pincode]
-                                .filter(Boolean)
-                                .join(", ")}
-                            </div>
-                            {address.alternatePhone && (
-                              <div className="text-xs text-muted-foreground mt-1">Phone: {address.alternatePhone}</div>
-                            )}
+                <Collapsible open={addressesOpen} onOpenChange={setAddressesOpen}>
+                  <Card data-testid="card-addresses">
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                        <CardTitle className="text-base font-serif flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-green-600" />
+                          <span className="flex-1">Saved Addresses ({devoteeData?.addresses?.length || 0})</span>
+                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${addressesOpen ? 'rotate-180' : ''}`} />
+                        </CardTitle>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0">
+                        {devoteeData?.addresses && devoteeData.addresses.length > 0 ? (
+                          <div className="space-y-0">
+                            {devoteeData.addresses.map((address, index) => (
+                              <div key={address.id || index} className="py-2 border-b last:border-0" data-testid={`row-address-${address.id || index}`}>
+                                <div className="font-medium text-sm">{address.addresseeName || "Address"}</div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {address.addressLine1}
+                                  {address.addressLine2 && <>, {address.addressLine2}</>}
+                                </div>
+                                {address.landmark && (
+                                  <div className="text-xs text-muted-foreground">Near: {address.landmark}</div>
+                                )}
+                                <div className="text-xs text-muted-foreground">
+                                  {[address.city, address.state, address.country, address.pincode]
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                </div>
+                                {address.alternatePhone && (
+                                  <div className="text-xs text-muted-foreground mt-1">Phone: {address.alternatePhone}</div>
+                                )}
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-addresses">No addresses saved</p>
-                    )}
-                  </CardContent>
-                </Card>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-addresses">No addresses saved</p>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
               </>
             )}
           </TabsContent>
@@ -747,6 +895,68 @@ export default function Profile() {
             </AlertDialogContent>
           </AlertDialog>
         </div>
+
+        <Dialog open={!!editingKarta} onOpenChange={(open) => { if (!open) setEditingKarta(null); }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-serif">Edit Seva Karta</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div>
+                <Label htmlFor="karta-name" className="text-xs">Name</Label>
+                <Input id="karta-name" value={kartaName} onChange={(e) => handleKartaNameChange(e.target.value)} className="mt-1" data-testid="input-karta-name" />
+              </div>
+              <div>
+                <Label htmlFor="karta-nameK" className="text-xs">Name (Kannada)</Label>
+                <Input id="karta-nameK" value={kartaNameK} onChange={(e) => setKartaNameK(e.target.value)} className="mt-1" data-testid="input-karta-nameK" />
+              </div>
+              <div>
+                <Label htmlFor="karta-city" className="text-xs">City</Label>
+                <Input id="karta-city" value={kartaCity} onChange={(e) => setKartaCity(e.target.value)} className="mt-1" data-testid="input-karta-city" />
+              </div>
+              <div>
+                <Label htmlFor="karta-gotra" className="text-xs">Gothra</Label>
+                <Input id="karta-gotra" value={kartaGotra} onChange={(e) => handleKartaGotraChange(e.target.value)} className="mt-1" data-testid="input-karta-gotra" />
+              </div>
+              <div>
+                <Label htmlFor="karta-gotraK" className="text-xs">Gothra (Kannada)</Label>
+                <Input id="karta-gotraK" value={kartaGotraK} onChange={(e) => setKartaGotraK(e.target.value)} className="mt-1" data-testid="input-karta-gotraK" />
+              </div>
+              <div>
+                <Label className="text-xs">Nakshatra</Label>
+                <Select value={kartaNakshatraId} onValueChange={handleNakshatraChange}>
+                  <SelectTrigger className="mt-1" data-testid="select-karta-nakshatra">
+                    <SelectValue placeholder="Select Nakshatra" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nakshatras.map(n => (
+                      <SelectItem key={n.id} value={String(n.id)}>{n.name} ({n.nameK})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Rashi</Label>
+                <Select value={kartaRashiId} onValueChange={setKartaRashiId}>
+                  <SelectTrigger className="mt-1" data-testid="select-karta-rashi">
+                    <SelectValue placeholder="Select Rashi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rashis.map(r => (
+                      <SelectItem key={r.id} value={String(r.id)}>{r.name} ({r.nameK})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" size="sm" onClick={() => setEditingKarta(null)} data-testid="button-cancel-karta-edit">Cancel</Button>
+              <Button size="sm" onClick={handleSaveKarta} disabled={kartaSaving} data-testid="button-save-karta">
+                {kartaSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

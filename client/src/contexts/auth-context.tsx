@@ -28,6 +28,7 @@ interface SevaKarta {
   id?: number;
   name?: string;
   nameK?: string;
+  city?: string;
   gotra?: string;
   gotraK?: string;
   nakshatraId?: number;
