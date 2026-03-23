@@ -35,6 +35,7 @@ export interface IStorage {
   getUserAttemptCount(odUserId: string): Promise<number>;
   getAppSetting(key: string): Promise<string | null>;
   setAppSetting(key: string, value: string): Promise<void>;
+  deleteUserData(odUserId: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -88,6 +89,7 @@ export class MemStorage implements IStorage {
   async getUserAttemptCount(_odUserId: string): Promise<number> { return 0; }
   async getAppSetting(_key: string): Promise<string | null> { return null; }
   async setAppSetting(_key: string, _value: string): Promise<void> {}
+  async deleteUserData(_odUserId: string): Promise<void> {}
 }
 
 let storage: IStorage;
@@ -420,6 +422,14 @@ if (process.env.DATABASE_URL) {
       await db.insert(appSettings)
         .values({ key, value, updatedAt: new Date() })
         .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
+    }
+
+    async deleteUserData(odUserId: string): Promise<void> {
+      await db.transaction(async (tx) => {
+        await tx.delete(quizAttempts).where(eq(quizAttempts.odUserId, odUserId));
+        await tx.delete(userBadges).where(eq(userBadges.odUserId, odUserId));
+        await tx.delete(analyticsEvents).where(eq(analyticsEvents.userId, odUserId));
+      });
     }
   }
 

@@ -2822,5 +2822,17 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/account", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      await storage.deleteUserData(uid);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting account data:", error);
+      res.status(500).json({ error: "Failed to delete account data" });
+    }
+  });
+
   return httpServer;
 }

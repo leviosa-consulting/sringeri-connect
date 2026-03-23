@@ -169,3 +169,9 @@ Preferred communication style: Simple, everyday language.
 - Badges awarded on quiz submit AND self-healed on gamification endpoint read (covers backfill and transient failures)
 - Frontend: flame icon streak counter in Knowledge page header; badges grid on My Scores tab; post-submit celebration with bouncing animation for new badges
 - Optimized queries: `hasUserPerfectScore` (COUNT where score=totalQuestions), `getUserAttemptCount` (COUNT), `getUserAttemptDates` (IST DATE extraction)
+
+### Account Deletion (App Store Compliance)
+- `DELETE /api/account` endpoint: requires Firebase auth, deletes quiz_attempts, user_badges, and analytics_events for the user
+- Frontend: "Delete Account" button on profile page below Sign Out, with AlertDialog confirmation
+- Flow: server-side data deletion → localStorage avatar removal → Firebase Auth user deletion via `deleteUser()`
+- Handles `auth/requires-recent-login` error gracefully with user-facing message

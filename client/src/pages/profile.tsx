@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
 import { auth } from "@/lib/firebase";
+import { deleteUser } from "firebase/auth";
 
 const PAGE_SIZE = 20;
 
@@ -115,9 +117,40 @@ export default function Profile() {
     }
   };
 
+  const [deleting, setDeleting] = useState(false);
+
   const handleLogout = async () => {
     await logout();
     setLocation("/");
+  };
+
+  const handleDeleteAccount = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    try {
+      setDeleting(true);
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/account", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        throw new Error("Server failed to delete account data");
+      }
+      const key = `sringeri-avatar-${currentUser.uid}`;
+      localStorage.removeItem(key);
+      await deleteUser(currentUser);
+      setLocation("/");
+    } catch (err: any) {
+      if (err?.code === "auth/requires-recent-login") {
+        alert("For security, please sign out and sign back in before deleting your account.");
+      } else {
+        console.error("Failed to delete account:", err);
+        alert("Failed to delete account. Please try again.");
+      }
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const formatCurrency = (amount: string | number | null) => {
@@ -554,16 +587,58 @@ export default function Profile() {
         </Tabs>
 
         {/* Account Actions */}
-        <Button 
-          variant="ghost" 
-          size="sm"
-          className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/5 text-sm"
-          onClick={handleLogout}
-          data-testid="button-logout"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign Out
-        </Button>
+        <div className="space-y-2">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/5 text-sm"
+            onClick={handleLogout}
+            data-testid="button-logout"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
+          </Button>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/5 text-xs"
+                data-testid="button-delete-account"
+              >
+                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                Delete Account
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Account</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete your account and all associated data including quiz history, badges, and analytics. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteAccount}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={deleting}
+                  data-testid="button-confirm-delete"
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete Account"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
     </div>
   );
