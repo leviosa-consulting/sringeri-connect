@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera, Trash2 } from "lucide-react";
+import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera, Trash2, Pencil, Check } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
 import { auth } from "@/lib/firebase";
@@ -117,7 +118,50 @@ export default function Profile() {
     }
   };
 
+  const { toast } = useToast();
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editMobile, setEditMobile] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editCity, setEditCity] = useState("");
+
+  const startEditing = () => {
+    setEditName(devoteeData?.name || profile?.name || user?.displayName || "");
+    setEditMobile(devoteeData?.mobile || profile?.phone || "");
+    setEditEmail(devoteeData?.email || profile?.email || user?.email || "");
+    setEditCity((devoteeData as any)?.city || "");
+    setEditing(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/onlineDevotee/${user.uid}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editName,
+          mobile: editMobile,
+          email: editEmail,
+          city: editCity,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to update profile");
+      }
+      toast({ title: "Profile Updated", description: "Your profile has been saved successfully." });
+      setEditing(false);
+      await refreshDevoteeData();
+    } catch (err: any) {
+      console.error("Error updating profile:", err);
+      toast({ title: "Update Failed", description: err.message || "Could not save profile. Please try again.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -177,26 +221,101 @@ export default function Profile() {
   return (
     <div className="pb-24 lg:pb-8">
       {/* Profile Header */}
-      <div className="bg-primary pt-12 pb-20 px-6 text-primary-foreground relative overflow-hidden">
+      <div className={`bg-primary ${editing ? 'pt-8 pb-6' : 'pt-12 pb-20'} px-6 text-primary-foreground relative overflow-hidden transition-all`}>
         <div className="absolute inset-0 bg-black/10" />
-        <div className="relative z-10 flex items-center gap-4">
-          {/* Avatar circle removed for this version (camera permissions issue with app approval) */}
-          <div className="flex-1">
-            <h1 className="text-2xl font-serif font-bold" data-testid="text-username">{displayName}</h1>
-            <p className="opacity-90 text-sm" data-testid="text-email">{email}</p>
-            {phone && <p className="opacity-80 text-xs mt-1" data-testid="text-phone">{phone}</p>}
+        {editing ? (
+          <div className="relative z-10 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-serif font-bold">Edit Profile</h2>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white/80 hover:text-white hover:bg-white/10 h-8 w-8"
+                  onClick={() => setEditing(false)}
+                  disabled={saving}
+                  data-testid="button-cancel-edit"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white/80 hover:text-white hover:bg-white/10 h-8 w-8"
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  data-testid="button-save-profile"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                placeholder="Name"
+                className="w-full bg-white/15 border border-white/30 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
+                data-testid="input-edit-name"
+              />
+              <input
+                type="tel"
+                value={editMobile}
+                onChange={e => setEditMobile(e.target.value)}
+                placeholder="Mobile Number"
+                className="w-full bg-white/15 border border-white/30 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
+                data-testid="input-edit-mobile"
+              />
+              <input
+                type="email"
+                value={editEmail}
+                onChange={e => setEditEmail(e.target.value)}
+                placeholder="Email"
+                className="w-full bg-white/15 border border-white/30 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
+                data-testid="input-edit-email"
+              />
+              <input
+                type="text"
+                value={editCity}
+                onChange={e => setEditCity(e.target.value)}
+                placeholder="City"
+                className="w-full bg-white/15 border border-white/30 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
+                data-testid="input-edit-city"
+              />
+            </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="text-white/80 hover:text-white hover:bg-white/10"
-            onClick={refreshDevoteeData}
-            disabled={devoteeLoading}
-            data-testid="button-refresh"
-          >
-            <RefreshCw className={`h-5 w-5 ${devoteeLoading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
+        ) : (
+          <div className="relative z-10 flex items-center gap-4">
+            {/* Avatar circle removed for this version (camera permissions issue with app approval) */}
+            <div className="flex-1">
+              <h1 className="text-2xl font-serif font-bold" data-testid="text-username">{displayName}</h1>
+              <p className="opacity-90 text-sm" data-testid="text-email">{email}</p>
+              {phone && <p className="opacity-80 text-xs mt-1" data-testid="text-phone">{phone}</p>}
+            </div>
+            <div className="flex gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="text-white/80 hover:text-white hover:bg-white/10"
+                onClick={startEditing}
+                data-testid="button-edit-profile"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="text-white/80 hover:text-white hover:bg-white/10"
+                onClick={refreshDevoteeData}
+                disabled={devoteeLoading}
+                data-testid="button-refresh"
+              >
+                <RefreshCw className={`h-5 w-5 ${devoteeLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="px-4 -mt-10 relative z-20 space-y-4">

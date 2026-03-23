@@ -153,6 +153,46 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/onlineDevotee/:uid", async (req, res) => {
+    try {
+      const { uid } = req.params;
+      
+      if (!uid) {
+        return res.status(400).json({ error: "User ID is required" });
+      }
+
+      const response = await fetch(`${SRINGERI_API_URL}/api/onlineDevotee/${uid}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to update devotee profile" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('{');
+        if (jsonStart !== -1) {
+          data = JSON.parse(text.substring(jsonStart));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch {
+        data = { success: true };
+      }
+      return res.json(data);
+    } catch (error) {
+      console.error("Error updating devotee profile:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/onlineDevotee/:uid", async (req, res) => {
     try {
       const { uid } = req.params;
