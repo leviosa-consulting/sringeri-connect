@@ -482,8 +482,11 @@ export async function registerRoutes(
     { videoId: "TMK0LDSERhc", title: "Ugadi - Jagadguru Shankaracharya's Anugraha Sandesha", published: "2026-03-20" },
     { videoId: "Y6bY5HdEkhc", title: "Yugadi Sandarbhadalli Sringeri Jagadgurugalavara Anugraha Sandesha", published: "2026-03-20" },
     { videoId: "jHCWpLPG7gA", title: "Saraswathi Puja | Vidya Bhooshan International School | Sri Sharada Krupa", published: "2026-03-11" },
-    { videoId: "QbMGP6jKVZo", title: "Sri Sringeri Sharada Peetham", published: "2026-03-10" },
     { videoId: "UgwWvDwTWfc", title: "Saraswathi Puja at Shree Sharada Vidyaniketan School | Sri Sharada Krupa", published: "2026-03-10" },
+    { videoId: "Bq2hPBo0zrw", title: "Saraswathi Puja at Oxford English School | Sri Sharada Krupa", published: "2026-03-09" },
+    { videoId: "1F2Ct6QbkiA", title: "Saraswathi Puja at Marvel Kidzee Public School | Sri Sharada Krupa", published: "2026-03-09" },
+    { videoId: "XCbEIctTzTM", title: "Saraswathi Puja at Anjana Vidya Kendra High School | Sri Sharada Krupa", published: "2026-03-08" },
+    { videoId: "UXW6uq4Tkp4", title: "Saraswathi Puja at Vedam School Kalyan Nagar | Sri Sharada Krupa", published: "2026-03-08" },
   ].map(v => ({
     ...v,
     date: v.published ? new Date(v.published).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
