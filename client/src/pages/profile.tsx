@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera, Trash2, Pencil, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -222,102 +223,109 @@ export default function Profile() {
   return (
     <div className="pb-24 lg:pb-8">
       {/* Profile Header */}
-      <div className={`bg-primary ${editing ? 'pt-8 pb-6' : 'pt-12 pb-20'} px-6 text-primary-foreground relative overflow-hidden transition-all`}>
+      <div className="bg-primary pt-12 pb-20 px-6 text-primary-foreground relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10" />
-        {editing ? (
-          <div className="relative z-10 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-serif font-bold">Edit Profile</h2>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white/80 hover:text-white hover:bg-white/10 h-8 w-8"
-                  onClick={() => setEditing(false)}
-                  disabled={saving}
-                  data-testid="button-cancel-edit"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white/80 hover:text-white hover:bg-white/10 h-8 w-8"
-                  onClick={handleSaveProfile}
-                  disabled={saving}
-                  data-testid="button-save-profile"
-                >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-2">
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl font-serif font-bold" data-testid="text-username">{displayName}</h1>
+            <p className="opacity-90 text-sm" data-testid="text-email">{email}</p>
+            {phone && <p className="opacity-80 text-xs mt-1" data-testid="text-phone">{phone}</p>}
+          </div>
+          <div className="flex gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="text-white/80 hover:text-white hover:bg-white/10"
+              onClick={startEditing}
+              data-testid="button-edit-profile"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="text-white/80 hover:text-white hover:bg-white/10"
+              onClick={refreshDevoteeData}
+              disabled={devoteeLoading}
+              data-testid="button-refresh"
+            >
+              <RefreshCw className={`h-5 w-5 ${devoteeLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Dialog open={editing} onOpenChange={(open) => { if (!open && !saving) setEditing(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Edit Profile</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">Name</label>
               <input
                 type="text"
                 value={editName}
                 onChange={e => setEditName(e.target.value)}
                 placeholder="Name"
-                className="w-full bg-white/15 border border-white/30 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
                 data-testid="input-edit-name"
               />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">Mobile Number</label>
               <input
                 type="tel"
                 value={editMobile}
                 onChange={e => setEditMobile(e.target.value)}
                 placeholder="Mobile Number"
-                className="w-full bg-white/15 border border-white/30 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
                 data-testid="input-edit-mobile"
               />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">Email</label>
               <input
                 type="email"
                 value={editEmail}
                 onChange={e => setEditEmail(e.target.value)}
                 placeholder="Email"
-                className="w-full bg-white/15 border border-white/30 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
                 data-testid="input-edit-email"
               />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">City</label>
               <input
                 type="text"
                 value={editCity}
                 onChange={e => setEditCity(e.target.value)}
                 placeholder="City"
-                className="w-full bg-white/15 border border-white/30 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
                 data-testid="input-edit-city"
               />
             </div>
           </div>
-        ) : (
-          <div className="relative z-10 flex items-center gap-4">
-            {/* Avatar circle removed for this version (camera permissions issue with app approval) */}
-            <div className="flex-1">
-              <h1 className="text-2xl font-serif font-bold" data-testid="text-username">{displayName}</h1>
-              <p className="opacity-90 text-sm" data-testid="text-email">{email}</p>
-              {phone && <p className="opacity-80 text-xs mt-1" data-testid="text-phone">{phone}</p>}
-            </div>
-            <div className="flex gap-1">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="text-white/80 hover:text-white hover:bg-white/10"
-                onClick={startEditing}
-                data-testid="button-edit-profile"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="text-white/80 hover:text-white hover:bg-white/10"
-                onClick={refreshDevoteeData}
-                disabled={devoteeLoading}
-                data-testid="button-refresh"
-              >
-                <RefreshCw className={`h-5 w-5 ${devoteeLoading ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setEditing(false)}
+              disabled={saving}
+              data-testid="button-cancel-edit"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveProfile}
+              disabled={saving}
+              data-testid="button-save-profile"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="px-4 -mt-10 relative z-20 space-y-4">
         {/* Tabs for History & Saved Info */}
