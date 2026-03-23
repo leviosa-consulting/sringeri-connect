@@ -233,6 +233,7 @@ export default function Profile() {
             <h1 className="text-2xl font-serif font-bold" data-testid="text-username">{displayName}</h1>
             <p className="opacity-90 text-sm" data-testid="text-email">{email}</p>
             {phone && <p className="opacity-80 text-xs mt-1" data-testid="text-phone">{phone}</p>}
+            {devoteeData?.city && <p className="opacity-80 text-xs mt-0.5" data-testid="text-city">{devoteeData.city}</p>}
           </div>
           <div className="flex gap-1">
             <Button 
