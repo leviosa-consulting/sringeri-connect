@@ -275,7 +275,7 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Could not verify karta ownership" });
       }
 
-      const allowedFields = ["name", "nameK", "city", "rashiId", "gotra", "gotraK", "nakshatraId"];
+      const allowedFields = ["name", "nameK", "city", "rashiId", "gotra", "gotraK", "nakshatraId", "status"];
       const filtered: Record<string, string | number> = {};
       for (const key of allowedFields) {
         if (req.body[key] !== undefined) {
@@ -1530,6 +1530,91 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching devotee address:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/devoteeAddress/:id", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const token = authHeader.slice(7);
+      const verifiedUid = await verifyFirebaseTokenEarly(token);
+      if (!verifiedUid) {
+        return res.status(401).json({ error: "Invalid or expired token" });
+      }
+
+      const { id } = req.params;
+      if (!id || isNaN(Number(id))) {
+        return res.status(400).json({ error: "Valid Address ID is required" });
+      }
+
+      const addrRes = await fetch(`${SRINGERI_API_URL}/api/devoteeAddress/${verifiedUid}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      if (addrRes.ok) {
+        const addrText = await addrRes.text();
+        try {
+          const jsonStart = addrText.indexOf('[');
+          const addresses = jsonStart !== -1 ? JSON.parse(addrText.substring(jsonStart)) : JSON.parse(addrText);
+          const ownsAddr = Array.isArray(addresses) && addresses.some((a: { id?: number }) => String(a.id) === String(id));
+          if (!ownsAddr) {
+            return res.status(403).json({ error: "Not authorized to update this address" });
+          }
+        } catch {
+          return res.status(500).json({ error: "Could not verify address ownership" });
+        }
+      } else {
+        return res.status(403).json({ error: "Could not verify address ownership" });
+      }
+
+      const allowedFields = ["addresseeName", "addressLine1", "addressLine2", "landmark", "city", "state", "country", "pincode", "status", "alternatePhone"];
+      const filtered: Record<string, string | number> = {};
+      for (const key of allowedFields) {
+        if (req.body[key] !== undefined) {
+          filtered[key] = req.body[key];
+        }
+      }
+
+      const response = await fetch(`${SRINGERI_API_URL}/api/devoteeAddress/${id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(filtered),
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to update address" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('{');
+        if (jsonStart !== -1) {
+          data = JSON.parse(text.substring(jsonStart));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch {
+        data = { success: true };
+      }
+
+      if (data.status_code === 0 || data.status === "Nothing Updated") {
+        return res.status(422).json({ error: "Address update was not accepted by the server. Please ensure you are changing at least one field." });
+      }
+
+      return res.json(data);
+    } catch (error) {
+      console.error("Error updating address:", error);
+      return res.status(500).json({ error: "Internal server error" });
     }
   });
 

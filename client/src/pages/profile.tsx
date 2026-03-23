@@ -97,6 +97,20 @@ export default function Profile() {
   const [rashis, setRashis] = useState<RashiOption[]>([]);
   const [nameTranslitTimer, setNameTranslitTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [gotraTranslitTimer, setGotraTranslitTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [kartaDeleting, setKartaDeleting] = useState(false);
+
+  const [editingAddress, setEditingAddress] = useState<{ id: number } | null>(null);
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [addressDeleting, setAddressDeleting] = useState(false);
+  const [addrName, setAddrName] = useState("");
+  const [addrLine1, setAddrLine1] = useState("");
+  const [addrLine2, setAddrLine2] = useState("");
+  const [addrLandmark, setAddrLandmark] = useState("");
+  const [addrCity, setAddrCity] = useState("");
+  const [addrState, setAddrState] = useState("");
+  const [addrCountry, setAddrCountry] = useState("");
+  const [addrPincode, setAddrPincode] = useState("");
+  const [addrPhone, setAddrPhone] = useState("");
 
   const [sevasShown, setSevasShown] = useState(PAGE_SIZE);
   const [donationsShown, setDonationsShown] = useState(PAGE_SIZE);
@@ -241,6 +255,8 @@ export default function Profile() {
         setKartaNameK(k);
       }, 500);
       setNameTranslitTimer(t);
+    } else {
+      setKartaNameK("");
     }
   };
 
@@ -253,6 +269,8 @@ export default function Profile() {
         setKartaGotraK(k);
       }, 500);
       setGotraTranslitTimer(t);
+    } else {
+      setKartaGotraK("");
     }
   };
 
@@ -264,6 +282,14 @@ export default function Profile() {
       setKartaRashiId(firstRashiId);
     }
   };
+
+  const filteredRashis = useMemo(() => {
+    if (!kartaNakshatraId) return rashis;
+    const nak = nakshatras.find(n => String(n.id) === kartaNakshatraId);
+    if (!nak || !nak.rashiIds) return rashis;
+    const allowedIds = nak.rashiIds.split(",").map(s => s.trim());
+    return rashis.filter(r => allowedIds.includes(String(r.id)));
+  }, [kartaNakshatraId, nakshatras, rashis]);
 
   const handleSaveKarta = async () => {
     if (!user || !editingKarta?.id) return;
@@ -296,6 +322,106 @@ export default function Profile() {
       toast({ title: "Update Failed", description: message, variant: "destructive" });
     } finally {
       setKartaSaving(false);
+    }
+  };
+
+  const handleDeleteKarta = async () => {
+    if (!user || !editingKarta?.id) return;
+    setKartaDeleting(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/devoteeKarta/${editingKarta.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: 4 }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Failed to delete karta");
+      }
+      toast({ title: "Karta Deleted", description: "Seva karta has been removed." });
+      setEditingKarta(null);
+      await refreshDevoteeData();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not delete karta.";
+      toast({ title: "Delete Failed", description: message, variant: "destructive" });
+    } finally {
+      setKartaDeleting(false);
+    }
+  };
+
+  const openAddressEdit = (address: { id?: number; addresseeName?: string; addressLine1?: string; addressLine2?: string; landmark?: string; city?: string; state?: string; country?: string; pincode?: string; alternatePhone?: string }) => {
+    if (!address.id) return;
+    setEditingAddress({ id: address.id });
+    setAddrName(address.addresseeName || "");
+    setAddrLine1(address.addressLine1 || "");
+    setAddrLine2(address.addressLine2 || "");
+    setAddrLandmark(address.landmark || "");
+    setAddrCity(address.city || "");
+    setAddrState(address.state || "");
+    setAddrCountry(address.country || "");
+    setAddrPincode(address.pincode || "");
+    setAddrPhone(address.alternatePhone || "");
+  };
+
+  const handleSaveAddress = async () => {
+    if (!user || !editingAddress?.id) return;
+    setAddressSaving(true);
+    try {
+      const token = await user.getIdToken();
+      const body = {
+        addresseeName: addrName,
+        addressLine1: addrLine1,
+        addressLine2: addrLine2,
+        landmark: addrLandmark,
+        city: addrCity,
+        state: addrState,
+        country: addrCountry,
+        pincode: addrPincode,
+        alternatePhone: addrPhone,
+      };
+      const res = await fetch(`/api/devoteeAddress/${editingAddress.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Failed to update address");
+      }
+      toast({ title: "Address Updated", description: "Address has been saved successfully." });
+      setEditingAddress(null);
+      await refreshDevoteeData();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not save address.";
+      toast({ title: "Update Failed", description: message, variant: "destructive" });
+    } finally {
+      setAddressSaving(false);
+    }
+  };
+
+  const handleDeleteAddress = async () => {
+    if (!user || !editingAddress?.id) return;
+    setAddressDeleting(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/devoteeAddress/${editingAddress.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: 4 }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Failed to delete address");
+      }
+      toast({ title: "Address Deleted", description: "Address has been removed." });
+      setEditingAddress(null);
+      await refreshDevoteeData();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not delete address.";
+      toast({ title: "Delete Failed", description: message, variant: "destructive" });
+    } finally {
+      setAddressDeleting(false);
     }
   };
 
@@ -810,7 +936,20 @@ export default function Profile() {
                           <div className="space-y-0">
                             {devoteeData.addresses.map((address, index) => (
                               <div key={address.id || index} className="py-2 border-b last:border-0" data-testid={`row-address-${address.id || index}`}>
-                                <div className="font-medium text-sm">{address.addresseeName || "Address"}</div>
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm">{address.addresseeName || "Address"}</div>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 shrink-0"
+                                    onClick={(e) => { e.stopPropagation(); openAddressEdit(address); }}
+                                    data-testid={`button-edit-address-${address.id || index}`}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                  </Button>
+                                </div>
                                 <div className="text-xs text-muted-foreground mt-1">
                                   {address.addressLine1}
                                   {address.addressLine2 && <>, {address.addressLine2}</>}
@@ -910,10 +1049,7 @@ export default function Profile() {
               <div>
                 <Label htmlFor="karta-name" className="text-xs">Name</Label>
                 <Input id="karta-name" value={kartaName} onChange={(e) => handleKartaNameChange(e.target.value)} className="mt-1" data-testid="input-karta-name" />
-              </div>
-              <div>
-                <Label htmlFor="karta-nameK" className="text-xs">Name (Kannada)</Label>
-                <Input id="karta-nameK" value={kartaNameK} onChange={(e) => setKartaNameK(e.target.value)} className="mt-1" data-testid="input-karta-nameK" />
+                {kartaNameK && <p className="text-xs text-muted-foreground mt-0.5">{kartaNameK}</p>}
               </div>
               <div>
                 <Label htmlFor="karta-city" className="text-xs">City</Label>
@@ -922,10 +1058,7 @@ export default function Profile() {
               <div>
                 <Label htmlFor="karta-gotra" className="text-xs">Gothra</Label>
                 <Input id="karta-gotra" value={kartaGotra} onChange={(e) => handleKartaGotraChange(e.target.value)} className="mt-1" data-testid="input-karta-gotra" />
-              </div>
-              <div>
-                <Label htmlFor="karta-gotraK" className="text-xs">Gothra (Kannada)</Label>
-                <Input id="karta-gotraK" value={kartaGotraK} onChange={(e) => setKartaGotraK(e.target.value)} className="mt-1" data-testid="input-karta-gotraK" />
+                {kartaGotraK && <p className="text-xs text-muted-foreground mt-0.5">{kartaGotraK}</p>}
               </div>
               <div>
                 <Label className="text-xs">Nakshatra</Label>
@@ -947,18 +1080,112 @@ export default function Profile() {
                     <SelectValue placeholder="Select Rashi" />
                   </SelectTrigger>
                   <SelectContent>
-                    {rashis.map(r => (
+                    {filteredRashis.map(r => (
                       <SelectItem key={r.id} value={String(r.id)}>{r.name} ({r.nameK})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" size="sm" onClick={() => setEditingKarta(null)} data-testid="button-cancel-karta-edit">Cancel</Button>
-              <Button size="sm" onClick={handleSaveKarta} disabled={kartaSaving} data-testid="button-save-karta">
-                {kartaSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save"}
-              </Button>
+            <DialogFooter className="flex justify-between sm:justify-between">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" data-testid="button-delete-karta">
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Seva Karta</AlertDialogTitle>
+                    <AlertDialogDescription>Are you sure you want to delete this seva karta? This action cannot be undone.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel data-testid="button-cancel-delete-karta">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteKarta} disabled={kartaDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" data-testid="button-confirm-delete-karta">
+                      {kartaDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setEditingKarta(null)} data-testid="button-cancel-karta-edit">Cancel</Button>
+                <Button size="sm" onClick={handleSaveKarta} disabled={kartaSaving} data-testid="button-save-karta">
+                  {kartaSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save"}
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!editingAddress} onOpenChange={(open) => { if (!open) setEditingAddress(null); }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-serif">Edit Address</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto">
+              <div>
+                <Label htmlFor="addr-name" className="text-xs">Addressee Name</Label>
+                <Input id="addr-name" value={addrName} onChange={(e) => setAddrName(e.target.value)} className="mt-1" data-testid="input-addr-name" />
+              </div>
+              <div>
+                <Label htmlFor="addr-line1" className="text-xs">Address Line 1</Label>
+                <Input id="addr-line1" value={addrLine1} onChange={(e) => setAddrLine1(e.target.value)} className="mt-1" data-testid="input-addr-line1" />
+              </div>
+              <div>
+                <Label htmlFor="addr-line2" className="text-xs">Address Line 2</Label>
+                <Input id="addr-line2" value={addrLine2} onChange={(e) => setAddrLine2(e.target.value)} className="mt-1" data-testid="input-addr-line2" />
+              </div>
+              <div>
+                <Label htmlFor="addr-landmark" className="text-xs">Landmark</Label>
+                <Input id="addr-landmark" value={addrLandmark} onChange={(e) => setAddrLandmark(e.target.value)} className="mt-1" data-testid="input-addr-landmark" />
+              </div>
+              <div>
+                <Label htmlFor="addr-city" className="text-xs">City</Label>
+                <Input id="addr-city" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} className="mt-1" data-testid="input-addr-city" />
+              </div>
+              <div>
+                <Label htmlFor="addr-state" className="text-xs">State</Label>
+                <Input id="addr-state" value={addrState} onChange={(e) => setAddrState(e.target.value)} className="mt-1" data-testid="input-addr-state" />
+              </div>
+              <div>
+                <Label htmlFor="addr-country" className="text-xs">Country</Label>
+                <Input id="addr-country" value={addrCountry} onChange={(e) => setAddrCountry(e.target.value)} className="mt-1" data-testid="input-addr-country" />
+              </div>
+              <div>
+                <Label htmlFor="addr-pincode" className="text-xs">Pincode</Label>
+                <Input id="addr-pincode" value={addrPincode} onChange={(e) => setAddrPincode(e.target.value)} className="mt-1" data-testid="input-addr-pincode" />
+              </div>
+              <div>
+                <Label htmlFor="addr-phone" className="text-xs">Alternate Phone</Label>
+                <Input id="addr-phone" value={addrPhone} onChange={(e) => setAddrPhone(e.target.value)} className="mt-1" data-testid="input-addr-phone" />
+              </div>
+            </div>
+            <DialogFooter className="flex justify-between sm:justify-between">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" data-testid="button-delete-address">
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Address</AlertDialogTitle>
+                    <AlertDialogDescription>Are you sure you want to delete this address? This action cannot be undone.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel data-testid="button-cancel-delete-address">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteAddress} disabled={addressDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" data-testid="button-confirm-delete-address">
+                      {addressDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setEditingAddress(null)} data-testid="button-cancel-address-edit">Cancel</Button>
+                <Button size="sm" onClick={handleSaveAddress} disabled={addressSaving} data-testid="button-save-address">
+                  {addressSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save"}
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
