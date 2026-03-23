@@ -222,6 +222,12 @@ export async function registerRoutes(
       } catch {
         data = { success: true };
       }
+
+      if (data.status_code === 0 || data.status === "Nothing Updated") {
+        console.log("[Profile Update] API returned 'Nothing Updated':", JSON.stringify(data));
+        return res.status(422).json({ error: "Profile update was not accepted by the server. Please ensure you are changing at least one field." });
+      }
+
       return res.json(data);
     } catch (error) {
       console.error("Error updating devotee profile:", error);

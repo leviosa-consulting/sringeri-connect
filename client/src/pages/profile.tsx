@@ -127,12 +127,14 @@ export default function Profile() {
   const [editMobile, setEditMobile] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editCity, setEditCity] = useState("");
+  const [editCountryCode, setEditCountryCode] = useState("");
 
   const startEditing = () => {
     setEditName(devoteeData?.name || profile?.name || user?.displayName || "");
     setEditMobile(devoteeData?.mobile || profile?.phone || "");
     setEditEmail(devoteeData?.email || profile?.email || user?.email || "");
     setEditCity(devoteeData?.city || "");
+    setEditCountryCode(devoteeData?.countryCode || "+91");
     setEditing(true);
   };
 
@@ -147,12 +149,14 @@ export default function Profile() {
         body: JSON.stringify({
           name: editName,
           mobile: editMobile,
+          countryCode: editCountryCode,
           email: editEmail,
           city: editCity,
         }),
       });
       if (!res.ok) {
-        throw new Error("Failed to update profile");
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Failed to update profile");
       }
       toast({ title: "Profile Updated", description: "Your profile has been saved successfully." });
       setEditing(false);
