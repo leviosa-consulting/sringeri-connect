@@ -180,13 +180,7 @@ export default function Profile() {
       <div className="bg-primary pt-12 pb-20 px-6 text-primary-foreground relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10 flex items-center gap-4">
-          {/* Avatar photo change disabled for this version (camera permissions issue with app approval)
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} data-testid="input-photo-upload" />
-          <button onClick={handleAvatarClick} className="relative group" disabled={uploadingPhoto} data-testid="button-change-avatar">
-          */}
-          <Avatar className="h-20 w-20 border-4 border-white/20 shadow-xl" data-testid="img-avatar">
-            <AvatarFallback className="text-lg">{initials}</AvatarFallback>
-          </Avatar>
+          {/* Avatar circle removed for this version (camera permissions issue with app approval) */}
           <div className="flex-1">
             <h1 className="text-2xl font-serif font-bold" data-testid="text-username">{displayName}</h1>
             <p className="opacity-90 text-sm" data-testid="text-email">{email}</p>
