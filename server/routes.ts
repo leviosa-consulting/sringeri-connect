@@ -126,6 +126,33 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/setOnlineSession/:uid", async (req, res) => {
+    try {
+      const { uid } = req.params;
+      
+      if (!uid) {
+        return res.status(400).json({ error: "User ID is required" });
+      }
+
+      const response = await fetch(`${SRINGERI_API_URL}/api/setOnlineSession/${uid}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to set online session" });
+      }
+
+      const data = await response.json();
+      return res.json(data);
+    } catch (error) {
+      console.error("Error setting online session:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/onlineDevotee/:uid", async (req, res) => {
     try {
       const { uid } = req.params;

@@ -154,8 +154,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchDevoteeData = async (firebaseUser: User) => {
     setDevoteeLoading(true);
     try {
-      // Use Firebase user UID for the API call
       const uid = firebaseUser.uid;
+
+      try {
+        await fetch(`/api/setOnlineSession/${uid}`);
+      } catch (e) {
+        console.error("setOnlineSession failed (non-blocking):", e);
+      }
+
       const response = await fetch(`/api/onlineDevotee/${uid}`);
       
       if (response.ok) {
