@@ -180,37 +180,13 @@ export default function Profile() {
       <div className="bg-primary pt-12 pb-20 px-6 text-primary-foreground relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10 flex items-center gap-4">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handlePhotoChange}
-            data-testid="input-photo-upload"
-          />
-          <button
-            onClick={handleAvatarClick}
-            className="relative group"
-            disabled={uploadingPhoto}
-            data-testid="button-change-avatar"
-          >
-            <Avatar className="h-20 w-20 border-4 border-white/20 shadow-xl" data-testid="img-avatar">
-              <AvatarImage src={avatarUrl || undefined} />
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              {uploadingPhoto ? (
-                <Loader2 className="h-5 w-5 text-white animate-spin" />
-              ) : (
-                <Camera className="h-5 w-5 text-white" />
-              )}
-            </div>
-            {uploadingPhoto && (
-              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
-                <Loader2 className="h-5 w-5 text-white animate-spin" />
-              </div>
-            )}
-          </button>
+          {/* Avatar photo change disabled for this version (camera permissions issue with app approval)
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} data-testid="input-photo-upload" />
+          <button onClick={handleAvatarClick} className="relative group" disabled={uploadingPhoto} data-testid="button-change-avatar">
+          */}
+          <Avatar className="h-20 w-20 border-4 border-white/20 shadow-xl" data-testid="img-avatar">
+            <AvatarFallback className="text-lg">{initials}</AvatarFallback>
+          </Avatar>
           <div className="flex-1">
             <h1 className="text-2xl font-serif font-bold" data-testid="text-username">{displayName}</h1>
             <p className="opacity-90 text-sm" data-testid="text-email">{email}</p>

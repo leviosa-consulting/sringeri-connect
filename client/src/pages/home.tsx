@@ -196,16 +196,7 @@ export default function Home() {
         <div className="px-4 pt-5 pb-2">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div
-                className="cursor-pointer"
-                onClick={() => setLocation("/profile")}
-                data-testid="link-profile-avatar"
-              >
-                <Avatar className="h-10 w-10 border-2 border-primary/30 shadow-sm">
-                  <AvatarImage src={avatarUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">{initials}</AvatarFallback>
-                </Avatar>
-              </div>
+              {/* Avatar removed for this version (camera permissions issue with app approval) */}
               <div className="space-y-0.5">
                 <h2 className="text-xs font-medium text-muted-foreground">Namaste,</h2>
                 <h1 className="text-xl font-serif font-bold text-foreground">{displayName}</h1>
