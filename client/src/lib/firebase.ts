@@ -116,9 +116,11 @@ window.addEventListener('message', (event) => {
   } else if (data.type === 'APPLE_SIGNIN_SUCCESS') {
     (async () => {
       try {
+        const idToken = data.idToken || data.payload?.idToken;
+        const rawNonce = data.rawNonce || data.payload?.rawNonce;
         const credential = appleProvider.credential({
-          idToken: data.payload.idToken,
-          rawNonce: data.payload.rawNonce,
+          idToken,
+          rawNonce,
         });
         const result = await signInWithCredential(auth, credential);
         if (pendingNativeAuthCallback?.onSuccess) {
@@ -134,9 +136,10 @@ window.addEventListener('message', (event) => {
       }
     })();
   } else if (data.type === 'APPLE_SIGNIN_ERROR') {
-    console.error("Native Apple sign-in error:", data.payload?.error);
+    const errorMsg = data.error || data.payload?.error || 'Native Apple sign-in failed';
+    console.error("Native Apple sign-in error:", errorMsg);
     if (pendingNativeAuthCallback?.onError) {
-      pendingNativeAuthCallback.onError(new Error(data.payload?.error || 'Native Apple sign-in failed'));
+      pendingNativeAuthCallback.onError(new Error(errorMsg));
     }
     pendingNativeAuthCallback = null;
   } else if (data.type === 'APPLE_SIGNIN_CANCELLED') {
