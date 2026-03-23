@@ -155,10 +155,23 @@ export async function registerRoutes(
 
   app.post("/api/onlineDevotee/:uid", async (req, res) => {
     try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
       const { uid } = req.params;
       
       if (!uid) {
         return res.status(400).json({ error: "User ID is required" });
+      }
+
+      const allowedFields = ["name", "nameK", "mobile", "countryCode", "email", "city"];
+      const filtered: Record<string, string> = {};
+      for (const key of allowedFields) {
+        if (req.body[key] !== undefined) {
+          filtered[key] = req.body[key];
+        }
       }
 
       const response = await fetch(`${SRINGERI_API_URL}/api/onlineDevotee/${uid}`, {
@@ -167,7 +180,7 @@ export async function registerRoutes(
           "Content-Type": "application/json",
           ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
         },
-        body: JSON.stringify(req.body),
+        body: JSON.stringify(filtered),
       });
 
       if (!response.ok) {

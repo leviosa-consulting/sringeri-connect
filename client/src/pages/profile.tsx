@@ -131,7 +131,7 @@ export default function Profile() {
     setEditName(devoteeData?.name || profile?.name || user?.displayName || "");
     setEditMobile(devoteeData?.mobile || profile?.phone || "");
     setEditEmail(devoteeData?.email || profile?.email || user?.email || "");
-    setEditCity((devoteeData as any)?.city || "");
+    setEditCity(devoteeData?.city || "");
     setEditing(true);
   };
 
@@ -139,9 +139,10 @@ export default function Profile() {
     if (!user) return;
     setSaving(true);
     try {
+      const token = await user.getIdToken();
       const res = await fetch(`/api/onlineDevotee/${user.uid}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           name: editName,
           mobile: editMobile,

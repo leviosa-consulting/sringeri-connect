@@ -101,6 +101,7 @@ interface DevoteeData {
   name?: string;
   mobile?: string;
   email?: string;
+  city?: string;
   addresses: Address[];
   kartas: SevaKarta[];
   pastSevas: PastSeva[];
