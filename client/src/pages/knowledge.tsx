@@ -180,6 +180,9 @@ export default function Knowledge() {
   const [pastLoading, setPastLoading] = useState(false);
   const [upcomingQuizzes, setUpcomingQuizzes] = useState<UpcomingQuizItem[]>([]);
   const [pastExpanded, setPastExpanded] = useState(false);
+  const [viewingGroup, setViewingGroup] = useState<string | null>(null);
+  const [groupEpisodes, setGroupEpisodes] = useState<PastQuizItem[]>([]);
+  const [groupLoading, setGroupLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -266,6 +269,23 @@ export default function Knowledge() {
       console.error("Failed to fetch past quizzes:", err);
     } finally {
       setPastLoading(false);
+    }
+  }, [getToken]);
+
+  const openGroup = useCallback(async (groupName: string) => {
+    setViewingGroup(groupName);
+    setGroupLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch(`/api/quiz/group/${encodeURIComponent(groupName)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setGroupEpisodes(await res.json());
+    } catch (err) {
+      console.error("Failed to fetch group episodes:", err);
+    } finally {
+      setGroupLoading(false);
     }
   }, [getToken]);
 
@@ -423,7 +443,9 @@ export default function Knowledge() {
               )}
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 space-y-2">
                 {quiz.groupName && (
-                  <p className="text-xs text-primary font-semibold uppercase tracking-wider">{quiz.groupName}{quiz.episodeNumber ? ` — Episode ${quiz.episodeNumber}` : ""}</p>
+                  <button onClick={() => { openGroup(quiz.groupName!); setTab("past"); }} className="text-xs text-primary font-semibold uppercase tracking-wider hover:underline">
+                    {quiz.groupName}{quiz.episodeNumber ? ` — Episode ${quiz.episodeNumber}` : ""}
+                  </button>
                 )}
                 <h2 className="font-serif font-bold text-lg text-foreground" data-testid="text-quiz-title">{quiz.title}</h2>
                 {quiz.subtitle && <p className="text-sm text-muted-foreground">{quiz.subtitle}</p>}
@@ -452,7 +474,9 @@ export default function Knowledge() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1 flex-1">
                     {quiz.groupName && (
-                      <p className="text-xs text-primary font-semibold uppercase tracking-wider">{quiz.groupName}{quiz.episodeNumber ? ` — Episode ${quiz.episodeNumber}` : ""}</p>
+                      <button onClick={() => { openGroup(quiz.groupName!); setTab("past"); }} className="text-xs text-primary font-semibold uppercase tracking-wider hover:underline">
+                        {quiz.groupName}{quiz.episodeNumber ? ` — Episode ${quiz.episodeNumber}` : ""}
+                      </button>
                     )}
                     <h2 className="font-serif font-bold text-lg text-foreground" data-testid="text-quiz-title">{quiz.title}</h2>
                     {quiz.subtitle && <p className="text-sm text-muted-foreground" data-testid="text-quiz-subtitle">{quiz.subtitle}</p>}
@@ -710,109 +734,197 @@ export default function Knowledge() {
 
       {tab === "past" && (
         <div className="space-y-4">
-          {upcomingQuizzes.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <CalendarDays className="w-4 h-4 text-primary" />
-                Upcoming
-              </h3>
-              {upcomingQuizzes.map((uq) => (
-                <div
-                  key={uq.id}
-                  className="bg-muted/50 rounded-xl border border-border/30 p-4 flex items-center justify-between opacity-70"
-                  data-testid={`upcoming-quiz-${uq.id}`}
-                >
-                  <div className="space-y-0.5 flex-1">
-                    {uq.groupName && (
-                      <p className="text-[10px] text-primary font-semibold uppercase tracking-wider">{uq.groupName}{uq.episodeNumber ? ` — Ep. ${uq.episodeNumber}` : ""}</p>
-                    )}
-                    <h3 className="font-serif font-semibold text-sm text-foreground">{uq.title}</h3>
-                    {uq.subtitle && <p className="text-xs text-muted-foreground">{uq.subtitle}</p>}
-                  </div>
-                  <div className="shrink-0 ml-3 text-xs text-muted-foreground font-medium">
-                    {new Date(uq.publishDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {pastLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : pastQuizzes.length === 0 ? (
-            !upcomingQuizzes.length && (
-              <div className="text-center py-16 space-y-3">
-                <Library className="w-12 h-12 text-muted-foreground/50 mx-auto" />
-                <p className="text-muted-foreground font-medium">No quizzes yet</p>
-                <p className="text-sm text-muted-foreground/70">Check back after more quizzes are published!</p>
-              </div>
-            )
-          ) : (
+          {viewingGroup ? (
             <div className="space-y-3">
               <button
-                onClick={() => setPastExpanded(!pastExpanded)}
-                className="w-full flex items-center justify-between py-2 text-sm font-semibold text-foreground"
-                data-testid="button-toggle-past"
+                onClick={() => { setViewingGroup(null); setGroupEpisodes([]); }}
+                className="flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
+                data-testid="button-back-from-group"
               >
-                <span className="flex items-center gap-2">
-                  <Library className="w-4 h-4 text-primary" />
-                  Past Quizzes ({pastQuizzes.length})
-                </span>
-                <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", pastExpanded && "rotate-180")} />
+                <ArrowLeft className="w-4 h-4" />
+                Back
               </button>
-              {pastExpanded && (
-                <div className="space-y-3">
-                  {pastQuizzes.map((pq) => (
-                    <button
-                      key={pq.id}
-                      onClick={() => {
-                        if (pq.locked) return;
-                        setSelectedPastQuizId(pq.id);
-                        setTab("quiz");
-                      }}
-                      className={cn(
-                        "w-full bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between text-left transition-colors",
-                        pq.locked ? "opacity-60 cursor-not-allowed" : "hover:border-primary/30"
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4">
+                <h2 className="font-serif font-bold text-lg text-foreground">{viewingGroup}</h2>
+                <p className="text-xs text-muted-foreground mt-1">{groupEpisodes.length} episode{groupEpisodes.length !== 1 ? "s" : ""}</p>
+              </div>
+              {groupLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                groupEpisodes.map((ep, idx) => (
+                  <button
+                    key={ep.id}
+                    onClick={() => {
+                      if (ep.locked) return;
+                      setSelectedPastQuizId(ep.id);
+                      setViewingGroup(null);
+                      setGroupEpisodes([]);
+                      setTab("quiz");
+                    }}
+                    className={cn(
+                      "w-full bg-card rounded-xl border border-border/50 p-4 flex items-center gap-3 text-left transition-colors",
+                      ep.locked ? "opacity-60 cursor-not-allowed" : "hover:border-primary/30"
+                    )}
+                    data-testid={`group-ep-${ep.id}`}
+                    disabled={!!ep.locked}
+                  >
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold",
+                      ep.attempted ? "bg-green-100 text-green-700" :
+                      ep.locked ? "bg-muted text-muted-foreground" :
+                      "bg-primary/10 text-primary"
+                    )}>
+                      {ep.attempted ? <CheckCircle2 className="w-4 h-4" /> : ep.locked ? <Lock className="w-3.5 h-3.5" /> : idx + 1}
+                    </div>
+                    <div className="space-y-0.5 flex-1 min-w-0">
+                      <p className="text-[10px] text-muted-foreground font-medium">Episode {ep.episodeNumber}</p>
+                      <h3 className="font-serif font-semibold text-sm truncate">{ep.title}</h3>
+                      {ep.subtitle && <p className="text-xs text-muted-foreground truncate">{ep.subtitle}</p>}
+                      {ep.lockReason && ep.locked && (
+                        <p className="text-[10px] text-orange-500 mt-0.5">{ep.lockReason}</p>
                       )}
-                      data-testid={`past-quiz-${pq.id}`}
-                      disabled={!!pq.locked}
+                    </div>
+                    <div className="shrink-0 ml-2">
+                      {ep.attempted ? (
+                        <div className={cn(
+                          "text-center px-2.5 py-1 rounded-lg text-xs font-bold",
+                          ep.score === ep.totalQuestions ? "bg-green-50 text-green-600" :
+                          (ep.score ?? 0) >= (ep.totalQuestions ?? 1) / 2 ? "bg-amber-50 text-amber-600" :
+                          "bg-red-50 text-red-500"
+                        )}>
+                          {ep.score}/{ep.totalQuestions}
+                        </div>
+                      ) : !ep.locked ? (
+                        <div className="text-xs text-primary font-semibold px-2.5 py-1 rounded-lg bg-primary/10">
+                          Take Quiz
+                        </div>
+                      ) : null}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : (
+            <>
+              {upcomingQuizzes.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4 text-primary" />
+                    Upcoming
+                  </h3>
+                  {upcomingQuizzes.map((uq) => (
+                    <div
+                      key={uq.id}
+                      className="bg-muted/50 rounded-xl border border-border/30 p-4 flex items-center justify-between opacity-70"
+                      data-testid={`upcoming-quiz-${uq.id}`}
                     >
                       <div className="space-y-0.5 flex-1">
-                        {pq.groupName && (
-                          <p className="text-[10px] text-primary font-semibold uppercase tracking-wider">{pq.groupName}{pq.episodeNumber ? ` — Ep. ${pq.episodeNumber}` : ""}</p>
+                        {uq.groupName && (
+                          <button
+                            onClick={() => openGroup(uq.groupName!)}
+                            className="text-[10px] text-primary font-semibold uppercase tracking-wider hover:underline"
+                            data-testid={`group-link-upcoming-${uq.id}`}
+                          >
+                            {uq.groupName}{uq.episodeNumber ? ` — Ep. ${uq.episodeNumber}` : ""}
+                          </button>
                         )}
-                        <h3 className="font-serif font-semibold text-sm">{pq.title}</h3>
-                        {pq.subtitle && <p className="text-xs text-muted-foreground">{pq.subtitle}</p>}
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground/70 mt-1">
-                          <span>{new Date(pq.publishDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-                          {pq.questionCount > 0 && <span>{pq.questionCount} question{pq.questionCount > 1 ? "s" : ""}</span>}
-                        </div>
+                        <h3 className="font-serif font-semibold text-sm text-foreground">{uq.title}</h3>
+                        {uq.subtitle && <p className="text-xs text-muted-foreground">{uq.subtitle}</p>}
                       </div>
-                      <div className="shrink-0 ml-3">
-                        {pq.locked ? (
-                          <Lock className="w-5 h-5 text-muted-foreground/50" />
-                        ) : pq.attempted ? (
-                          <div className={cn(
-                            "text-center px-3 py-1.5 rounded-lg text-xs font-bold",
-                            pq.score === pq.totalQuestions ? "bg-green-50 text-green-600" :
-                            (pq.score ?? 0) >= (pq.totalQuestions ?? 1) / 2 ? "bg-amber-50 text-amber-600" :
-                            "bg-red-50 text-red-500"
-                          )}>
-                            {pq.score}/{pq.totalQuestions}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-primary font-semibold px-3 py-1.5 rounded-lg bg-primary/10">
-                            Take Quiz
-                          </div>
-                        )}
+                      <div className="shrink-0 ml-3 text-xs text-muted-foreground font-medium">
+                        {new Date(uq.publishDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
-            </div>
+
+              {pastLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : pastQuizzes.length === 0 ? (
+                !upcomingQuizzes.length && (
+                  <div className="text-center py-16 space-y-3">
+                    <Library className="w-12 h-12 text-muted-foreground/50 mx-auto" />
+                    <p className="text-muted-foreground font-medium">No quizzes yet</p>
+                    <p className="text-sm text-muted-foreground/70">Check back after more quizzes are published!</p>
+                  </div>
+                )
+              ) : (
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setPastExpanded(!pastExpanded)}
+                    className="w-full flex items-center justify-between py-2 text-sm font-semibold text-foreground"
+                    data-testid="button-toggle-past"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Library className="w-4 h-4 text-primary" />
+                      Past Quizzes ({pastQuizzes.length})
+                    </span>
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", pastExpanded && "rotate-180")} />
+                  </button>
+                  {pastExpanded && (
+                    <div className="space-y-3">
+                      {pastQuizzes.map((pq) => (
+                        <button
+                          key={pq.id}
+                          onClick={() => {
+                            if (pq.locked) return;
+                            setSelectedPastQuizId(pq.id);
+                            setTab("quiz");
+                          }}
+                          className={cn(
+                            "w-full bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between text-left transition-colors",
+                            pq.locked ? "opacity-60 cursor-not-allowed" : "hover:border-primary/30"
+                          )}
+                          data-testid={`past-quiz-${pq.id}`}
+                          disabled={!!pq.locked}
+                        >
+                          <div className="space-y-0.5 flex-1">
+                            {pq.groupName && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openGroup(pq.groupName!); }}
+                                className="text-[10px] text-primary font-semibold uppercase tracking-wider hover:underline"
+                                data-testid={`group-link-past-${pq.id}`}
+                              >
+                                {pq.groupName}{pq.episodeNumber ? ` — Ep. ${pq.episodeNumber}` : ""}
+                              </button>
+                            )}
+                            <h3 className="font-serif font-semibold text-sm">{pq.title}</h3>
+                            {pq.subtitle && <p className="text-xs text-muted-foreground">{pq.subtitle}</p>}
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground/70 mt-1">
+                              <span>{new Date(pq.publishDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                              {pq.questionCount > 0 && <span>{pq.questionCount} question{pq.questionCount > 1 ? "s" : ""}</span>}
+                            </div>
+                          </div>
+                          <div className="shrink-0 ml-3">
+                            {pq.locked ? (
+                              <Lock className="w-5 h-5 text-muted-foreground/50" />
+                            ) : pq.attempted ? (
+                              <div className={cn(
+                                "text-center px-3 py-1.5 rounded-lg text-xs font-bold",
+                                pq.score === pq.totalQuestions ? "bg-green-50 text-green-600" :
+                                (pq.score ?? 0) >= (pq.totalQuestions ?? 1) / 2 ? "bg-amber-50 text-amber-600" :
+                                "bg-red-50 text-red-500"
+                              )}>
+                                {pq.score}/{pq.totalQuestions}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-primary font-semibold px-3 py-1.5 rounded-lg bg-primary/10">
+                                Take Quiz
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

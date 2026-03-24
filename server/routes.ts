@@ -2931,6 +2931,44 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/quiz/group/:groupName", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const groupName = decodeURIComponent(req.params.groupName);
+      const allQuizzes = await storage.listQuizzes();
+      const groupQuizzes = allQuizzes
+        .filter(q => q.isActive && q.groupName === groupName)
+        .sort((a, b) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0));
+      if (groupQuizzes.length === 0) return res.json([]);
+      const today = getISTDate();
+      const results = [];
+      for (const q of groupQuizzes) {
+        const questions = await storage.getQuestionsByQuizId(q.id);
+        const attempt = await storage.getAttemptByUserAndQuiz(uid, q.id);
+        const lockCheck = await checkGroupLock(q, uid);
+        const isFuture = q.publishDate > today;
+        results.push({
+          id: q.id,
+          title: q.title,
+          subtitle: q.subtitle,
+          publishDate: q.publishDate,
+          episodeNumber: q.episodeNumber,
+          questionCount: questions.length,
+          attempted: !!attempt,
+          score: attempt?.score ?? null,
+          totalQuestions: attempt?.totalQuestions ?? null,
+          locked: lockCheck.locked || isFuture,
+          lockReason: isFuture ? `Available on ${new Date(q.publishDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : lockCheck.reason || null,
+        });
+      }
+      res.json(results);
+    } catch (error) {
+      console.error("Error getting group episodes:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   async function checkGroupLock(quiz: any, uid: string): Promise<{ locked: boolean; reason?: string }> {
     if (!quiz.groupName || !quiz.episodeNumber || quiz.episodeNumber <= 1) {
       return { locked: false };
