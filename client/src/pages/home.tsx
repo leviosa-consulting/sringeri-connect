@@ -222,7 +222,7 @@ export default function Home() {
           <div className="flex items-center justify-between text-xs">
             <div className="font-semibold text-foreground" data-testid="text-today-date">{formatTodayDate()}</div>
             <a 
-              href="https://sandhyakala.vercel.app" 
+              href="https://sringeri-panchangam.vercel.app/" 
               target="_blank" 
               rel="noopener noreferrer"
               className="hover:underline text-[#443b31] font-bold"
@@ -323,12 +323,12 @@ export default function Home() {
           <div className="pt-2 border-t border-foreground/10 flex items-center justify-between">
             <div className="text-xs font-semibold text-foreground">{formatTodayDate()}</div>
             <a 
-              href="https://sandhyakala.vercel.app" 
+              href="https://sringeri-panchangam.vercel.app/" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-xs text-foreground hover:underline font-medium"
             >
-              Sandhya Kala Details →
+              See Complete Panchanga →
             </a>
           </div>
         </div>
