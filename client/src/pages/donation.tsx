@@ -628,10 +628,6 @@ export default function Donation() {
 
   const handleProceedToPayee = () => {
     if (cart.length === 0) return;
-    if (postageOptions.length > 0 && !donationForm.postageId) {
-      setValidationErrors(["Please select a postage option."]);
-      return;
-    }
     setValidationErrors([]);
     setDonationForm((prev) => ({
       ...prev,
@@ -664,6 +660,8 @@ export default function Donation() {
       errors.push("Please enter your pincode.");
     if (donationForm.claim80G === 1 && !donationForm.pan)
       errors.push("PAN number is required for 80G claims.");
+    if (postageOptions.length > 0 && !donationForm.postageId)
+      errors.push("Please select a postage option.");
     if (!donationForm.confirmInfo)
       errors.push("Please confirm the information is correct.");
 
@@ -1027,6 +1025,21 @@ export default function Donation() {
             </Card>
           )}
 
+          <Card>
+            <CardContent className="p-5">
+              <label className="flex gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={donationForm.confirmInfo}
+                  onChange={(e) => updatePayeeField("confirmInfo", e.target.checked)}
+                  className="mt-0.5 accent-primary"
+                  data-testid="checkbox-confirm"
+                />
+                <span>I confirm that the information given in this form is true, complete and accurate. I agree that the above contribution may be treated as donation towards the corpus fund of the trust.</span>
+              </label>
+            </CardContent>
+          </Card>
+
           {has80GInCart && (
             <Card>
               <CardContent className="p-5 space-y-3">
@@ -1073,21 +1086,6 @@ export default function Donation() {
               </CardContent>
             </Card>
           )}
-
-          <Card>
-            <CardContent className="p-5">
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={donationForm.confirmInfo}
-                  onChange={(e) => updatePayeeField("confirmInfo", e.target.checked)}
-                  className="mt-0.5 accent-primary"
-                  data-testid="checkbox-confirm"
-                />
-                <span>I confirm that the information given in this form is true, complete and accurate. I agree that the above contribution may be treated as donation towards the corpus fund of the trust.</span>
-              </label>
-            </CardContent>
-          </Card>
 
           {validationErrors.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-md p-3">
@@ -1227,13 +1225,6 @@ export default function Donation() {
                     Proceed to Pay
                   </Button>
                 </div>
-                {validationErrors.length > 0 && (
-                  <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-3">
-                    {validationErrors.map((err, i) => (
-                      <p key={i} className="text-red-600 text-xs" data-testid={`text-cart-error-${i}`}>{err}</p>
-                    ))}
-                  </div>
-                )}
               </div>
             </>
           )}
