@@ -92,7 +92,7 @@ export const RESOURCES = [
     id: "darshan-schedule",
     title: "Darshan Schedule",
     description: "Jagadguru Darshan Schedule",
-    icon: Clock,
+    icon: HandHeart,
     color: "bg-sky-100 text-sky-600",
     isExternal: true,
     url: "https://sringeri.net/schedule/",
