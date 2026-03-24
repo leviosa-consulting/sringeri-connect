@@ -112,8 +112,17 @@ const SLIDE_DURATION = 5000;
 
 export default function TodayCarousel({ open, onClose, todayDetails, formattedDate, todayQuiz }: TodayCarouselProps) {
   const hasQuiz = !!todayQuiz;
-  const SLIDE_LABELS = hasQuiz ? [...BASE_SLIDE_LABELS, "Quiz"] : BASE_SLIDE_LABELS;
-  const SLIDE_ICONS = hasQuiz ? [...BASE_SLIDE_ICONS, BookOpenCheck] : BASE_SLIDE_ICONS;
+  const hasOccasion = !!(todayDetails?.occasionK || todayDetails?.occasion);
+  const slideLabels: string[] = [];
+  const slideIcons: typeof BASE_SLIDE_ICONS = [];
+  slideLabels.push("Panchanga"); slideIcons.push(Calendar);
+  if (hasOccasion) { slideLabels.push("Occasion"); slideIcons.push(Sparkles); }
+  slideLabels.push("Shloka"); slideIcons.push(BookOpen);
+  slideLabels.push("Quote"); slideIcons.push(Quote);
+  slideLabels.push("Darshan"); slideIcons.push(Image);
+  if (hasQuiz) { slideLabels.push("Quiz"); slideIcons.push(BookOpenCheck); }
+  const SLIDE_LABELS = slideLabels;
+  const SLIDE_ICONS = slideIcons;
   const slideCount = SLIDE_LABELS.length;
   const [api, setApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -261,9 +270,11 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
               <CarouselItem className="pl-0 px-5">
                 <PanchangaSlide todayDetails={todayDetails} formattedDate={formattedDate} />
               </CarouselItem>
-              <CarouselItem className="pl-0 px-5">
-                <OccasionSlide todayDetails={todayDetails} formattedDate={formattedDate} />
-              </CarouselItem>
+              {hasOccasion && (
+                <CarouselItem className="pl-0 px-5">
+                  <OccasionSlide todayDetails={todayDetails} formattedDate={formattedDate} />
+                </CarouselItem>
+              )}
               <CarouselItem className="pl-0 px-5">
                 <ShlokaSlide shloka={todayShloka} />
               </CarouselItem>
@@ -342,39 +353,23 @@ function PanchangaSlide({ todayDetails, formattedDate }: { todayDetails: TodayDe
 }
 
 function OccasionSlide({ todayDetails, formattedDate }: { todayDetails: TodayDetails | null; formattedDate: string }) {
-  const hasOccasion = todayDetails?.occasionK || todayDetails?.occasion;
-
   return (
     <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-occasion">
-      {hasOccasion ? (
-        <>
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-4">
-            <Sparkles className="w-8 h-8 text-primary" />
-          </div>
-          <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-3">{formattedDate}</div>
-          {todayDetails?.occasionK && (
-            <div className="text-xl font-serif text-foreground leading-relaxed mb-3 px-2" style={{ fontFamily: "'Noto Serif Kannada', 'Merriweather', serif" }}>
-              {todayDetails.occasionK}
-            </div>
-          )}
-          <div className="h-px w-16 bg-gradient-to-r from-transparent via-primary/40 to-transparent mb-3" />
-          {todayDetails?.occasion && (
-            <div className="text-sm text-foreground/70 leading-relaxed px-4">
-              {todayDetails.occasion}
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center mb-4">
-            <Sun className="w-8 h-8 text-emerald-600" />
-          </div>
-          <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-3">{formattedDate}</div>
-          <div className="text-lg font-serif text-foreground mb-2">A Blessed Day</div>
-          <div className="text-sm text-foreground/60 px-6 leading-relaxed">
-            No special occasion today. A peaceful day for prayer, contemplation, and devotion to Sri Sharadamba.
-          </div>
-        </>
+      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-4">Occasion</div>
+      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-4">
+        <Sparkles className="w-8 h-8 text-primary" />
+      </div>
+      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-3">{formattedDate}</div>
+      {todayDetails?.occasionK && (
+        <div className="text-xl font-serif text-foreground leading-relaxed mb-3 px-2" style={{ fontFamily: "'Noto Serif Kannada', 'Merriweather', serif" }}>
+          {todayDetails.occasionK}
+        </div>
+      )}
+      <div className="h-px w-16 bg-gradient-to-r from-transparent via-primary/40 to-transparent mb-3" />
+      {todayDetails?.occasion && (
+        <div className="text-sm text-foreground/70 leading-relaxed px-4">
+          {todayDetails.occasion}
+        </div>
       )}
     </div>
   );
