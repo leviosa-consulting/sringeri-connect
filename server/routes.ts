@@ -2969,6 +2969,49 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/quiz/courses", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const allQuizzes = await storage.listQuizzes();
+      const today = getISTDate();
+      const grouped = new Map<string, typeof allQuizzes>();
+      for (const q of allQuizzes) {
+        if (!q.isActive || !q.groupName) continue;
+        if (!grouped.has(q.groupName)) grouped.set(q.groupName, []);
+        grouped.get(q.groupName)!.push(q);
+      }
+      const courses = [];
+      for (const [groupName, quizzes] of grouped) {
+        quizzes.sort((a, b) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0));
+        const published = quizzes.filter(q => q.publishDate <= today);
+        let completedCount = 0;
+        let nextEpisodeTitle: string | null = null;
+        for (const q of published) {
+          const attempt = await storage.getAttemptByUserAndQuiz(uid, q.id);
+          if (attempt) {
+            completedCount++;
+          } else if (!nextEpisodeTitle) {
+            nextEpisodeTitle = q.title;
+          }
+        }
+        courses.push({
+          groupName,
+          totalEpisodes: quizzes.length,
+          publishedEpisodes: published.length,
+          completedEpisodes: completedCount,
+          nextEpisodeTitle,
+          latestEpisodeNumber: quizzes[quizzes.length - 1]?.episodeNumber ?? null,
+        });
+      }
+      courses.sort((a, b) => a.groupName.localeCompare(b.groupName));
+      res.json(courses);
+    } catch (error) {
+      console.error("Error getting courses:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   async function checkGroupLock(quiz: any, uid: string): Promise<{ locked: boolean; reason?: string }> {
     if (!quiz.groupName || !quiz.episodeNumber || quiz.episodeNumber <= 1) {
       return { locked: false };

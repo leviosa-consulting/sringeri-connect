@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useParams, useLocation } from "wouter";
-import { BookOpenCheck, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check, Library, Flame, Lock, CalendarDays } from "lucide-react";
+import { BookOpenCheck, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check, Library, Flame, Lock, CalendarDays, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -159,6 +159,15 @@ interface UpcomingQuizItem {
   episodeNumber?: number | null;
 }
 
+interface CourseItem {
+  groupName: string;
+  totalEpisodes: number;
+  publishedEpisodes: number;
+  completedEpisodes: number;
+  nextEpisodeTitle: string | null;
+  latestEpisodeNumber: number | null;
+}
+
 function getYouTubeId(url: string): string | null {
   const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
   return m ? m[1] : null;
@@ -173,7 +182,7 @@ export default function Knowledge() {
   const activeQuizId = selectedPastQuizId || permalinkId;
   const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"quiz" | "history" | "past">("quiz");
+  const [tab, setTab] = useState<"quiz" | "courses" | "past">("quiz");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [pastQuizzes, setPastQuizzes] = useState<PastQuizItem[]>([]);
@@ -183,6 +192,8 @@ export default function Knowledge() {
   const [viewingGroup, setViewingGroup] = useState<string | null>(null);
   const [groupEpisodes, setGroupEpisodes] = useState<PastQuizItem[]>([]);
   const [groupLoading, setGroupLoading] = useState(false);
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -255,6 +266,22 @@ export default function Knowledge() {
     }
   }, [getToken]);
 
+  const fetchCourses = useCallback(async () => {
+    try {
+      setCoursesLoading(true);
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch("/api/quiz/courses", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setCourses(await res.json());
+    } catch (err) {
+      console.error("Failed to fetch courses:", err);
+    } finally {
+      setCoursesLoading(false);
+    }
+  }, [getToken]);
+
   const fetchPastQuizzes = useCallback(async () => {
     try {
       setPastLoading(true);
@@ -308,9 +335,9 @@ export default function Knowledge() {
   }, [fetchQuiz, fetchGamification]);
 
   useEffect(() => {
-    if (tab === "history") { fetchHistory(); fetchGamification(); }
-    if (tab === "past") fetchPastQuizzes();
-  }, [tab, fetchHistory, fetchPastQuizzes, fetchGamification]);
+    if (tab === "courses") { fetchCourses(); fetchGamification(); }
+    if (tab === "past") { fetchPastQuizzes(); fetchHistory(); fetchGamification(); }
+  }, [tab, fetchCourses, fetchHistory, fetchPastQuizzes, fetchGamification]);
 
   const handleOptionToggle = (questionId: number, optionIndex: number, correctCount: number) => {
     const key = String(questionId);
@@ -397,14 +424,14 @@ export default function Knowledge() {
 
       <div className="flex gap-2">
         <button
-          onClick={() => { setSelectedPastQuizId(null); setTab("quiz"); }}
+          onClick={() => { setSelectedPastQuizId(null); setViewingGroup(null); setGroupEpisodes([]); setTab("quiz"); }}
           className={cn("flex-1 py-2.5 text-xs font-semibold rounded-lg transition-colors", tab === "quiz" ? "bg-primary text-white" : "bg-muted text-muted-foreground")}
           data-testid="tab-quiz"
         >
           {activeQuizId ? "Quiz" : "Latest Quiz"}
         </button>
         <button
-          onClick={() => setTab("past")}
+          onClick={() => { setViewingGroup(null); setGroupEpisodes([]); setTab("past"); }}
           className={cn("flex-1 py-2.5 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1", tab === "past" ? "bg-primary text-white" : "bg-muted text-muted-foreground")}
           data-testid="tab-past"
         >
@@ -412,12 +439,12 @@ export default function Knowledge() {
           More Quizzes
         </button>
         <button
-          onClick={() => setTab("history")}
-          className={cn("flex-1 py-2.5 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1", tab === "history" ? "bg-primary text-white" : "bg-muted text-muted-foreground")}
-          data-testid="tab-history"
+          onClick={() => { setViewingGroup(null); setGroupEpisodes([]); setTab("courses"); }}
+          className={cn("flex-1 py-2.5 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1", tab === "courses" ? "bg-primary text-white" : "bg-muted text-muted-foreground")}
+          data-testid="tab-courses"
         >
-          <History className="w-3.5 h-3.5" />
-          My Scores
+          <GraduationCap className="w-3.5 h-3.5" />
+          Courses
         </button>
       </div>
 
@@ -443,7 +470,7 @@ export default function Knowledge() {
               )}
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 space-y-2">
                 {quiz.groupName && (
-                  <button onClick={() => { openGroup(quiz.groupName!); setTab("past"); }} className="text-xs text-primary font-semibold uppercase tracking-wider hover:underline">
+                  <button onClick={() => { openGroup(quiz.groupName!); setTab("courses"); }} className="text-xs text-primary font-semibold uppercase tracking-wider hover:underline">
                     {quiz.groupName}{quiz.episodeNumber ? ` — Episode ${quiz.episodeNumber}` : ""}
                   </button>
                 )}
@@ -474,7 +501,7 @@ export default function Knowledge() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1 flex-1">
                     {quiz.groupName && (
-                      <button onClick={() => { openGroup(quiz.groupName!); setTab("past"); }} className="text-xs text-primary font-semibold uppercase tracking-wider hover:underline">
+                      <button onClick={() => { openGroup(quiz.groupName!); setTab("courses"); }} className="text-xs text-primary font-semibold uppercase tracking-wider hover:underline">
                         {quiz.groupName}{quiz.episodeNumber ? ` — Episode ${quiz.episodeNumber}` : ""}
                       </button>
                     )}
@@ -808,6 +835,34 @@ export default function Knowledge() {
             </div>
           ) : (
             <>
+              {history.length > 0 && (
+                <div className="rounded-xl overflow-hidden border border-border/50 shadow-sm" data-testid="score-summary-card">
+                  <div className="bg-gradient-to-r from-primary via-orange-500 to-amber-500 px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 text-white">
+                      <Trophy className="w-5 h-5" />
+                      <div>
+                        <p className="text-lg font-bold font-serif leading-tight">
+                          {history.reduce((s, h) => s + h.score, 0)}
+                          <span className="text-xs font-normal text-white/70 ml-1">
+                            / {history.reduce((s, h) => s + h.totalQuestions, 0)} pts
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-white/90">
+                      <div className="text-center">
+                        <p className="text-sm font-bold">{history.length}</p>
+                        <p className="text-[8px] uppercase tracking-wider text-white/60">Played</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-bold">{history.filter(h => h.score === h.totalQuestions).length}</p>
+                        <p className="text-[8px] uppercase tracking-wider text-white/60">Perfect</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {upcomingQuizzes.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -823,7 +878,7 @@ export default function Knowledge() {
                       <div className="space-y-0.5 flex-1">
                         {uq.groupName && (
                           <button
-                            onClick={() => openGroup(uq.groupName!)}
+                            onClick={() => { openGroup(uq.groupName!); setTab("courses"); }}
                             className="text-[10px] text-primary font-semibold uppercase tracking-wider hover:underline"
                             data-testid={`group-link-upcoming-${uq.id}`}
                           >
@@ -886,7 +941,7 @@ export default function Knowledge() {
                           <div className="space-y-0.5 flex-1">
                             {pq.groupName && (
                               <button
-                                onClick={(e) => { e.stopPropagation(); openGroup(pq.groupName!); }}
+                                onClick={(e) => { e.stopPropagation(); openGroup(pq.groupName!); setTab("courses"); }}
                                 className="text-[10px] text-primary font-semibold uppercase tracking-wider hover:underline"
                                 data-testid={`group-link-past-${pq.id}`}
                               >
@@ -929,146 +984,205 @@ export default function Knowledge() {
         </div>
       )}
 
-      {tab === "history" && (
-        <div className="space-y-3">
-          {reviewQuiz ? (
-            <HistoryReview
-              quiz={reviewQuiz}
-              onBack={() => { setReviewQuiz(null); setShowResultContent(false); }}
-              showResultContent={showResultContent}
-              setShowResultContent={setShowResultContent}
-            />
-          ) : historyLoading ? (
+      {tab === "courses" && (
+        <div className="space-y-4">
+          {viewingGroup ? (
+            <div className="space-y-3">
+              <button
+                onClick={() => { setViewingGroup(null); setGroupEpisodes([]); }}
+                className="flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
+                data-testid="button-back-from-group-courses"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Courses
+              </button>
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4">
+                <h2 className="font-serif font-bold text-lg text-foreground">{viewingGroup}</h2>
+                <p className="text-xs text-muted-foreground mt-1">{groupEpisodes.length} episode{groupEpisodes.length !== 1 ? "s" : ""}</p>
+              </div>
+              {groupLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                groupEpisodes.map((ep, idx) => (
+                  <button
+                    key={ep.id}
+                    onClick={() => {
+                      if (ep.locked) return;
+                      setSelectedPastQuizId(ep.id);
+                      setViewingGroup(null);
+                      setGroupEpisodes([]);
+                      setTab("quiz");
+                    }}
+                    className={cn(
+                      "w-full bg-card rounded-xl border border-border/50 p-4 flex items-center gap-3 text-left transition-colors",
+                      ep.locked ? "opacity-60 cursor-not-allowed" : "hover:border-primary/30"
+                    )}
+                    data-testid={`course-ep-${ep.id}`}
+                    disabled={!!ep.locked}
+                  >
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold",
+                      ep.attempted ? "bg-green-100 text-green-700" :
+                      ep.locked ? "bg-muted text-muted-foreground" :
+                      "bg-primary/10 text-primary"
+                    )}>
+                      {ep.attempted ? <CheckCircle2 className="w-4 h-4" /> : ep.locked ? <Lock className="w-3.5 h-3.5" /> : idx + 1}
+                    </div>
+                    <div className="space-y-0.5 flex-1 min-w-0">
+                      <p className="text-[10px] text-muted-foreground font-medium">Episode {ep.episodeNumber}</p>
+                      <h3 className="font-serif font-semibold text-sm truncate">{ep.title}</h3>
+                      {ep.subtitle && <p className="text-xs text-muted-foreground truncate">{ep.subtitle}</p>}
+                      {ep.lockReason && ep.locked && (
+                        <p className="text-[10px] text-orange-500 mt-0.5">{ep.lockReason}</p>
+                      )}
+                    </div>
+                    <div className="shrink-0 ml-2">
+                      {ep.attempted ? (
+                        <div className={cn(
+                          "text-center px-2.5 py-1 rounded-lg text-xs font-bold",
+                          ep.score === ep.totalQuestions ? "bg-green-50 text-green-600" :
+                          (ep.score ?? 0) >= (ep.totalQuestions ?? 1) / 2 ? "bg-amber-50 text-amber-600" :
+                          "bg-red-50 text-red-500"
+                        )}>
+                          {ep.score}/{ep.totalQuestions}
+                        </div>
+                      ) : !ep.locked ? (
+                        <div className="text-xs text-primary font-semibold px-2.5 py-1 rounded-lg bg-primary/10">
+                          Take Quiz
+                        </div>
+                      ) : null}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : coursesLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
-          ) : history.length === 0 ? (
+          ) : courses.length === 0 ? (
             <div className="text-center py-16 space-y-3">
-              <Clock className="w-12 h-12 text-muted-foreground/50 mx-auto" />
-              <p className="text-muted-foreground font-medium">No quizzes taken yet</p>
-              <p className="text-sm text-muted-foreground/70">Complete today's quiz to see your scores here</p>
+              <GraduationCap className="w-12 h-12 text-muted-foreground/50 mx-auto" />
+              <p className="text-muted-foreground font-medium">No courses yet</p>
+              <p className="text-sm text-muted-foreground/70">Courses with sequential episodes will appear here</p>
             </div>
           ) : (
-            <>
-              {(() => {
-                const totalScore = history.reduce((s, h) => s + h.score, 0);
-                const totalQuestions = history.reduce((s, h) => s + h.totalQuestions, 0);
-                const perfectCount = history.filter(h => h.score === h.totalQuestions).length;
-                const streak = gamification?.currentStreak ?? 0;
-                const earnedBadges = gamification?.badges.filter(b => b.earned).length ?? 0;
+            <div className="space-y-3">
+              {courses.map(course => {
+                const progress = course.publishedEpisodes > 0
+                  ? Math.round((course.completedEpisodes / course.publishedEpisodes) * 100)
+                  : 0;
+                const isComplete = course.completedEpisodes === course.publishedEpisodes && course.publishedEpisodes > 0;
                 return (
-                  <div className="rounded-2xl overflow-hidden border border-border/50 shadow-sm" data-testid="total-score-card">
-                    <div className="bg-gradient-to-br from-primary via-orange-500 to-amber-500 p-6 text-white text-center relative overflow-hidden">
-                      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 60% 80%, white 1px, transparent 1px)", backgroundSize: "60px 60px, 40px 40px, 50px 50px" }} />
-                      <div className="relative">
-                        <p className="text-sm font-medium text-white/70 uppercase tracking-widest mb-1">Total Points</p>
-                        <p className="text-5xl font-bold font-serif tracking-tight">{totalScore}</p>
-                        <p className="text-sm text-white/70 mt-1">out of {totalQuestions}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-4 divide-x divide-border/30 bg-card">
-                      <div className="py-3 text-center">
-                        <p className="text-base font-bold font-serif text-foreground">{history.length}</p>
-                        <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Played</p>
-                      </div>
-                      <div className="py-3 text-center">
-                        <p className="text-base font-bold font-serif text-green-600">{perfectCount}</p>
-                        <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Perfect</p>
-                      </div>
-                      <div className="py-3 text-center">
-                        <p className="text-base font-bold font-serif text-orange-500">{streak}</p>
-                        <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Streak</p>
-                      </div>
-                      <div className="py-3 text-center">
-                        <p className="text-base font-bold font-serif text-amber-500">{earnedBadges}</p>
-                        <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Badges</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {gamification && gamification.badges.length > 0 && (() => {
-                const earned = gamification.badges.filter(b => b.earned);
-                const unearned = gamification.badges.filter(b => !b.earned);
-                return (
-                  <div className="space-y-5" data-testid="badges-section">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xl font-serif font-bold text-foreground flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
-                          <Trophy className="w-4.5 h-4.5 text-white" />
-                        </div>
-                        Badges
-                      </h3>
-                      <span className="text-xs bg-primary/10 text-primary font-bold px-3 py-1.5 rounded-full">
-                        {earned.length} of {gamification.badges.length}
-                      </span>
-                    </div>
-
-                    {earned.length > 0 && (
-                      <div className="space-y-3">
-                        {earned.map(badge => (
-                          <div
-                            key={badge.id}
-                            className="flex items-center gap-4 bg-gradient-to-r from-amber-50 via-orange-50/80 to-yellow-50/60 rounded-2xl border border-amber-200/70 p-4 shadow-sm"
-                            data-testid={`badge-${badge.id}`}
-                          >
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-400 to-amber-500 flex items-center justify-center text-3xl shadow-lg shadow-orange-200/50 ring-2 ring-amber-300/30 shrink-0">
-                              {badge.emoji}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-amber-900">{badge.name}</p>
-                              <p className="text-xs text-amber-700/80 mt-0.5">{badge.description}</p>
-                              {badge.earnedAt && (
-                                <p className="text-[10px] text-amber-600/70 mt-1.5 flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3" />
-                                  Earned {new Date(badge.earnedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {unearned.length > 0 && (
-                      <div className="space-y-2.5">
-                        {earned.length > 0 && (
-                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-1">Up Next</p>
+                  <button
+                    key={course.groupName}
+                    onClick={() => { openGroup(course.groupName); setTab("courses"); }}
+                    className="w-full bg-card rounded-2xl border border-border/50 p-4 text-left hover:border-primary/30 transition-colors shadow-sm"
+                    data-testid={`course-card-${course.groupName}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
+                        isComplete ? "bg-green-100" : "bg-gradient-to-br from-primary/15 to-orange-100"
+                      )}>
+                        {isComplete ? (
+                          <CheckCircle2 className="w-6 h-6 text-green-600" />
+                        ) : (
+                          <GraduationCap className="w-6 h-6 text-primary" />
                         )}
-                        {unearned.map(badge => (
-                          <div
-                            key={badge.id}
-                            className="flex items-center gap-3.5 bg-card rounded-xl border border-border/50 p-3.5"
-                            data-testid={`badge-${badge.id}`}
-                          >
-                            <div className="w-12 h-12 rounded-xl bg-muted/40 flex items-center justify-center text-xl shrink-0 opacity-40">
-                              {badge.emoji}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-muted-foreground">{badge.name}</p>
-                              <p className="text-[10px] text-muted-foreground/70 leading-snug mt-0.5">{badge.description}</p>
-                              {badge.target > 1 && (
-                                <div className="flex items-center gap-2 mt-2">
-                                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all duration-500"
-                                      style={{ width: `${Math.max(Math.round((badge.progress / badge.target) * 100), badge.progress > 0 ? 6 : 0)}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-[10px] text-muted-foreground font-medium shrink-0">{badge.progress}/{badge.target}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
                       </div>
-                    )}
-                  </div>
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div>
+                          <h3 className="font-serif font-bold text-base text-foreground">{course.groupName}</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {course.publishedEpisodes} of {course.totalEpisodes} episode{course.totalEpisodes !== 1 ? "s" : ""} available
+                          </p>
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className={cn("font-semibold", isComplete ? "text-green-600" : "text-primary")}>
+                              {isComplete ? "Completed!" : `${course.completedEpisodes}/${course.publishedEpisodes} completed`}
+                            </span>
+                            <span className="text-muted-foreground font-medium">{progress}%</span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all duration-500",
+                                isComplete ? "bg-green-500" : "bg-gradient-to-r from-primary to-orange-400"
+                              )}
+                              style={{ width: `${Math.max(progress, course.completedEpisodes > 0 ? 6 : 0)}%` }}
+                            />
+                          </div>
+                        </div>
+                        {course.nextEpisodeTitle && !isComplete && (
+                          <p className="text-[10px] text-muted-foreground">
+                            Next: <span className="text-foreground font-medium">{course.nextEpisodeTitle}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
                 );
-              })()}
-            </>
+              })}
+            </div>
           )}
+
+          {gamification && gamification.badges.length > 0 && !viewingGroup && (() => {
+            const earned = gamification.badges.filter(b => b.earned);
+            const unearned = gamification.badges.filter(b => !b.earned);
+            return (
+              <div className="space-y-4 pt-2" data-testid="badges-section">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-serif font-bold text-foreground flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+                      <Trophy className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    Badges
+                  </h3>
+                  <span className="text-[10px] bg-primary/10 text-primary font-bold px-2.5 py-1 rounded-full">
+                    {earned.length}/{gamification.badges.length}
+                  </span>
+                </div>
+                {earned.length > 0 && (
+                  <div className="space-y-2">
+                    {earned.map(badge => (
+                      <div key={badge.id} className="flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50/60 rounded-xl border border-amber-200/50 p-3" data-testid={`badge-${badge.id}`}>
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-xl shrink-0">{badge.emoji}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-amber-900">{badge.name}</p>
+                          <p className="text-[10px] text-amber-700/70">{badge.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {unearned.length > 0 && (
+                  <div className="space-y-2">
+                    {earned.length > 0 && <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Up Next</p>}
+                    {unearned.map(badge => (
+                      <div key={badge.id} className="flex items-center gap-3 bg-card rounded-xl border border-border/50 p-3" data-testid={`badge-${badge.id}`}>
+                        <div className="w-10 h-10 rounded-xl bg-muted/40 flex items-center justify-center text-lg shrink-0 opacity-40">{badge.emoji}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-bold text-muted-foreground">{badge.name}</p>
+                          {badge.target > 1 && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all duration-500" style={{ width: `${Math.max(Math.round((badge.progress / badge.target) * 100), badge.progress > 0 ? 6 : 0)}%` }} />
+                              </div>
+                              <span className="text-[10px] text-muted-foreground font-medium shrink-0">{badge.progress}/{badge.target}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
