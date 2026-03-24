@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useParams, useLocation } from "wouter";
-import { BookOpenCheck, ChevronLeft, ChevronRight, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check, Library, Flame, Lock, CalendarDays } from "lucide-react";
+import { BookOpenCheck, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check, Library, Flame, Lock, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -179,6 +179,7 @@ export default function Knowledge() {
   const [pastQuizzes, setPastQuizzes] = useState<PastQuizItem[]>([]);
   const [pastLoading, setPastLoading] = useState(false);
   const [upcomingQuizzes, setUpcomingQuizzes] = useState<UpcomingQuizItem[]>([]);
+  const [pastExpanded, setPastExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -708,68 +709,9 @@ export default function Knowledge() {
       )}
 
       {tab === "past" && (
-        <div className="space-y-3">
-          {pastLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : pastQuizzes.length === 0 ? (
-            <div className="text-center py-16 space-y-3">
-              <Library className="w-12 h-12 text-muted-foreground/50 mx-auto" />
-              <p className="text-muted-foreground font-medium">No past quizzes yet</p>
-              <p className="text-sm text-muted-foreground/70">Check back after more quizzes are published!</p>
-            </div>
-          ) : (
-            pastQuizzes.map((pq) => (
-              <button
-                key={pq.id}
-                onClick={() => {
-                  if (pq.locked) return;
-                  setSelectedPastQuizId(pq.id);
-                  setTab("quiz");
-                }}
-                className={cn(
-                  "w-full bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between text-left transition-colors",
-                  pq.locked ? "opacity-60 cursor-not-allowed" : "hover:border-primary/30"
-                )}
-                data-testid={`past-quiz-${pq.id}`}
-                disabled={!!pq.locked}
-              >
-                <div className="space-y-0.5 flex-1">
-                  {pq.groupName && (
-                    <p className="text-[10px] text-primary font-semibold uppercase tracking-wider">{pq.groupName}{pq.episodeNumber ? ` — Ep. ${pq.episodeNumber}` : ""}</p>
-                  )}
-                  <h3 className="font-serif font-semibold text-sm">{pq.title}</h3>
-                  {pq.subtitle && <p className="text-xs text-muted-foreground">{pq.subtitle}</p>}
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground/70 mt-1">
-                    <span>{new Date(pq.publishDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-                    {pq.questionCount > 0 && <span>{pq.questionCount} question{pq.questionCount > 1 ? "s" : ""}</span>}
-                  </div>
-                </div>
-                <div className="shrink-0 ml-3">
-                  {pq.locked ? (
-                    <Lock className="w-5 h-5 text-muted-foreground/50" />
-                  ) : pq.attempted ? (
-                    <div className={cn(
-                      "text-center px-3 py-1.5 rounded-lg text-xs font-bold",
-                      pq.score === pq.totalQuestions ? "bg-green-50 text-green-600" :
-                      (pq.score ?? 0) >= (pq.totalQuestions ?? 1) / 2 ? "bg-amber-50 text-amber-600" :
-                      "bg-red-50 text-red-500"
-                    )}>
-                      {pq.score}/{pq.totalQuestions}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-primary font-semibold px-3 py-1.5 rounded-lg bg-primary/10">
-                      Take Quiz
-                    </div>
-                  )}
-                </div>
-              </button>
-            ))
-          )}
-
+        <div className="space-y-4">
           {upcomingQuizzes.length > 0 && (
-            <div className="mt-6 space-y-3">
+            <div className="space-y-3">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <CalendarDays className="w-4 h-4 text-primary" />
                 Upcoming
@@ -792,6 +734,84 @@ export default function Knowledge() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {pastLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : pastQuizzes.length === 0 ? (
+            !upcomingQuizzes.length && (
+              <div className="text-center py-16 space-y-3">
+                <Library className="w-12 h-12 text-muted-foreground/50 mx-auto" />
+                <p className="text-muted-foreground font-medium">No quizzes yet</p>
+                <p className="text-sm text-muted-foreground/70">Check back after more quizzes are published!</p>
+              </div>
+            )
+          ) : (
+            <div className="space-y-3">
+              <button
+                onClick={() => setPastExpanded(!pastExpanded)}
+                className="w-full flex items-center justify-between py-2 text-sm font-semibold text-foreground"
+                data-testid="button-toggle-past"
+              >
+                <span className="flex items-center gap-2">
+                  <Library className="w-4 h-4 text-primary" />
+                  Past Quizzes ({pastQuizzes.length})
+                </span>
+                <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", pastExpanded && "rotate-180")} />
+              </button>
+              {pastExpanded && (
+                <div className="space-y-3">
+                  {pastQuizzes.map((pq) => (
+                    <button
+                      key={pq.id}
+                      onClick={() => {
+                        if (pq.locked) return;
+                        setSelectedPastQuizId(pq.id);
+                        setTab("quiz");
+                      }}
+                      className={cn(
+                        "w-full bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between text-left transition-colors",
+                        pq.locked ? "opacity-60 cursor-not-allowed" : "hover:border-primary/30"
+                      )}
+                      data-testid={`past-quiz-${pq.id}`}
+                      disabled={!!pq.locked}
+                    >
+                      <div className="space-y-0.5 flex-1">
+                        {pq.groupName && (
+                          <p className="text-[10px] text-primary font-semibold uppercase tracking-wider">{pq.groupName}{pq.episodeNumber ? ` — Ep. ${pq.episodeNumber}` : ""}</p>
+                        )}
+                        <h3 className="font-serif font-semibold text-sm">{pq.title}</h3>
+                        {pq.subtitle && <p className="text-xs text-muted-foreground">{pq.subtitle}</p>}
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground/70 mt-1">
+                          <span>{new Date(pq.publishDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                          {pq.questionCount > 0 && <span>{pq.questionCount} question{pq.questionCount > 1 ? "s" : ""}</span>}
+                        </div>
+                      </div>
+                      <div className="shrink-0 ml-3">
+                        {pq.locked ? (
+                          <Lock className="w-5 h-5 text-muted-foreground/50" />
+                        ) : pq.attempted ? (
+                          <div className={cn(
+                            "text-center px-3 py-1.5 rounded-lg text-xs font-bold",
+                            pq.score === pq.totalQuestions ? "bg-green-50 text-green-600" :
+                            (pq.score ?? 0) >= (pq.totalQuestions ?? 1) / 2 ? "bg-amber-50 text-amber-600" :
+                            "bg-red-50 text-red-500"
+                          )}>
+                            {pq.score}/{pq.totalQuestions}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-primary font-semibold px-3 py-1.5 rounded-lg bg-primary/10">
+                            Take Quiz
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
