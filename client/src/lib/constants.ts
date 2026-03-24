@@ -97,6 +97,15 @@ export const RESOURCES = [
     isExternal: true,
     url: "https://www.sringeri.net/stotras",
   },
+  {
+    id: "ebooks",
+    title: "E-Books",
+    description: "Digital books and publications",
+    icon: BookCopy,
+    color: "bg-emerald-100 text-emerald-600",
+    isExternal: true,
+    url: "https://www.sringeri.net/ebooks",
+  },
 ];
 
 export const DEVOTEE_ACTIVITIES = [
