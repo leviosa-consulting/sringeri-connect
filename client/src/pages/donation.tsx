@@ -747,6 +747,11 @@ export default function Donation() {
           tokenType: "TXN_TOKEN",
           amount: amount,
         },
+        handler: {
+          notifyMerchant: (eventName: string, data: any) => {
+            console.log("Paytm notifyMerchant:", eventName, data);
+          },
+        },
         merchant: {
           mid: mid,
           redirect: true,
