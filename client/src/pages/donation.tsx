@@ -628,6 +628,11 @@ export default function Donation() {
 
   const handleProceedToPayee = () => {
     if (cart.length === 0) return;
+    if (postageOptions.length > 0 && !donationForm.postageId) {
+      setValidationErrors(["Please select a postage option."]);
+      return;
+    }
+    setValidationErrors([]);
     setDonationForm((prev) => ({
       ...prev,
       selectedDonations: cart,
@@ -995,27 +1000,25 @@ export default function Donation() {
           {postageOptions.length > 0 && (
             <Card>
               <CardContent className="p-5 space-y-3">
-                <h3 className="font-serif font-bold text-base">Postage</h3>
+                <h3 className="font-serif font-bold text-base">Postage <span className="text-red-500">*</span></h3>
                 <select
                   value={donationForm.postageId}
                   onChange={(e) => {
-                    if (e.target.value) {
-                      const opt = JSON.parse(e.target.value);
+                    const selectedOpt = postageOptions.find((o) => String(o.id) === e.target.value);
+                    if (selectedOpt) {
                       setDonationForm((prev) => ({
                         ...prev,
-                        postageId: opt.id,
-                        postageCharges: opt.amount,
+                        postageId: String(selectedOpt.id),
+                        postageCharges: selectedOpt.amount,
                       }));
-                    } else {
-                      setDonationForm((prev) => ({ ...prev, postageId: "", postageCharges: 0 }));
                     }
                   }}
                   className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                   data-testid="select-postage"
                 >
-                  <option value="">No postage needed</option>
+                  <option value="" disabled>Select Postage</option>
                   {postageOptions.map((opt) => (
-                    <option key={opt.id} value={JSON.stringify({ id: opt.id, amount: opt.amount })}>
+                    <option key={opt.id} value={String(opt.id)}>
                       {opt.name} — ₹{opt.amount}
                     </option>
                   ))}
@@ -1207,6 +1210,13 @@ export default function Donation() {
                     ₹{formatNumber(totalAmount)}
                   </span>
                 </div>
+                {validationErrors.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                    {validationErrors.map((err, i) => (
+                      <p key={i} className="text-red-600 text-xs" data-testid={`text-cart-error-${i}`}>{err}</p>
+                    ))}
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <Button
                     variant="outline"
