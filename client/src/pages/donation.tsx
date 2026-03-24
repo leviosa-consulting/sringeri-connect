@@ -511,34 +511,6 @@ export default function Donation() {
     setValidationErrors([]);
   };
 
-  function loadPaytmScript(mid: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const existing = document.getElementById("paytm-checkout-js");
-      if (existing) existing.remove();
-      (window as any).Paytm = undefined;
-      const script = document.createElement("script");
-      script.id = "paytm-checkout-js";
-      script.type = "application/javascript";
-      script.crossOrigin = "anonymous";
-      script.src = `https://securegw.paytm.in/merchantpgpui/checkoutjs/merchants/${mid}.js`;
-      script.onload = () => {
-        let attempts = 0;
-        const poll = setInterval(() => {
-          attempts++;
-          const sdk = (window as any).Paytm?.CheckoutJS;
-          if (sdk && typeof sdk.init === "function") {
-            clearInterval(poll);
-            resolve();
-          } else if (attempts > 50) {
-            clearInterval(poll);
-            reject(new Error("Paytm SDK failed to initialize"));
-          }
-        }, 100);
-      };
-      script.onerror = () => reject(new Error("Failed to load Paytm SDK"));
-      document.head.appendChild(script);
-    });
-  }
 
   const handleFeaturedDonation = (featured: FeaturedDonationItem) => {
     if (featured.heading) {
@@ -736,31 +708,20 @@ export default function Donation() {
         ts: Date.now(),
       }));
 
-      await loadPaytmScript(mid);
-
-      const config = {
-        root: "",
-        flow: "DEFAULT",
-        data: {
-          orderId: orderId,
-          token: txnToken,
-          tokenType: "TXN_TOKEN",
-          amount: amount,
-        },
-        handler: {
-          notifyMerchant: (eventName: string, data: any) => {
-            console.log("Paytm notifyMerchant:", eventName, data);
-          },
-        },
-        merchant: {
-          mid: mid,
-          redirect: true,
-        },
-      };
-
-      const checkoutJS = (window as any).Paytm.CheckoutJS;
-      await checkoutJS.init(config);
-      checkoutJS.invoke();
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = `https://securegw.paytm.in/theia/api/v1/showPaymentPage?mid=${encodeURIComponent(mid)}&orderId=${encodeURIComponent(orderId)}`;
+      form.style.display = "none";
+      const fields = { mid, orderId, txnToken };
+      for (const [key, value] of Object.entries(fields)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
     } catch (err: any) {
       console.error("Donation payment error:", err);
       setErrorMessage(err.message || "Something went wrong. Please try again.");
