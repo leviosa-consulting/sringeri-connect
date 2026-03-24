@@ -1,4 +1,4 @@
-import { Home, Calendar, User, Newspaper, Music, BookOpen, Heart, Hotel, ExternalLink, MessageCircle, Trophy, Sparkles, BookCheck, ShoppingCart, HandHeart, LibraryBig, BookCopy, Sun } from "lucide-react";
+import { Home, Calendar, User, Newspaper, Music, BookOpen, Heart, Hotel, ExternalLink, MessageCircle, Trophy, Sparkles, BookCheck, ShoppingCart, HandHeart, LibraryBig, BookCopy, Sun, ScrollText, Library, Clock } from "lucide-react";
 
 export const ONLINE_SERVICES = [
   {
@@ -69,6 +69,33 @@ export const RESOURCES = [
     color: "bg-amber-100 text-amber-600",
     isExternal: true,
     url: "https://sandhyakala.vercel.app/",
+  },
+  {
+    id: "advaita-sharada",
+    title: "Advaita Sharada",
+    description: "Encyclopaedia of Advaita Vedanta texts",
+    icon: ScrollText,
+    color: "bg-teal-100 text-teal-600",
+    isExternal: true,
+    url: "https://advaitasharada.sringeri.net/",
+  },
+  {
+    id: "purana-sharada",
+    title: "Purana Sharada",
+    description: "Collection of sacred Puranas",
+    icon: Library,
+    color: "bg-rose-100 text-rose-600",
+    isExternal: true,
+    url: "https://puranasharada.sringeri.net/",
+  },
+  {
+    id: "darshan-schedule",
+    title: "Darshan Schedule",
+    description: "Jagadguru Darshan Schedule",
+    icon: Clock,
+    color: "bg-sky-100 text-sky-600",
+    isExternal: true,
+    url: "https://sringeri.net/schedule/",
   },
 ];
 
