@@ -35,6 +35,16 @@ interface YouTubeVideo {
   url: string;
 }
 
+interface Stotra {
+  id: string;
+  title: string;
+  titleEn: string;
+  deityName: string;
+  deityNameEn: string;
+  url: string;
+  totalShlokas: number;
+}
+
 interface TodayCarouselProps {
   open: boolean;
   onClose: () => void;
@@ -43,39 +53,6 @@ interface TodayCarouselProps {
   todayQuiz?: TodayQuiz | null;
   youtubeVideos?: YouTubeVideo[];
 }
-
-const SHLOKAS = [
-  {
-    sanskrit: "ब्रह्म सत्यं जगन्मिथ्या जीवो ब्रह्मैव नापरः",
-    transliteration: "Brahma Satyam Jagan Mithyā Jīvo Brahmaiva Nāparaḥ",
-    meaning: "Brahman alone is real, the world is appearance, and the individual soul is none other than Brahman.",
-    source: "Vivekachudamani — Adi Shankaracharya",
-  },
-  {
-    sanskrit: "भज गोविन्दं भज गोविन्दं गोविन्दं भज मूढमते",
-    transliteration: "Bhaja Govindam Bhaja Govindam Govindam Bhaja Mūḍhamate",
-    meaning: "Worship Govinda, worship Govinda, worship Govinda, O deluded mind!",
-    source: "Bhaja Govindam — Adi Shankaracharya",
-  },
-  {
-    sanskrit: "मनो बुद्ध्यहंकार चित्तानि नाहं न च श्रोत्रजिह्वे न च घ्राणनेत्रे",
-    transliteration: "Mano Buddhyahaṅkāra Chittāni Nāham Na Cha Śrotra Jihve Na Cha Ghrāṇa Netre",
-    meaning: "I am not the mind, intellect, ego, or memory. I am not the ear, tongue, nose, or eyes.",
-    source: "Nirvana Shatakam — Adi Shankaracharya",
-  },
-  {
-    sanskrit: "चिदानन्दरूपः शिवोऽहम् शिवोऽहम्",
-    transliteration: "Chidānandarūpaḥ Śivo'ham Śivo'ham",
-    meaning: "I am of the nature of consciousness and bliss. I am Shiva, I am Shiva.",
-    source: "Nirvana Shatakam — Adi Shankaracharya",
-  },
-  {
-    sanskrit: "सर्वं खल्विदं ब्रह्म",
-    transliteration: "Sarvam Khalvidam Brahma",
-    meaning: "All this is indeed Brahman.",
-    source: "Chandogya Upanishad 3.14.1",
-  },
-];
 
 const GURU_VANI = [
   "Peace, contentment and joy is ingrained in every one of us. The Guru alone can unlock this treasure for us.",
@@ -102,6 +79,19 @@ function getDailyIndex(arrayLength: number, offset = 0): number {
 const SLIDE_DURATION = 5000;
 
 export default function TodayCarousel({ open, onClose, todayDetails, formattedDate, todayQuiz, youtubeVideos = [] }: TodayCarouselProps) {
+  const [stotra, setStotra] = useState<Stotra | null>(null);
+  const stotraFetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (open && !stotraFetchedRef.current) {
+      stotraFetchedRef.current = true;
+      fetch("/api/stotra-of-the-day")
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => { if (data?.stotra) setStotra(data.stotra); })
+        .catch(() => {});
+    }
+  }, [open]);
+
   const hasQuiz = !!todayQuiz;
   const hasOccasion = !!(todayDetails?.occasionK || todayDetails?.occasion);
   const slideLabels: string[] = [];
@@ -222,7 +212,6 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
     setIsPaused(false);
   }, [api]);
 
-  const todayShloka = SHLOKAS[getDailyIndex(SHLOKAS.length)];
   const todayGuruVani = GURU_VANI[getDailyIndex(GURU_VANI.length, 3)];
   const latestVideo = youtubeVideos.length > 0 ? youtubeVideos[0] : null;
 
@@ -290,7 +279,7 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
                 </CarouselItem>
               )}
               <CarouselItem className="pl-0 px-5">
-                <StotraSlide shloka={todayShloka} />
+                <StotraSlide stotra={stotra} />
               </CarouselItem>
               <CarouselItem className="pl-0 px-5">
                 <GuruVaniSlide quote={todayGuruVani} />
@@ -389,42 +378,54 @@ function OccasionSlide({ todayDetails, formattedDate }: { todayDetails: TodayDet
   );
 }
 
-function StotraSlide({ shloka }: { shloka: typeof SHLOKAS[0] }) {
+function StotraSlide({ stotra }: { stotra: Stotra | null }) {
+  if (!stotra) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-stotra">
+        <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-4">Stotra of the Day</div>
+        <BookOpen className="w-10 h-10 text-primary/30 mb-3" />
+        <p className="text-sm text-foreground/50">Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-stotra">
-      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-4">Stotra of the Day</div>
+      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-6">Stotra of the Day</div>
 
-      <div className="relative px-4 mb-4">
-        <div className="absolute -top-3 left-2 text-5xl text-primary/15 font-serif leading-none">"</div>
-        <div className="text-2xl font-serif text-foreground leading-relaxed" style={{ fontFamily: "'Noto Serif Devanagari', 'Merriweather', serif" }}>
-          {shloka.sanskrit}
-        </div>
-        <div className="absolute -bottom-4 right-2 text-5xl text-primary/15 font-serif leading-none rotate-180">"</div>
+      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-orange-100 flex items-center justify-center mb-5">
+        <BookOpen className="w-8 h-8 text-primary" />
       </div>
 
-      <div className="h-px w-20 bg-gradient-to-r from-transparent via-primary/30 to-transparent my-3" />
+      <h3 className="text-2xl font-serif font-bold text-foreground mb-2 px-4" style={{ fontFamily: "'Noto Serif Devanagari', 'Merriweather', serif" }} data-testid="text-stotra-title">
+        {stotra.title}
+      </h3>
 
-      <div className="text-xs text-primary/80 italic mb-3 px-6 leading-relaxed">
-        {shloka.transliteration}
-      </div>
+      {stotra.titleEn && stotra.titleEn !== stotra.title && (
+        <p className="text-sm text-foreground/60 italic mb-3 px-6" data-testid="text-stotra-title-en">{stotra.titleEn}</p>
+      )}
 
-      <div className="text-sm text-foreground/70 px-6 leading-relaxed mb-4">
-        {shloka.meaning}
-      </div>
+      <div className="h-px w-16 bg-gradient-to-r from-transparent via-primary/30 to-transparent my-3" />
 
-      <div className="text-[10px] text-foreground/40 font-medium uppercase tracking-wider mb-3">
-        {shloka.source}
+      <div className="flex items-center gap-3 text-sm text-foreground/50 mb-5">
+        <span data-testid="text-stotra-deity">{stotra.deityName || stotra.deityNameEn}</span>
+        {stotra.totalShlokas > 0 && (
+          <>
+            <span>•</span>
+            <span data-testid="text-stotra-shlokas">{stotra.totalShlokas} shlokas</span>
+          </>
+        )}
       </div>
 
       <a
-        href="https://www.sringeri.net/stotras"
+        href={stotra.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
         data-testid="link-full-stotra"
       >
-        View Full Stotra
-        <ArrowRight className="w-3 h-3" />
+        Read on sringeri.net
+        <ArrowRight className="w-3.5 h-3.5" />
       </a>
     </div>
   );
