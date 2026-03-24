@@ -2797,6 +2797,19 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/quiz-groups", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const allQuizzes = await storage.listQuizzes();
+      const groups = [...new Set(allQuizzes.map(q => q.groupName).filter(Boolean))] as string[];
+      groups.sort();
+      res.json(groups);
+    } catch (error) {
+      console.error("Error listing quiz groups:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/admin/quizzes", async (req, res) => {
     try {
       if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });

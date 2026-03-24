@@ -46,6 +46,8 @@ export default function AdminQuizzes() {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [existingGroups, setExistingGroups] = useState<string[]>([]);
+  const [showNewGroupInput, setShowNewGroupInput] = useState(false);
 
   const fetchQuizzes = useCallback(async () => {
     try {
@@ -59,7 +61,17 @@ export default function AdminQuizzes() {
     }
   }, [getToken]);
 
-  useEffect(() => { if (isAdmin) fetchQuizzes(); }, [isAdmin, fetchQuizzes]);
+  const fetchGroups = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const res = await fetch("/api/admin/quiz-groups", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setExistingGroups(await res.json());
+    } catch (err) {
+      console.error(err);
+    }
+  }, [getToken]);
+
+  useEffect(() => { if (isAdmin) { fetchQuizzes(); fetchGroups(); } }, [isAdmin, fetchQuizzes, fetchGroups]);
 
   const loadQuiz = async (id: number) => {
     const token = await getToken();
@@ -68,10 +80,12 @@ export default function AdminQuizzes() {
       const data = await res.json();
       setEditing(data);
       setQuestions(data.questions || []);
+      setShowNewGroupInput(false);
     }
   };
 
   const createNew = () => {
+    setShowNewGroupInput(false);
     setEditing({
       id: 0,
       title: "",
@@ -140,7 +154,9 @@ export default function AdminQuizzes() {
       });
 
       setMessage("Saved successfully!");
+      setShowNewGroupInput(false);
       fetchQuizzes();
+      fetchGroups();
     } catch (err) {
       setMessage("Failed to save");
       console.error(err);
@@ -279,7 +295,40 @@ export default function AdminQuizzes() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">Group / Course Name</label>
-              <Input value={editing.groupName || ""} onChange={e => setEditing({ ...editing, groupName: e.target.value || null })} placeholder="e.g. Bhagavad Gita" data-testid="input-quiz-group" />
+              {showNewGroupInput ? (
+                <div className="flex gap-1.5">
+                  <Input
+                    value={editing.groupName || ""}
+                    onChange={e => setEditing({ ...editing, groupName: e.target.value || null })}
+                    placeholder="New group name"
+                    autoFocus
+                    data-testid="input-quiz-group-new"
+                  />
+                  <Button type="button" size="sm" variant="ghost" onClick={() => { setShowNewGroupInput(false); setEditing({ ...editing, groupName: null }); }} className="shrink-0 px-2">
+                    ✕
+                  </Button>
+                </div>
+              ) : (
+                <select
+                  value={editing.groupName || ""}
+                  onChange={e => {
+                    if (e.target.value === "__new__") {
+                      setShowNewGroupInput(true);
+                      setEditing({ ...editing, groupName: "" });
+                    } else {
+                      setEditing({ ...editing, groupName: e.target.value || null });
+                    }
+                  }}
+                  className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm"
+                  data-testid="input-quiz-group"
+                >
+                  <option value="">None (standalone)</option>
+                  {existingGroups.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                  <option value="__new__">+ Create new group...</option>
+                </select>
+              )}
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">Episode #</label>
