@@ -214,7 +214,7 @@ export default function Home() {
                 <div className="text-lg font-serif text-foreground leading-relaxed" style={{ fontFamily: "'Noto Serif Kannada', 'Merriweather', serif" }} data-testid="text-calendar-kannada">{todayDetails.todayWebsiteKannada}</div>
               )}
               {todayDetails.todayWebsiteEnglish && (
-                <div className="text-sm mt-1 text-[#443b31] font-semibold" data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
+                <div className="mt-1 text-[#443b31] font-semibold text-[16px]" data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
               )}
             </div>
           </div>
