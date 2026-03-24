@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge } from "@shared/schema";
+import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql, eq, and, gte, lte, desc, asc, count, countDistinct, avg } from "drizzle-orm";
@@ -36,6 +36,9 @@ export interface IStorage {
   getAppSetting(key: string): Promise<string | null>;
   setAppSetting(key: string, value: string): Promise<void>;
   deleteUserData(odUserId: string): Promise<void>;
+  createSupportMessage(msg: InsertSupportMessage): Promise<SupportMessage>;
+  listUserSupportMessages(odUserId: string, type: string): Promise<SupportMessage[]>;
+  getSupportMessage(id: number): Promise<SupportMessage | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -90,6 +93,9 @@ export class MemStorage implements IStorage {
   async getAppSetting(_key: string): Promise<string | null> { return null; }
   async setAppSetting(_key: string, _value: string): Promise<void> {}
   async deleteUserData(_odUserId: string): Promise<void> {}
+  async createSupportMessage(_msg: InsertSupportMessage): Promise<SupportMessage> { throw new Error("Not implemented"); }
+  async listUserSupportMessages(_odUserId: string, _type: string): Promise<SupportMessage[]> { return []; }
+  async getSupportMessage(_id: number): Promise<SupportMessage | undefined> { return undefined; }
 }
 
 let storage: IStorage;
@@ -429,7 +435,24 @@ if (process.env.DATABASE_URL) {
         await tx.delete(quizAttempts).where(eq(quizAttempts.odUserId, odUserId));
         await tx.delete(userBadges).where(eq(userBadges.odUserId, odUserId));
         await tx.delete(analyticsEvents).where(eq(analyticsEvents.userId, odUserId));
+        await tx.delete(supportMessages).where(eq(supportMessages.odUserId, odUserId));
       });
+    }
+
+    async createSupportMessage(msg: InsertSupportMessage): Promise<SupportMessage> {
+      const [result] = await db.insert(supportMessages).values(msg).returning();
+      return result;
+    }
+
+    async listUserSupportMessages(odUserId: string, type: string): Promise<SupportMessage[]> {
+      return db.select().from(supportMessages)
+        .where(and(eq(supportMessages.odUserId, odUserId), eq(supportMessages.type, type)))
+        .orderBy(desc(supportMessages.createdAt));
+    }
+
+    async getSupportMessage(id: number): Promise<SupportMessage | undefined> {
+      const [result] = await db.select().from(supportMessages).where(eq(supportMessages.id, id));
+      return result;
     }
   }
 

@@ -2683,6 +2683,46 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/support-messages", async (req, res) => {
+    try {
+      const { type, name, email, phone, subject, message, odUserId } = req.body;
+      if (!type || !["support", "feedback"].includes(type)) {
+        return res.status(400).json({ error: "Type must be 'support' or 'feedback'" });
+      }
+      if (!name || !email || !subject || !message) {
+        return res.status(400).json({ error: "Name, email, subject, and message are required" });
+      }
+
+      const msg = await storage.createSupportMessage({
+        type,
+        odUserId: odUserId || null,
+        name,
+        email,
+        phone: phone || null,
+        subject,
+        message,
+      });
+      res.status(201).json(msg);
+    } catch (error) {
+      console.error("Error creating support message:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/support-messages/:type/:userId", async (req, res) => {
+    try {
+      const { type, userId } = req.params;
+      if (!["support", "feedback"].includes(type)) {
+        return res.status(400).json({ error: "Type must be 'support' or 'feedback'" });
+      }
+      const messages = await storage.listUserSupportMessages(userId, type);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error listing support messages:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/chat", async (req, res) => {
     try {
       const { message } = req.body;

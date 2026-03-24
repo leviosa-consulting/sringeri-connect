@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MessageCircle, X, Send, Bot, Loader2, RotateCcw } from "lucide-react";
+import { MessageCircle, X, Send, Bot, Loader2, RotateCcw, Mail, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
 import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/auth-context";
 
 interface SuggestedAction {
   label: string;
@@ -19,13 +21,27 @@ interface ChatMessage {
   isLoading?: boolean;
 }
 
+interface SupportMessage {
+  id: number;
+  type: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  subject: string;
+  message: string;
+  adminReply: string | null;
+  status: string;
+  createdAt: string;
+  repliedAt: string | null;
+}
+
+type WidgetTab = "sahayak" | "support" | "feedback";
+
 function renderMarkdown(text: string) {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
 
   lines.forEach((line, i) => {
-    let processed: React.ReactNode = line;
-
     if (line.startsWith("**") && line.endsWith("**") && !line.includes("**", 2)) {
       elements.push(<strong key={i} className="block mt-2 mb-1">{line.slice(2, -2)}</strong>);
       return;
@@ -112,8 +128,143 @@ const INITIAL_MESSAGE: ChatMessage = {
   suggestedActions: INITIAL_ACTIONS,
 };
 
+function MessageForm({ type }: { type: "support" | "feedback" }) {
+  const { profile, devoteeData } = useAuth();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [pastMessages, setPastMessages] = useState<SupportMessage[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    if (profile?.name) setName(profile.name);
+    if (profile?.email) setEmail(profile.email);
+    if (devoteeData?.mobile || profile?.phone) setPhone(devoteeData?.mobile || profile?.phone || "");
+  }, [profile, devoteeData]);
+
+  useEffect(() => {
+    if (profile?.uid) {
+      setLoadingHistory(true);
+      fetch(`/api/support-messages/${type}/${profile.uid}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(setPastMessages)
+        .catch(() => {})
+        .finally(() => setLoadingHistory(false));
+    }
+  }, [profile?.uid, type, submitted]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/support-messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          odUserId: profile?.uid || null,
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim() || null,
+          subject: subject.trim(),
+          message: message.trim(),
+        }),
+      });
+      if (res.ok) {
+        setSubmitted(true);
+        setSubject("");
+        setMessage("");
+        setTimeout(() => setSubmitted(false), 3000);
+      }
+    } catch {}
+    finally { setSubmitting(false); }
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 border-b text-xs text-muted-foreground">
+        <Mail className="h-3 w-3 shrink-0" />
+        <span>You can also write an email to <a href="mailto:online@sringeri.net" className="text-primary underline">online@sringeri.net</a></span>
+      </div>
+
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="p-3 space-y-3">
+          {submitted && (
+            <div className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700" data-testid="text-message-sent">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span>{type === "support" ? "Support request sent!" : "Feedback submitted!"} We'll get back to you soon.</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-2.5">
+            <div>
+              <label className="text-xs text-muted-foreground">Name *</label>
+              <Input value={name} onChange={e => setName(e.target.value)} className="mt-0.5 h-8 text-sm" required data-testid={`input-${type}-name`} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Email *</label>
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-0.5 h-8 text-sm" required data-testid={`input-${type}-email`} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Phone</label>
+              <Input value={phone} onChange={e => setPhone(e.target.value)} className="mt-0.5 h-8 text-sm" data-testid={`input-${type}-phone`} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Subject *</label>
+              <Input value={subject} onChange={e => setSubject(e.target.value)} className="mt-0.5 h-8 text-sm" required data-testid={`input-${type}-subject`} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Message *</label>
+              <Textarea value={message} onChange={e => setMessage(e.target.value)} className="mt-0.5 text-sm min-h-[60px] resize-none" required data-testid={`input-${type}-message`} />
+            </div>
+            <Button type="submit" size="sm" className="w-full" disabled={submitting || !name.trim() || !email.trim() || !subject.trim() || !message.trim()} data-testid={`button-submit-${type}`}>
+              {submitting ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending...</> : type === "support" ? "Send Support Request" : "Submit Feedback"}
+            </Button>
+          </form>
+
+          {profile?.uid && (
+            <div className="pt-2 border-t">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Your Past {type === "support" ? "Requests" : "Feedback"}</p>
+              {loadingHistory ? (
+                <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+              ) : pastMessages.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-2">No messages yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {pastMessages.map(msg => (
+                    <div key={msg.id} className="border rounded-lg p-2.5 text-xs space-y-1" data-testid={`card-message-${msg.id}`}>
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="font-medium">{msg.subject}</span>
+                        <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] ${msg.status === "open" ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"}`}>{msg.status}</span>
+                      </div>
+                      <p className="text-muted-foreground line-clamp-2">{msg.message}</p>
+                      <p className="text-muted-foreground text-[10px]">{new Date(msg.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                      {msg.adminReply && (
+                        <div className="bg-primary/5 border-l-2 border-primary p-2 rounded-r mt-1">
+                          <p className="text-[10px] font-medium text-primary mb-0.5">Admin Reply</p>
+                          <p className="text-muted-foreground">{msg.adminReply}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
 export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<WidgetTab>("sahayak");
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -164,7 +315,7 @@ export default function ChatbotWidget() {
     setBtnPos({ x: newX, y: newY });
   }, []);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+  const handlePointerUp = useCallback(() => {
     const wasDrag = dragRef.current?.dragged;
     dragRef.current = null;
     if (!wasDrag) {
@@ -180,8 +331,6 @@ export default function ChatbotWidget() {
       }
     }
   }, [messages]);
-
-
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -248,6 +397,15 @@ export default function ChatbotWidget() {
     sendMessage(action);
   };
 
+  const tabLabels: { key: WidgetTab; label: string }[] = [
+    { key: "sahayak", label: "Sahayak" },
+    { key: "support", label: "Support" },
+    { key: "feedback", label: "Feedback" },
+  ];
+
+  const headerTitle = activeTab === "sahayak" ? "Sringeri Sahayak" : activeTab === "support" ? "Support" : "Feedback";
+  const headerSubtitle = activeTab === "sahayak" ? "Verified information only" : activeTab === "support" ? "We're here to help" : "We value your input";
+
   return (
     <>
       {!isOpen && btnPos && (
@@ -267,112 +425,136 @@ export default function ChatbotWidget() {
       {isOpen && (
         <div className="fixed bottom-24 lg:bottom-8 right-4 z-50" data-testid="chatbot-widget">
         <Card className="w-[350px] h-[500px] shadow-2xl border-primary/20 flex flex-col animate-in slide-in-from-bottom-10 fade-in duration-300">
-          <CardHeader className="bg-primary text-primary-foreground p-4 flex flex-row items-center justify-between rounded-t-xl shrink-0">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8 bg-white/20 border border-white/40">
-                <AvatarImage src="/assets/lamp-icon.jpg" />
-                <AvatarFallback>
-                  <Bot className="h-4 w-4" />
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <CardTitle className="text-base font-serif">Sringeri Sahayak</CardTitle>
-                <p className="text-xs opacity-80">Verified information only</p>
+          <CardHeader className="bg-primary text-primary-foreground p-3 pb-0 rounded-t-xl shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-7 w-7 bg-white/20 border border-white/40">
+                  <AvatarImage src="/assets/lamp-icon.jpg" />
+                  <AvatarFallback>
+                    <Bot className="h-3.5 w-3.5" />
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <CardTitle className="text-sm font-serif">{headerTitle}</CardTitle>
+                  <p className="text-[10px] opacity-80">{headerSubtitle}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-0.5">
+                {activeTab === "sahayak" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={clearChat}
+                    className="text-white hover:bg-white/20 h-7 w-7"
+                    title="Clear chat"
+                    data-testid="button-clear-chat"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsOpen(false)}
+                  className="text-white hover:bg-white/20 h-7 w-7"
+                  data-testid="button-close-chat"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={clearChat}
-                className="text-white hover:bg-white/20 h-8 w-8"
-                title="Clear chat"
-                data-testid="button-clear-chat"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsOpen(false)}
-                className="text-white hover:bg-white/20 h-8 w-8"
-                data-testid="button-close-chat"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+            <div className="flex border-b border-white/20">
+              {tabLabels.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex-1 text-xs py-1.5 transition-colors ${activeTab === tab.key ? "text-white border-b-2 border-white font-medium" : "text-white/60 hover:text-white/80"}`}
+                  data-testid={`tab-${tab.key}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </CardHeader>
 
-          <CardContent className="flex-1 p-0 overflow-hidden bg-background/50 min-h-0">
-            <ScrollArea className="h-full" ref={scrollRef}>
-              <div className="p-4 space-y-4">
-                {messages.map((msg, i) => (
-                  <div key={i}>
-                    <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div
-                        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                          msg.role === "user"
-                            ? "bg-primary text-primary-foreground rounded-tr-none"
-                            : "bg-muted text-foreground rounded-tl-none"
-                        }`}
-                        data-testid={`chat-message-${msg.role}-${i}`}
-                      >
-                        {msg.isLoading ? (
-                          <div className="flex items-center gap-2 py-1">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-muted-foreground">Looking up information...</span>
+          {activeTab === "sahayak" ? (
+            <>
+              <CardContent className="flex-1 p-0 overflow-hidden bg-background/50 min-h-0">
+                <ScrollArea className="h-full" ref={scrollRef}>
+                  <div className="p-4 space-y-4">
+                    {messages.map((msg, i) => (
+                      <div key={i}>
+                        <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                          <div
+                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                              msg.role === "user"
+                                ? "bg-primary text-primary-foreground rounded-tr-none"
+                                : "bg-muted text-foreground rounded-tl-none"
+                            }`}
+                            data-testid={`chat-message-${msg.role}-${i}`}
+                          >
+                            {msg.isLoading ? (
+                              <div className="flex items-center gap-2 py-1">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-muted-foreground">Looking up information...</span>
+                              </div>
+                            ) : msg.role === "bot" ? (
+                              renderMarkdown(msg.content)
+                            ) : (
+                              msg.content
+                            )}
                           </div>
-                        ) : msg.role === "bot" ? (
-                          renderMarkdown(msg.content)
-                        ) : (
-                          msg.content
+                        </div>
+
+                        {msg.suggestedActions && msg.suggestedActions.length > 0 && !msg.isLoading && (
+                          <div className="flex flex-wrap gap-1.5 mt-2 ml-1">
+                            {msg.suggestedActions.map((action, j) => (
+                              <button
+                                key={j}
+                                onClick={() => handleAction(action.action)}
+                                disabled={isLoading}
+                                className="text-xs px-3 py-1.5 rounded-full border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors disabled:opacity-50"
+                                data-testid={`button-action-${action.action}-${i}`}
+                              >
+                                {action.label}
+                              </button>
+                            ))}
+                          </div>
                         )}
                       </div>
-                    </div>
-
-                    {msg.suggestedActions && msg.suggestedActions.length > 0 && !msg.isLoading && (
-                      <div className="flex flex-wrap gap-1.5 mt-2 ml-1">
-                        {msg.suggestedActions.map((action, j) => (
-                          <button
-                            key={j}
-                            onClick={() => handleAction(action.action)}
-                            disabled={isLoading}
-                            className="text-xs px-3 py-1.5 rounded-full border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors disabled:opacity-50"
-                            data-testid={`button-action-${action.action}-${i}`}
-                          >
-                            {action.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </CardContent>
+                </ScrollArea>
+              </CardContent>
 
-          <CardFooter className="p-3 border-t bg-background shrink-0">
-            <form
-              className="flex w-full gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                sendMessage(input);
-              }}
-            >
-              <Input
-                ref={inputRef}
-                placeholder="Ask about sevas, donations..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="flex-1"
-                disabled={isLoading}
-                data-testid="input-chat-message"
-              />
-              <Button type="submit" size="icon" disabled={!input.trim() || isLoading} data-testid="button-send-chat">
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
-          </CardFooter>
+              <CardFooter className="p-3 border-t bg-background shrink-0">
+                <form
+                  className="flex w-full gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    sendMessage(input);
+                  }}
+                >
+                  <Input
+                    ref={inputRef}
+                    placeholder="Ask about sevas, donations..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    className="flex-1"
+                    disabled={isLoading}
+                    data-testid="input-chat-message"
+                  />
+                  <Button type="submit" size="icon" disabled={!input.trim() || isLoading} data-testid="button-send-chat">
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </form>
+              </CardFooter>
+            </>
+          ) : (
+            <CardContent className="flex-1 p-0 overflow-hidden bg-background min-h-0">
+              <MessageForm type={activeTab} />
+            </CardContent>
+          )}
         </Card>
         </div>
       )}

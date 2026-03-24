@@ -125,6 +125,28 @@ export const userBadges = pgTable("user_badges", {
 
 export type UserBadge = typeof userBadges.$inferSelect;
 
+export const supportMessages = pgTable("support_messages", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull(),
+  odUserId: text("od_user_id"),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  adminReply: text("admin_reply"),
+  status: text("status").default("open").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  repliedAt: timestamp("replied_at"),
+}, (table) => [
+  index("support_messages_user_type_idx").on(table.odUserId, table.type),
+  index("support_messages_status_idx").on(table.status),
+]);
+
+export const insertSupportMessageSchema = createInsertSchema(supportMessages).omit({ id: true, createdAt: true, adminReply: true, repliedAt: true, status: true });
+export type InsertSupportMessage = z.infer<typeof insertSupportMessageSchema>;
+export type SupportMessage = typeof supportMessages.$inferSelect;
+
 export const appSettings = pgTable("app_settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
