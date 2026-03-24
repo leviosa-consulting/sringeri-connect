@@ -189,7 +189,6 @@ export default function Home() {
           data-testid="img-guru-banner"
         />
       </div>
-
       {/* Header + Panchanga gradient wrapper (mobile) */}
       <div className="lg:hidden -mt-8 w-screen relative left-1/2 -translate-x-1/2" style={{ background: 'linear-gradient(to bottom, #ffffff, #d9cfc3)' }}>
         {/* Header Section */}
@@ -215,7 +214,7 @@ export default function Home() {
                 <div className="text-lg font-serif text-foreground leading-relaxed" style={{ fontFamily: "'Noto Serif Kannada', 'Merriweather', serif" }} data-testid="text-calendar-kannada">{todayDetails.todayWebsiteKannada}</div>
               )}
               {todayDetails.todayWebsiteEnglish && (
-                <div className="text-sm text-foreground/60 mt-1" data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
+                <div className="text-sm mt-1 text-[#443b31] font-semibold" data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
               )}
             </div>
           </div>
@@ -249,7 +248,6 @@ export default function Home() {
           </button>
         </div>
       </div>
-
       {/* Today Carousel Sheet */}
       <TodayCarousel
         open={todaySheetOpen}
@@ -258,7 +256,6 @@ export default function Home() {
         formattedDate={formatTodayDate()}
         todayQuiz={todayQuiz}
       />
-
       {/* Desktop Welcome Banner */}
       <div className="hidden lg:block w-screen relative left-1/2 -translate-x-1/2 h-[300px] overflow-hidden">
         <img 
@@ -268,7 +265,6 @@ export default function Home() {
           data-testid="img-guru-banner-desktop"
         />
       </div>
-
       {/* Desktop Hindu Calendar Strip */}
       {todayDetails && (
         <div className="hidden lg:block py-4 px-6 text-center space-y-2 bg-cover bg-center w-screen relative left-1/2 -translate-x-1/2" style={{ backgroundImage: `url(${calendarBg})` }} data-testid="card-today-calendar-desktop">
@@ -339,7 +335,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
       {/* Featured Events Hero */}
       {!eventsLoading && sringeriEvents.length > 0 && (
         <div className="px-4 lg:px-6" data-testid="section-featured-events">
@@ -475,7 +470,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
       <div className="flex flex-col lg:grid lg:grid-cols-12 gap-8 px-4 lg:px-6">
         
         {/* Main Content Column */}
@@ -682,7 +676,6 @@ export default function Home() {
         )}
 
       </div>
-
     </div>
   );
 }
