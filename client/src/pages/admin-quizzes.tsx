@@ -368,6 +368,12 @@ export default function AdminQuizzes() {
           ))}
         </div>
 
+        {questions.length > 0 && (
+          <Button size="sm" variant="outline" onClick={addQuestion} className="w-full" data-testid="button-add-question-bottom">
+            <Plus className="w-4 h-4 mr-1" /> Add Question
+          </Button>
+        )}
+
         {message && (
           <p className={cn("text-sm font-medium text-center", message.includes("success") ? "text-green-600" : "text-red-600")}>{message}</p>
         )}
