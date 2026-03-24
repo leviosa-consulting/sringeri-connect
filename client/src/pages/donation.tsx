@@ -660,6 +660,8 @@ export default function Donation() {
       errors.push("Please enter your pincode.");
     if (donationForm.claim80G === 1 && !donationForm.pan)
       errors.push("PAN number is required for 80G claims.");
+    if (donationForm.claim80G === 1 && donationForm.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(donationForm.pan.trim().toUpperCase()))
+      errors.push("Please enter a valid PAN number (e.g., ABCDE1234F).");
     if (postageOptions.length > 0 && !donationForm.postageId)
       errors.push("Please select a postage option.");
     if (!donationForm.confirmInfo)
