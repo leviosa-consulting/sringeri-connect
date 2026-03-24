@@ -1071,6 +1071,7 @@ export default function Seva() {
         itemNames: cart.map(s => s.deitySevaName),
         amount,
         orderId,
+        ts: Date.now(),
       }));
 
       await loadPaytmScript(mid);
@@ -1231,6 +1232,7 @@ export default function Seva() {
         itemNames: selectedSevasList.map((s: any) => s.name),
         amount,
         orderId,
+        ts: Date.now(),
       }));
 
       await loadPaytmScript(mid);

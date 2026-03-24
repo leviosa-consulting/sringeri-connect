@@ -234,6 +234,7 @@ export default function Fastline() {
         itemNames: selectedSevasList.map((s: any) => s.name),
         amount,
         orderId,
+        ts: Date.now(),
       }));
 
       await loadPaytmScript(mid);

@@ -12,6 +12,7 @@ interface PendingPayment {
   is80G?: boolean;
   roomName?: string;
   reservedDate?: string;
+  ts?: number;
 }
 
 export default function PaymentResult() {
@@ -46,11 +47,11 @@ export default function PaymentResult() {
     if (processedRef.current) return;
     processedRef.current = true;
 
-    if (isSuccess) {
+    if (isSuccess || (!isPending && status)) {
       sessionStorage.removeItem("pendingPayment");
     }
     setProcessed(true);
-  }, [isSuccess]);
+  }, [isSuccess, isPending, status]);
 
   const getReturnPath = () => {
     if (flowType === "fastline") return "/fastline";

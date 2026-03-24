@@ -733,6 +733,7 @@ export default function Donation() {
         amount,
         orderId,
         is80G: donationForm.claim80G === 1,
+        ts: Date.now(),
       }));
 
       await loadPaytmScript(mid);

@@ -326,6 +326,7 @@ export default function Accommodation() {
         orderId,
         roomName,
         reservedDate: reservedDateDisp,
+        ts: Date.now(),
       }));
 
       await loadPaytmScript(mid);
