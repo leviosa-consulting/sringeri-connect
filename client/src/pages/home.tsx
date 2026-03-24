@@ -390,11 +390,6 @@ export default function Home() {
                       <h3 className="font-serif font-bold text-base text-white leading-tight line-clamp-2">
                         {event.title}
                       </h3>
-                      {event.description && (
-                        <p className="text-xs text-white/80 line-clamp-2 leading-relaxed">
-                          {event.description}
-                        </p>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -449,11 +444,6 @@ export default function Home() {
                     <h3 className={`font-serif font-bold text-white leading-tight line-clamp-2 ${idx === 0 ? 'text-xl' : 'text-sm'}`}>
                       {event.title}
                     </h3>
-                    {event.description && (
-                      <p className={`text-white/80 leading-relaxed ${idx === 0 ? 'text-sm line-clamp-2' : 'text-xs line-clamp-1'}`}>
-                        {event.description}
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
