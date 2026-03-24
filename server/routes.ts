@@ -253,6 +253,27 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Valid Karta ID is required" });
       }
 
+      const devoteeRes = await fetch(`${SRINGERI_API_URL}/api/onlineDevotee/${verifiedUid}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      if (devoteeRes.ok) {
+        try {
+          const devText = await devoteeRes.text();
+          const jsonStart = devText.indexOf('{');
+          const devoteeData = jsonStart !== -1 ? JSON.parse(devText.substring(jsonStart)) : JSON.parse(devText);
+          const kartas = Array.isArray(devoteeData?.kartas) ? devoteeData.kartas : [];
+          const ownsKarta = kartas.some((k: { id?: number }) => String(k.id) === String(id));
+          if (!ownsKarta) {
+            return res.status(403).json({ error: "Not authorized to update this karta" });
+          }
+        } catch {
+          console.error("Could not parse onlineDevotee response for karta ownership check");
+        }
+      }
+
       const allowedFields = ["name", "nameK", "city", "rashiId", "gotra", "gotraK", "nakshatraId", "status"];
       const filtered: Record<string, string | number> = {};
       for (const key of allowedFields) {
@@ -1527,6 +1548,27 @@ export async function registerRoutes(
       const { id } = req.params;
       if (!id || isNaN(Number(id))) {
         return res.status(400).json({ error: "Valid Address ID is required" });
+      }
+
+      const devoteeRes = await fetch(`${SRINGERI_API_URL}/api/onlineDevotee/${verifiedUid}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      if (devoteeRes.ok) {
+        try {
+          const devText = await devoteeRes.text();
+          const jsonStart = devText.indexOf('{');
+          const devoteeData = jsonStart !== -1 ? JSON.parse(devText.substring(jsonStart)) : JSON.parse(devText);
+          const addresses = Array.isArray(devoteeData?.addresses) ? devoteeData.addresses : [];
+          const ownsAddr = addresses.some((a: { id?: number }) => String(a.id) === String(id));
+          if (!ownsAddr) {
+            return res.status(403).json({ error: "Not authorized to update this address" });
+          }
+        } catch {
+          console.error("Could not parse onlineDevotee response for address ownership check");
+        }
       }
 
       const allowedFields = ["addresseeName", "addressLine1", "addressLine2", "landmark", "city", "state", "country", "pincode", "status", "alternatePhone"];
