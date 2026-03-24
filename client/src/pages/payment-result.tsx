@@ -19,11 +19,14 @@ export default function PaymentResult() {
   const [, setLocation] = useLocation();
   const [processed, setProcessed] = useState(false);
   const processedRef = useRef(false);
+  const [checking, setChecking] = useState(false);
+  const [liveStatus, setLiveStatus] = useState("");
+  const [liveTxnId, setLiveTxnId] = useState("");
 
   const params = new URLSearchParams(window.location.search);
   const orderId = params.get("orderId") || "";
-  const status = params.get("status") || "";
-  const txnId = params.get("txnId") || "";
+  const status = liveStatus || params.get("status") || "";
+  const txnId = liveTxnId || params.get("txnId") || "";
   const amount = params.get("amount") || "";
   const respMsg = params.get("respMsg") || "";
   const paymentMode = params.get("paymentMode") || "";
@@ -35,7 +38,15 @@ export default function PaymentResult() {
   const pendingPaymentRaw = sessionStorage.getItem("pendingPayment");
   let pendingPayment: PendingPayment | null = null;
   try {
-    if (pendingPaymentRaw) pendingPayment = JSON.parse(pendingPaymentRaw);
+    if (pendingPaymentRaw) {
+      const parsed = JSON.parse(pendingPaymentRaw);
+      const THIRTY_MIN = 30 * 60 * 1000;
+      if (parsed.ts && Date.now() - parsed.ts > THIRTY_MIN) {
+        sessionStorage.removeItem("pendingPayment");
+      } else {
+        pendingPayment = parsed;
+      }
+    }
   } catch {}
 
   const flowType = pendingPayment?.flowType || "";
@@ -52,6 +63,31 @@ export default function PaymentResult() {
     }
     setProcessed(true);
   }, [isSuccess, isPending, status]);
+
+  const checkStatus = async () => {
+    if (!orderId || checking) return;
+    setChecking(true);
+    try {
+      const res = await fetch("/api/verifyPaytmTransaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const resultStatus = data.body?.resultInfo?.resultStatus;
+        if (resultStatus === "TXN_SUCCESS") {
+          setLiveStatus("TXN_SUCCESS");
+          setLiveTxnId(data.body?.txnId || "");
+          sessionStorage.removeItem("pendingPayment");
+        } else if (resultStatus === "TXN_FAILURE") {
+          setLiveStatus("TXN_FAILURE");
+          sessionStorage.removeItem("pendingPayment");
+        }
+      }
+    } catch {}
+    setChecking(false);
+  };
 
   const getReturnPath = () => {
     if (flowType === "fastline") return "/fastline";
@@ -190,9 +226,23 @@ export default function PaymentResult() {
           )}
 
           {isPending && (
-            <p className="text-xs text-center text-yellow-600">
-              Your payment is being processed. Please check back later or contact support if the status doesn't update.
-            </p>
+            <div className="text-center space-y-2">
+              <p className="text-xs text-yellow-600">
+                Your payment is being processed. Please check back later or contact support if the status doesn't update.
+              </p>
+              {orderId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={checkStatus}
+                  disabled={checking}
+                  data-testid="button-check-status"
+                >
+                  {checking ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                  {checking ? "Checking..." : "Check Status"}
+                </Button>
+              )}
+            </div>
           )}
 
           <div className="flex gap-2 pt-2">
