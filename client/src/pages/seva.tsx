@@ -1267,9 +1267,9 @@ export default function Seva() {
     if (cartPaymentSuccess && cartAckData) {
       return (
         <div className="min-h-screen bg-[#F7F2EC]" data-testid="seva-cart-ack">
-          <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+          <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
             <div className="flex items-center gap-3">
-              <Star className="h-7 w-7" />
+              <BookCopy className="h-7 w-7" />
               <div>
                 <h1 className="text-xl font-serif font-bold">Seva Booking</h1>
                 <p className="text-sm opacity-80">Booking Confirmed</p>
@@ -1326,7 +1326,7 @@ export default function Seva() {
 
     return (
       <div className="min-h-screen bg-[#F7F2EC] pb-24" data-testid="seva-payee">
-        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+        <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
           <button
             onClick={() => { setStep("review"); setValidationErrors([]); }}
             className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
@@ -1429,7 +1429,7 @@ export default function Seva() {
   if (step === "review" && cart.length > 0) {
     return (
       <div className="min-h-screen bg-[#F7F2EC] pb-24" data-testid="seva-review">
-        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+        <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
           <button
             onClick={() => { setStep("select"); setValidationErrors([]); }}
             className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
@@ -1496,7 +1496,7 @@ export default function Seva() {
   if (step === "address") {
     return (
       <div className="min-h-screen bg-[#F7F2EC] pb-24" data-testid="seva-address">
-        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+        <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
           <button onClick={() => { setStep("karta"); setValidationErrors([]); }}
             className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3" data-testid="button-back-address">
             <ArrowLeft className="h-4 w-4" /> Back
@@ -1621,7 +1621,7 @@ export default function Seva() {
   if (step === "karta") {
     return (
       <div className="min-h-screen bg-[#F7F2EC] pb-24" data-testid="seva-karta">
-        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+        <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
           <button onClick={() => { setStep("select"); setValidationErrors([]); }}
             className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3" data-testid="button-back-karta">
             <ArrowLeft className="h-4 w-4" /> Back
@@ -1773,7 +1773,7 @@ export default function Seva() {
     if (flPaymentSuccess && flAckData) {
       return (
         <div className="min-h-screen bg-[#F7F2EC]" data-testid="seva-fastline-ack">
-          <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+          <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
             <div className="flex items-center gap-3">
               <Zap className="h-7 w-7" />
               <div>
@@ -1839,7 +1839,7 @@ export default function Seva() {
 
     return (
       <div className="min-h-screen bg-[#F7F2EC] pb-24" data-testid="seva-fastline">
-        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+        <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
           <button onClick={() => { setStep("home"); setSelectedSevaType(null); resetSevaForm(); }}
             className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3" data-testid="button-back-fl">
             <ArrowLeft className="h-4 w-4" /> Back
@@ -2021,7 +2021,7 @@ export default function Seva() {
   if (step === "select" && (selectedSevaType?.id === 2 || selectedSevaType?.id === 3)) {
     return (
       <div className="min-h-screen bg-[#F7F2EC] pb-24" data-testid="seva-select">
-        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+        <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
           <button onClick={() => {
             if (cart.length > 0) { setStep("review"); }
             else { setStep("home"); setSelectedSevaType(null); resetSevaForm(); }
@@ -2636,16 +2636,19 @@ export default function Seva() {
           </div>
         </div>
       )}
-      <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
-        <button onClick={() => navigate("/home")}
-          className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3" data-testid="button-back-home">
-          <ArrowLeft className="h-4 w-4" /> Home
-        </button>
-        <div className="flex items-center gap-3">
-          <Star className="h-7 w-7" />
-          <div>
-            <h1 className="text-xl font-serif font-bold" data-testid="text-seva-title">Seva Booking</h1>
-            <p className="text-sm opacity-80">Book sevas at Sri Sringeri Sharada Peetham</p>
+      <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10" />
+        <div className="relative z-10">
+          <button onClick={() => navigate("/home")}
+            className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3" data-testid="button-back-home">
+            <ArrowLeft className="h-4 w-4" /> Home
+          </button>
+          <div className="flex items-center gap-3">
+            <BookCopy className="h-7 w-7" />
+            <div>
+              <h1 className="text-xl font-serif font-bold" data-testid="text-seva-title">Seva Booking</h1>
+              <p className="text-sm opacity-80">Book sevas at Sri Sringeri Sharada Peetham</p>
+            </div>
           </div>
         </div>
       </div>

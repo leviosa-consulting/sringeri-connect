@@ -741,7 +741,7 @@ export default function Donation() {
   if (paymentSuccess && ackData) {
     return (
       <div className="min-h-screen bg-[#F7F2EC]" data-testid="donation-ack">
-        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+        <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
           <div className="max-w-2xl mx-auto flex justify-center">
             <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
           </div>
@@ -811,7 +811,7 @@ export default function Donation() {
   if (step === "payee") {
     return (
       <div className="min-h-screen bg-[#F7F2EC] pb-24">
-        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+        <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
           <button
             onClick={() => { setStep("review"); setValidationErrors([]); }}
             className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
@@ -1132,7 +1132,7 @@ export default function Donation() {
   if (step === "review") {
     return (
       <div className="min-h-screen bg-[#F7F2EC] pb-24">
-        <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
+        <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
           <button
             onClick={() => setStep("select")}
             className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
@@ -1258,20 +1258,23 @@ export default function Donation() {
           </div>
         </div>
       )}
-      <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
-        <button
-          onClick={() => navigate("/home")}
-          className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
-          data-testid="button-back-home"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </button>
-        <div className="flex items-center gap-3">
-          <Heart className="h-7 w-7" />
-          <div>
-            <h1 className="text-xl font-serif font-bold" data-testid="text-page-title">Make a Donation</h1>
-            <p className="text-sm opacity-80">Sri Sringeri Sharada Peetham</p>
+      <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10" />
+        <div className="relative z-10">
+          <button
+            onClick={() => navigate("/home")}
+            className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
+            data-testid="button-back-home"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
+          <div className="flex items-center gap-3">
+            <HandHeart className="h-7 w-7" />
+            <div>
+              <h1 className="text-xl font-serif font-bold" data-testid="text-page-title">Make a Donation</h1>
+              <p className="text-sm opacity-80">Sri Sringeri Sharada Peetham</p>
+            </div>
           </div>
         </div>
       </div>
