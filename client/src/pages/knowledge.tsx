@@ -381,7 +381,7 @@ export default function Knowledge() {
           className={cn("flex-1 py-2.5 text-xs font-semibold rounded-lg transition-colors", tab === "quiz" ? "bg-primary text-white" : "bg-muted text-muted-foreground")}
           data-testid="tab-quiz"
         >
-          {activeQuizId ? "Quiz" : "Today's Quiz"}
+          {activeQuizId ? "Quiz" : "Latest Quiz"}
         </button>
         <button
           onClick={() => setTab("past")}
