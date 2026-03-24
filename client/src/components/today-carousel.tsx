@@ -344,13 +344,14 @@ function PanchangaSlide({ todayDetails, formattedDate }: { todayDetails: TodayDe
 
       <div className="mt-auto pt-3 text-center">
         <a
-          href="https://sandhyakala.vercel.app"
+          href="https://sringeri-panchangam.vercel.app/"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-primary font-medium hover:underline"
-          data-testid="link-sandhya-kala-carousel"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-primary to-orange-500 text-white text-sm font-semibold shadow-lg shadow-primary/25 hover:shadow-xl active:scale-95 transition-all"
+          data-testid="link-panchanga-carousel"
         >
-          Sandhya Kala Details →
+          Complete Panchanga
+          <ArrowRight className="w-4 h-4" />
         </a>
       </div>
     </div>
@@ -423,11 +424,11 @@ function StotraSlide({ stotra }: { stotra: Stotra | null }) {
         href={stotra.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-primary to-orange-500 text-white text-sm font-semibold shadow-lg shadow-primary/25 hover:shadow-xl active:scale-95 transition-all"
         data-testid="link-full-stotra"
       >
         Read on sringeri.net
-        <ArrowRight className="w-3.5 h-3.5" />
+        <ArrowRight className="w-4 h-4" />
       </a>
     </div>
   );
@@ -527,11 +528,11 @@ function ArticleSlide({ article }: { article: Article | null }) {
         href={article.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-primary to-orange-500 text-white text-sm font-semibold shadow-lg shadow-primary/25 hover:shadow-xl active:scale-95 transition-all"
         data-testid="link-article"
       >
         Read on sringeri.net
-        <ArrowRight className="w-3.5 h-3.5" />
+        <ArrowRight className="w-4 h-4" />
       </a>
     </div>
   );
