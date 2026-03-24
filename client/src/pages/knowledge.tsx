@@ -469,7 +469,7 @@ export default function Knowledge() {
                   data-testid="button-back-to-past"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Back to Past Quizzes
+                  Back to More Quizzes
                 </button>
               )}
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 space-y-2">
@@ -515,7 +515,7 @@ export default function Knowledge() {
                   data-testid="button-back-to-past"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Back to Past Quizzes
+                  Back to More Quizzes
                 </button>
               )}
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 space-y-1">
