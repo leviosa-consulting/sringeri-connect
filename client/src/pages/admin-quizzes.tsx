@@ -160,7 +160,7 @@ export default function AdminQuizzes() {
   const addQuestion = () => {
     setQuestions([...questions, {
       questionText: "",
-      options: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }],
+      options: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }],
       correctCount: 1,
       sortOrder: questions.length,
     }]);
