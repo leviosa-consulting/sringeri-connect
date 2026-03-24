@@ -3042,7 +3042,14 @@ export async function registerRoutes(
       const uid = await getFirebaseUid(req);
       if (!uid) return res.status(401).json({ error: "Authentication required" });
       const today = getISTDate();
-      const quiz = await storage.getQuizByDate(today);
+      let quiz = await storage.getQuizByDate(today);
+      if (!quiz) {
+        const allQuizzes = await storage.listQuizzes();
+        const pastActive = allQuizzes
+          .filter(q => q.isActive && q.publishDate <= today)
+          .sort((a, b) => b.publishDate.localeCompare(a.publishDate));
+        quiz = pastActive[0] || null;
+      }
       if (!quiz) return res.json(null);
 
       const lockCheck = await checkGroupLock(quiz, uid);
