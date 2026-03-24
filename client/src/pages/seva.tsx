@@ -16,6 +16,7 @@ import { useLocation } from "wouter";
 import {
   ArrowLeft,
   ArrowRight,
+  BookCopy,
   Check,
   ChevronDown,
   ChevronUp,
@@ -2616,8 +2617,8 @@ export default function Seva() {
     <div className="min-h-screen bg-[#F7F2EC] pb-24" data-testid="seva-home">
       <div className="fixed inset-0 z-50 bg-[#F7F2EC]/95 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center" data-testid="booking-placeholder-overlay">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-            <Star className="h-8 w-8 text-primary" />
+          <div className="w-16 h-16 mx-auto rounded-full bg-orange-100 flex items-center justify-center">
+            <BookCopy className="h-8 w-8 text-orange-600" />
           </div>
           <h2 className="text-xl font-serif font-bold text-[#8B4513]">Seva Booking</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">

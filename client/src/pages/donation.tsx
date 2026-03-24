@@ -1239,10 +1239,10 @@ export default function Donation() {
     <div className="min-h-screen bg-[#F7F2EC] pb-24">
       <div className="fixed inset-0 z-50 bg-[#F7F2EC]/95 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center" data-testid="booking-placeholder-overlay">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-            <Heart className="h-8 w-8 text-primary" />
+          <div className="w-16 h-16 mx-auto rounded-full bg-red-100 flex items-center justify-center">
+            <HandHeart className="h-8 w-8 text-red-600" />
           </div>
-          <h2 className="text-xl font-serif font-bold text-[#8B4513]">Online Donations</h2>
+          <h2 className="text-xl font-serif font-bold text-[#8B4513]">Donation (Kanike)</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Bookings available from midnight of 25th March 2026
           </p>
