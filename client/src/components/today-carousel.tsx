@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Sun, Sunrise, Sunset, Calendar, BookOpen, Quote, Image, Sparkles, BookOpenCheck, ArrowRight } from "lucide-react";
+import { Calendar, BookOpen, Quote, Sparkles, BookOpenCheck, ArrowRight, Play, Video } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -26,12 +26,22 @@ interface TodayQuiz {
   subtitle?: string | null;
 }
 
+interface YouTubeVideo {
+  videoId: string;
+  title: string;
+  published: string;
+  date: string | null;
+  thumbnail: string;
+  url: string;
+}
+
 interface TodayCarouselProps {
   open: boolean;
   onClose: () => void;
   todayDetails: TodayDetails | null;
   formattedDate: string;
   todayQuiz?: TodayQuiz | null;
+  youtubeVideos?: YouTubeVideo[];
 }
 
 const SHLOKAS = [
@@ -67,35 +77,19 @@ const SHLOKAS = [
   },
 ];
 
-const QUOTES = [
-  {
-    text: "The Guru is the means of realisation of the Absolute. This is the definite conclusion of all the scriptures. One must seek a Guru for Self-realisation.",
-    attribution: "Jagadguru Sri Adi Shankaracharya",
-  },
-  {
-    text: "Devotion to God and devotion to the Guru are one and the same. Through the grace of the Guru alone can one attain the highest knowledge.",
-    attribution: "Jagadguru Sri Bharati Tirtha Mahaswamiji",
-  },
-  {
-    text: "Let a man lift himself by himself; let him not degrade himself; for the Self alone is the friend of the self, and the Self alone is the enemy of the self.",
-    attribution: "Bhagavad Gita 6.5",
-  },
-  {
-    text: "When the mind is pure, joy follows like a shadow that never leaves. Cultivate the habit of daily prayer and contemplation.",
-    attribution: "Jagadguru Sri Abhinava Vidyatirtha Mahaswamiji",
-  },
-  {
-    text: "As the sun does not wait for anyone but rises at its appointed time, so too the spiritual aspirant must be regular in their practice without depending on external conditions.",
-    attribution: "Jagadguru Sri Chandrashekhara Bharati Mahaswamiji",
-  },
-];
-
-const DARSHAN_IMAGES = [
-  "https://files.sringeri.net/assets/images/events/69a178e7f14f43.66954692.jpg",
-  "https://files.sringeri.net/assets/images/events/6996bdf0407505.79408729.jpg",
-  "https://files.sringeri.net/assets/images/events/698a98dae00e95.44226412.jpg",
-  "https://files.sringeri.net/assets/images/events/6989c72ab7ad59.90272925.jpg",
-  "https://files.sringeri.net/assets/images/events/698962c9c20cd2.80057319.jpg",
+const GURU_VANI = [
+  "Peace, contentment and joy is ingrained in every one of us. The Guru alone can unlock this treasure for us.",
+  "Do not be disheartened by the spiritual darkness in the world around you. If you feel earnestly the urgency of escaping from the cycle of birth and death, seek your Guru.",
+  "When the Sun sets and the darkness of night envelops the land, you don't stop your work, do you? Don't you light a lamp and get on with your normal activities? Likewise, ignore the spiritual gloom around and seek out a guiding torch, the realized Guru, who is waiting to help you.",
+  "Surrender yourself entirely to a Guru. He will lead you to the goal.",
+  "Even all-knowing Avatara Purushas sought out a Guru to conform to tradition and to convey the importance of the Guru. Sri Rama, Sri Krishna and Sri Adi Shankara Bhagavatpada sought Sri Vasishtha, Sri Sandeepani, and Sri Govindapada respectively.",
+  "The Guru works only for the benefit of the world. He will never have any sense of doership or enjoyership. Hence a seeker should approach Him alone for guidance.",
+  "A Guru is necessary to prescribe the particular course of action, sanctioned by the Shastras and suited to the disciple's qualification.",
+  "Even a second of one's life can never be obtained again. If the entire life as a human is spent solely on sense pleasures, what greater loss can there ever be?",
+  "The Lord has given a human birth. Do not wail when death is at the doorstep. Use the human birth well and achieve its purpose by taking to the spiritual path early.",
+  "Do not waste time in frivolous pursuits. Orient yourself, under the guidance of the Guru, towards the goal of life elucidated in the Shastras.",
+  "Birth as a human being is because of antecedent merits. Even then, following the established practices of one's elders and conducting oneself along the Vedic path are rare indeed. Make good use of such a precious human birth and attain Shreyas (greater good).",
+  "Make the best use of this body by doing Seva to the Guru with a focussed mind and in a spirit of surrender.",
 ];
 
 function getDailyIndex(arrayLength: number, offset = 0): number {
@@ -105,25 +99,21 @@ function getDailyIndex(arrayLength: number, offset = 0): number {
   return (dayIndex + offset) % arrayLength;
 }
 
-const BASE_SLIDE_LABELS = ["Panchanga", "Occasion", "Shloka", "Quote", "Darshan"];
-const BASE_SLIDE_ICONS = [Calendar, Sparkles, BookOpen, Quote, Image];
-
 const SLIDE_DURATION = 5000;
 
-export default function TodayCarousel({ open, onClose, todayDetails, formattedDate, todayQuiz }: TodayCarouselProps) {
+export default function TodayCarousel({ open, onClose, todayDetails, formattedDate, todayQuiz, youtubeVideos = [] }: TodayCarouselProps) {
   const hasQuiz = !!todayQuiz;
   const hasOccasion = !!(todayDetails?.occasionK || todayDetails?.occasion);
   const slideLabels: string[] = [];
-  const slideIcons: typeof BASE_SLIDE_ICONS = [];
+  const slideIcons: (typeof Calendar)[] = [];
   slideLabels.push("Panchanga"); slideIcons.push(Calendar);
   if (hasOccasion) { slideLabels.push("Occasion"); slideIcons.push(Sparkles); }
-  slideLabels.push("Shloka"); slideIcons.push(BookOpen);
-  slideLabels.push("Quote"); slideIcons.push(Quote);
-  slideLabels.push("Darshan"); slideIcons.push(Image);
+  slideLabels.push("Stotra"); slideIcons.push(BookOpen);
+  slideLabels.push("Guru Vani"); slideIcons.push(Quote);
+  slideLabels.push("Anugraha"); slideIcons.push(Video);
   if (hasQuiz) { slideLabels.push("Quiz"); slideIcons.push(BookOpenCheck); }
   const SLIDE_LABELS = slideLabels;
   const SLIDE_ICONS = slideIcons;
-  const slideCount = SLIDE_LABELS.length;
   const [api, setApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -131,6 +121,8 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
   const rafRef = useRef<number>(0);
   const startTimeRef = useRef<number>(0);
   const pausedAtRef = useRef<number>(0);
+  const pointerDownTimeRef = useRef<number>(0);
+  const pointerDownXRef = useRef<number>(0);
 
   const onSelect = useCallback(() => {
     if (!api) return;
@@ -176,23 +168,39 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [open, api, isPaused, activeIndex]);
 
-  const handlePointerDown = useCallback(() => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    pointerDownTimeRef.current = performance.now();
+    pointerDownXRef.current = e.clientX;
     pausedAtRef.current = performance.now() - startTimeRef.current;
     setIsPaused(true);
   }, []);
-  const handlePointerUp = useCallback(() => {
-    setTimeout(() => setIsPaused(false), 300);
+
+  const resumeAutoplay = useCallback(() => {
+    setIsPaused(false);
   }, []);
 
-  useEffect(() => {
-    if (!api) return;
-    api.on("pointerDown", handlePointerDown);
-    api.on("pointerUp", handlePointerUp);
-    return () => {
-      api.off("pointerDown", handlePointerDown);
-      api.off("pointerUp", handlePointerUp);
-    };
-  }, [api, handlePointerDown, handlePointerUp]);
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    const holdDuration = performance.now() - pointerDownTimeRef.current;
+    const dx = Math.abs(e.clientX - pointerDownXRef.current);
+
+    const target = e.target as HTMLElement;
+    const isInteractive = target.closest('a, button, [role="button"]');
+
+    if (!isInteractive && holdDuration < 300 && dx < 10 && api) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const relX = (e.clientX - rect.left) / rect.width;
+      if (relX < 0.4) {
+        api.scrollPrev();
+      } else if (relX > 0.6) {
+        api.scrollNext();
+      }
+    }
+    resumeAutoplay();
+  }, [api, resumeAutoplay]);
+
+  const handlePointerCancel = useCallback(() => {
+    resumeAutoplay();
+  }, [resumeAutoplay]);
 
   useEffect(() => {
     if (open && api) {
@@ -215,8 +223,8 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
   }, [api]);
 
   const todayShloka = SHLOKAS[getDailyIndex(SHLOKAS.length)];
-  const todayQuote = QUOTES[getDailyIndex(QUOTES.length, 3)];
-  const todayImage = DARSHAN_IMAGES[getDailyIndex(DARSHAN_IMAGES.length, 1)];
+  const todayGuruVani = GURU_VANI[getDailyIndex(GURU_VANI.length, 3)];
+  const latestVideo = youtubeVideos.length > 0 ? youtubeVideos[0] : null;
 
   return (
     <Sheet open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
@@ -243,7 +251,7 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
               key={label}
               onClick={() => goToSlide(idx)}
               className="flex-1 h-[3px] rounded-full bg-foreground/10 overflow-hidden relative"
-              data-testid={`progress-today-${label.toLowerCase()}`}
+              data-testid={`progress-today-${label.toLowerCase().replace(/\s+/g, '-')}`}
             >
               <div
                 className="absolute inset-y-0 left-0 bg-primary rounded-full"
@@ -260,7 +268,13 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
           ))}
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div
+          className="flex-1 min-h-0 overflow-hidden relative"
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          onPointerLeave={handlePointerCancel}
+        >
           <Carousel
             opts={{ loop: true, skipSnaps: false }}
             setApi={setApi}
@@ -276,13 +290,13 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
                 </CarouselItem>
               )}
               <CarouselItem className="pl-0 px-5">
-                <ShlokaSlide shloka={todayShloka} />
+                <StotraSlide shloka={todayShloka} />
               </CarouselItem>
               <CarouselItem className="pl-0 px-5">
-                <QuoteSlide quote={todayQuote} />
+                <GuruVaniSlide quote={todayGuruVani} />
               </CarouselItem>
               <CarouselItem className="pl-0 px-5">
-                <DarshanSlide imageUrl={todayImage} />
+                <JagadguruAnugrahaSlide video={latestVideo} />
               </CarouselItem>
               {todayQuiz && (
                 <CarouselItem className="pl-0 px-5">
@@ -375,10 +389,10 @@ function OccasionSlide({ todayDetails, formattedDate }: { todayDetails: TodayDet
   );
 }
 
-function ShlokaSlide({ shloka }: { shloka: typeof SHLOKAS[0] }) {
+function StotraSlide({ shloka }: { shloka: typeof SHLOKAS[0] }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-shloka">
-      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-4">Shloka of the Day</div>
+    <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-stotra">
+      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-4">Stotra of the Day</div>
 
       <div className="relative px-4 mb-4">
         <div className="absolute -top-3 left-2 text-5xl text-primary/15 font-serif leading-none">"</div>
@@ -398,30 +412,41 @@ function ShlokaSlide({ shloka }: { shloka: typeof SHLOKAS[0] }) {
         {shloka.meaning}
       </div>
 
-      <div className="text-[10px] text-foreground/40 font-medium uppercase tracking-wider">
+      <div className="text-[10px] text-foreground/40 font-medium uppercase tracking-wider mb-3">
         {shloka.source}
       </div>
+
+      <a
+        href="https://www.sringeri.net/stotras"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+        data-testid="link-full-stotra"
+      >
+        View Full Stotra
+        <ArrowRight className="w-3 h-3" />
+      </a>
     </div>
   );
 }
 
-function QuoteSlide({ quote }: { quote: typeof QUOTES[0] }) {
+function GuruVaniSlide({ quote }: { quote: string }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-quote">
-      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-6">Quote of the Day</div>
+    <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-guru-vani">
+      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-6">Guru Vani</div>
 
       <div className="relative px-2">
         <div className="absolute -top-4 -left-1 text-6xl text-primary/10 font-serif leading-none select-none">"</div>
         <p className="text-lg font-serif text-foreground leading-relaxed italic px-4">
-          {quote.text}
+          {quote}
         </p>
         <div className="absolute -bottom-6 -right-1 text-6xl text-primary/10 font-serif leading-none rotate-180 select-none">"</div>
       </div>
 
       <div className="h-px w-16 bg-gradient-to-r from-transparent via-primary/30 to-transparent my-5" />
 
-      <div className="text-xs text-foreground/50 font-medium">
-        — {quote.attribution}
+      <div className="text-xs text-foreground/50 font-medium px-4 leading-relaxed">
+        — Jagadguru Shankaracharya Sri Sri Bharati Tirtha Mahasannidhanam
       </div>
     </div>
   );
@@ -463,50 +488,48 @@ function QuizSlide({ quiz, onClose }: { quiz: TodayQuiz; onClose: () => void }) 
   );
 }
 
-function DarshanSlide({ imageUrl }: { imageUrl: string }) {
-  const sandhyaTimes = [
-    { label: "Prātaḥ Sandhyā", labelKn: "ಪ್ರಾತಃ ಸಂಧ್ಯಾ", time: "5:45 AM", icon: Sunrise },
-    { label: "Mādhyāhnika", labelKn: "ಮಾಧ್ಯಾಹ್ನಿಕ", time: "12:15 PM", icon: Sun },
-    { label: "Sāyam Sandhyā", labelKn: "ಸಾಯಂ ಸಂಧ್ಯಾ", time: "6:30 PM", icon: Sunset },
-  ];
+function JagadguruAnugrahaSlide({ video }: { video: YouTubeVideo | null }) {
+  if (!video) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-anugraha">
+        <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-4">Jagadguru Anugraha</div>
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-4">
+          <Video className="w-8 h-8 text-primary" />
+        </div>
+        <p className="text-sm text-foreground/60 px-6">Latest videos from Sri Sharada Peetham will appear here.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-full pb-2" data-testid="slide-darshan">
-      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-3 text-center">Darshan & Sandhya Kala</div>
+    <div className="flex flex-col h-full pb-2" data-testid="slide-anugraha">
+      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-3 text-center">Jagadguru Anugraha</div>
 
-      <div className="relative rounded-2xl overflow-hidden mb-4 h-[180px]">
+      <a
+        href={video.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="relative rounded-2xl overflow-hidden flex-1 min-h-0 group"
+        data-testid="link-anugraha-video"
+      >
         <img
-          src={imageUrl}
-          alt="Sringeri Temple"
+          src={`https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`}
+          alt={video.title}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-        <div className="absolute bottom-3 left-3 right-3">
-          <div className="text-white text-sm font-serif font-bold">Sri Sharada Peetham, Sringeri</div>
-          <div className="text-white/70 text-xs">Image of the Day</div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+            <Play className="w-8 h-8 text-primary ml-1" fill="currentColor" />
+          </div>
         </div>
-      </div>
-
-      <div className="bg-white/60 rounded-xl border border-primary/8 p-4 space-y-3">
-        <div className="text-xs font-semibold text-center text-foreground/60 uppercase tracking-wider mb-2">Prayer Times</div>
-        {sandhyaTimes.map((st) => {
-          const Icon = st.icon;
-          return (
-            <div key={st.label} className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Icon className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-foreground">{st.label}</div>
-                  <div className="text-[10px] text-foreground/40" style={{ fontFamily: "'Noto Serif Kannada', serif" }}>{st.labelKn}</div>
-                </div>
-              </div>
-              <div className="text-sm font-semibold text-foreground">{st.time}</div>
-            </div>
-          );
-        })}
-      </div>
+        <div className="absolute bottom-4 left-4 right-4">
+          <h3 className="text-white text-sm font-serif font-bold leading-snug line-clamp-2 mb-1">
+            {video.title}
+          </h3>
+          <div className="text-white/60 text-xs">Watch on YouTube</div>
+        </div>
+      </a>
     </div>
   );
 }
