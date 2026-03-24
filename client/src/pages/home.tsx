@@ -225,11 +225,9 @@ export default function Home() {
               href="https://sandhyakala.vercel.app" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-foreground/70 hover:underline font-medium"
+              className="hover:underline text-[#443b31] font-bold"
               data-testid="link-detailed-panchanga"
-            >
-              Sandhya Kala Details →
-            </a>
+            >See Complete Panchanga →</a>
           </div>
 
         </div>
