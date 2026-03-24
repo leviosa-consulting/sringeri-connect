@@ -257,7 +257,6 @@ export default function Home() {
         todayDetails={todayDetails}
         formattedDate={formatTodayDate()}
         todayQuiz={todayQuiz}
-        youtubeVideos={youtubeVideos}
       />
 
       {/* Desktop Welcome Banner */}

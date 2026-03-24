@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Calendar, BookOpen, Quote, Sparkles, BookOpenCheck, ArrowRight, Play, Video } from "lucide-react";
+import { Calendar, BookOpen, Quote, Sparkles, BookOpenCheck, ArrowRight, Landmark } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -26,12 +26,11 @@ interface TodayQuiz {
   subtitle?: string | null;
 }
 
-interface YouTubeVideo {
-  videoId: string;
+interface Article {
+  id: string;
   title: string;
-  published: string;
-  date: string | null;
-  thumbnail: string;
+  description: string;
+  link: string;
   url: string;
 }
 
@@ -51,7 +50,6 @@ interface TodayCarouselProps {
   todayDetails: TodayDetails | null;
   formattedDate: string;
   todayQuiz?: TodayQuiz | null;
-  youtubeVideos?: YouTubeVideo[];
 }
 
 const GURU_VANI = [
@@ -78,16 +76,21 @@ function getDailyIndex(arrayLength: number, offset = 0): number {
 
 const SLIDE_DURATION = 5000;
 
-export default function TodayCarousel({ open, onClose, todayDetails, formattedDate, todayQuiz, youtubeVideos = [] }: TodayCarouselProps) {
+export default function TodayCarousel({ open, onClose, todayDetails, formattedDate, todayQuiz }: TodayCarouselProps) {
   const [stotra, setStotra] = useState<Stotra | null>(null);
-  const stotraFetchedRef = useRef(false);
+  const [article, setArticle] = useState<Article | null>(null);
+  const dataFetchedRef = useRef(false);
 
   useEffect(() => {
-    if (open && !stotraFetchedRef.current) {
-      stotraFetchedRef.current = true;
+    if (open && !dataFetchedRef.current) {
+      dataFetchedRef.current = true;
       fetch("/api/stotra-of-the-day")
         .then((r) => r.ok ? r.json() : null)
         .then((data) => { if (data?.stotra) setStotra(data.stotra); })
+        .catch(() => {});
+      fetch("/api/article-of-the-day")
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => { if (data?.article) setArticle(data.article); })
         .catch(() => {});
     }
   }, [open]);
@@ -98,9 +101,9 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
   const slideIcons: (typeof Calendar)[] = [];
   slideLabels.push("Panchanga"); slideIcons.push(Calendar);
   if (hasOccasion) { slideLabels.push("Occasion"); slideIcons.push(Sparkles); }
-  slideLabels.push("Stotra"); slideIcons.push(BookOpen);
   slideLabels.push("Guru Vani"); slideIcons.push(Quote);
-  slideLabels.push("Anugraha"); slideIcons.push(Video);
+  slideLabels.push("Stotra"); slideIcons.push(BookOpen);
+  slideLabels.push("Article"); slideIcons.push(Landmark);
   if (hasQuiz) { slideLabels.push("Quiz"); slideIcons.push(BookOpenCheck); }
   const SLIDE_LABELS = slideLabels;
   const SLIDE_ICONS = slideIcons;
@@ -213,7 +216,6 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
   }, [api]);
 
   const todayGuruVani = GURU_VANI[getDailyIndex(GURU_VANI.length, 3)];
-  const latestVideo = youtubeVideos.length > 0 ? youtubeVideos[0] : null;
 
   return (
     <Sheet open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
@@ -279,13 +281,13 @@ export default function TodayCarousel({ open, onClose, todayDetails, formattedDa
                 </CarouselItem>
               )}
               <CarouselItem className="pl-0 px-5">
-                <StotraSlide stotra={stotra} />
-              </CarouselItem>
-              <CarouselItem className="pl-0 px-5">
                 <GuruVaniSlide quote={todayGuruVani} />
               </CarouselItem>
               <CarouselItem className="pl-0 px-5">
-                <JagadguruAnugrahaSlide video={latestVideo} />
+                <StotraSlide stotra={stotra} />
+              </CarouselItem>
+              <CarouselItem className="pl-0 px-5">
+                <ArticleSlide article={article} />
               </CarouselItem>
               {todayQuiz && (
                 <CarouselItem className="pl-0 px-5">
@@ -489,47 +491,47 @@ function QuizSlide({ quiz, onClose }: { quiz: TodayQuiz; onClose: () => void }) 
   );
 }
 
-function JagadguruAnugrahaSlide({ video }: { video: YouTubeVideo | null }) {
-  if (!video) {
+function ArticleSlide({ article }: { article: Article | null }) {
+  if (!article) {
     return (
-      <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-anugraha">
-        <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-4">Jagadguru Anugraha</div>
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-4">
-          <Video className="w-8 h-8 text-primary" />
-        </div>
-        <p className="text-sm text-foreground/60 px-6">Latest videos from Sri Sharada Peetham will appear here.</p>
+      <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-article">
+        <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-4">Article of the Day</div>
+        <Landmark className="w-10 h-10 text-primary/30 mb-3" />
+        <p className="text-sm text-foreground/50">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full pb-2" data-testid="slide-anugraha">
-      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-3 text-center">Jagadguru Anugraha</div>
+    <div className="flex flex-col items-center justify-center h-full pb-2 text-center" data-testid="slide-article">
+      <div className="text-[10px] font-semibold text-primary uppercase tracking-[0.2em] mb-6">Article of the Day</div>
+
+      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-orange-100 flex items-center justify-center mb-5">
+        <Landmark className="w-8 h-8 text-primary" />
+      </div>
+
+      <h3 className="text-xl font-serif font-bold text-foreground mb-3 px-4 leading-snug" data-testid="text-article-title">
+        {article.title}
+      </h3>
+
+      {article.description && (
+        <>
+          <div className="h-px w-16 bg-gradient-to-r from-transparent via-primary/30 to-transparent my-3" />
+          <p className="text-sm text-foreground/60 px-6 leading-relaxed line-clamp-4 mb-4" data-testid="text-article-description">
+            {article.description}...
+          </p>
+        </>
+      )}
 
       <a
-        href={video.url}
+        href={article.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="relative rounded-2xl overflow-hidden flex-1 min-h-0 group"
-        data-testid="link-anugraha-video"
+        className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
+        data-testid="link-article"
       >
-        <img
-          src={video.thumbnail}
-          alt={video.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-            <Play className="w-8 h-8 text-primary ml-1" fill="currentColor" />
-          </div>
-        </div>
-        <div className="absolute bottom-4 left-4 right-4">
-          <h3 className="text-white text-sm font-serif font-bold leading-snug line-clamp-2 mb-1">
-            {video.title}
-          </h3>
-          <div className="text-white/60 text-xs">Watch on YouTube</div>
-        </div>
+        Read on sringeri.net
+        <ArrowRight className="w-3.5 h-3.5" />
       </a>
     </div>
   );
