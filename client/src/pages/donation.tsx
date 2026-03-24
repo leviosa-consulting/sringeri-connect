@@ -1210,13 +1210,6 @@ export default function Donation() {
                     ₹{formatNumber(totalAmount)}
                   </span>
                 </div>
-                {validationErrors.length > 0 && (
-                  <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                    {validationErrors.map((err, i) => (
-                      <p key={i} className="text-red-600 text-xs" data-testid={`text-cart-error-${i}`}>{err}</p>
-                    ))}
-                  </div>
-                )}
                 <div className="flex gap-3">
                   <Button
                     variant="outline"
@@ -1234,6 +1227,13 @@ export default function Donation() {
                     Proceed to Pay
                   </Button>
                 </div>
+                {validationErrors.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-3">
+                    {validationErrors.map((err, i) => (
+                      <p key={i} className="text-red-600 text-xs" data-testid={`text-cart-error-${i}`}>{err}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}
