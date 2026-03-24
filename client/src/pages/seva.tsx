@@ -2658,22 +2658,27 @@ export default function Seva() {
           <div>
             <h3 className="font-serif font-bold text-sm px-1 mb-3">Select Seva Location</h3>
             <div className="grid grid-cols-2 gap-3">
-              {SEVA_CENTRES.map((centre) => (
-                <button key={centre.id}
-                  onClick={() => setSelectedCentre(centre)}
-                  className="flex flex-col items-center"
-                  data-testid={`button-centre-${centre.id}`}
-                >
-                  <Card className="w-full hover:shadow-md transition-shadow">
-                    <CardContent className="p-4 flex flex-col items-center gap-2">
-                      <div className="rounded-xl w-12 h-12 flex items-center justify-center bg-gradient-to-br from-[#8B4513] to-[#A0522D]">
-                        <MapPin className="h-6 w-6 text-white" />
-                      </div>
-                      <span className="text-sm font-semibold text-center">{centre.name}</span>
-                    </CardContent>
-                  </Card>
-                </button>
-              ))}
+              {SEVA_CENTRES.map((centre) => {
+                const isActive = centre.id === 1;
+                return (
+                  <button key={centre.id}
+                    onClick={() => isActive && setSelectedCentre(centre)}
+                    className={`flex flex-col items-center ${!isActive ? 'cursor-default' : ''}`}
+                    disabled={!isActive}
+                    data-testid={`button-centre-${centre.id}`}
+                  >
+                    <Card className={`w-full transition-shadow ${isActive ? 'hover:shadow-md' : 'opacity-50'}`}>
+                      <CardContent className="p-4 flex flex-col items-center gap-2">
+                        <div className={`rounded-xl w-12 h-12 flex items-center justify-center ${isActive ? 'bg-gradient-to-br from-primary to-primary/80' : 'bg-gray-300'}`}>
+                          <MapPin className="h-6 w-6 text-white" />
+                        </div>
+                        <span className="text-sm font-semibold text-center">{centre.name}</span>
+                        {!isActive && <span className="text-[10px] text-muted-foreground">Coming Soon</span>}
+                      </CardContent>
+                    </Card>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
