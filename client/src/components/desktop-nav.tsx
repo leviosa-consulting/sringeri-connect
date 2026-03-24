@@ -9,11 +9,14 @@ export default function DesktopNav() {
   const [location, setLocation] = useLocation();
   const { logout } = useAuth();
 
+  const isAndroid = /Android/i.test(navigator.userAgent);
+
   const navItems = [
     { icon: Home, label: "Home", path: "/home" },
     { icon: Bell, label: "Updates", path: "/updates" },
-    { icon: Users, label: "Devotee Corner", path: "/devotee" },
-    // { icon: BookOpenCheck, label: "Knowledge", path: "/knowledge" },
+    isAndroid
+      ? { icon: BookOpenCheck, label: "Knowledge Corner", path: "/knowledge" }
+      : { icon: Users, label: "Devotee Corner", path: "/devotee" },
     { icon: User, label: "My Account", path: "/profile" },
   ];
 

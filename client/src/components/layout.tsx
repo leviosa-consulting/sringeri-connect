@@ -14,11 +14,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     window.scrollTo(0, 0);
   }, [location]);
 
+  const isAndroid = /Android/i.test(navigator.userAgent);
+
   const navItems = [
     { icon: Home, label: "Home", path: "/home" },
     { icon: Bell, label: "Updates", path: "/updates" },
-    { icon: Users, label: "Devotee", path: "/devotee" },
-    // { icon: BookOpenCheck, label: "Knowledge", path: "/knowledge" },
+    isAndroid
+      ? { icon: BookOpenCheck, label: "Knowledge", path: "/knowledge" }
+      : { icon: Users, label: "Devotee", path: "/devotee" },
     { icon: User, label: "Account", path: "/profile" },
   ];
 
