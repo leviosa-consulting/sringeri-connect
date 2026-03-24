@@ -758,7 +758,7 @@ export default function Knowledge() {
               >
                 <span className="flex items-center gap-2">
                   <Library className="w-4 h-4 text-primary" />
-                  Past Quizzes ({pastQuizzes.length})
+                  More Quizzes ({pastQuizzes.length})
                 </span>
                 <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", pastExpanded && "rotate-180")} />
               </button>
