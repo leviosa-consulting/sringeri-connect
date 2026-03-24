@@ -121,6 +121,8 @@ interface QuizData {
   episodeNumber?: number | null;
   locked?: boolean;
   lockReason?: string;
+  prerequisiteEpisodeId?: number | null;
+  prerequisiteEpisodeNumber?: number | null;
   questions: QuizQuestion[];
   attempt: { score: number; totalQuestions: number; answers: Record<string, number[]>; completedAt: string } | null;
 }
@@ -148,6 +150,8 @@ interface PastQuizItem {
   episodeNumber?: number | null;
   locked?: boolean;
   lockReason?: string | null;
+  prerequisiteEpisodeId?: number | null;
+  prerequisiteEpisodeNumber?: number | null;
 }
 
 interface UpcomingQuizItem {
@@ -482,7 +486,24 @@ export default function Knowledge() {
                   <Lock className="w-7 h-7 text-orange-500" />
                 </div>
                 <p className="font-medium text-foreground">This episode is locked</p>
-                <p className="text-sm text-muted-foreground">{quiz.lockReason}</p>
+                {quiz.prerequisiteEpisodeId ? (
+                  <p className="text-sm text-muted-foreground">
+                    Complete{" "}
+                    <button
+                      onClick={() => {
+                        setSelectedPastQuizId(quiz.prerequisiteEpisodeId!);
+                        setTab("quiz");
+                      }}
+                      className="text-primary font-semibold underline hover:text-primary/80"
+                      data-testid="link-prerequisite-episode"
+                    >
+                      Episode {quiz.prerequisiteEpisodeNumber}
+                    </button>
+                    {" "}first
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{quiz.lockReason}</p>
+                )}
               </div>
             </div>
           ) : (
@@ -810,7 +831,29 @@ export default function Knowledge() {
                       <h3 className="font-serif font-semibold text-sm truncate">{ep.title}</h3>
                       {ep.subtitle && <p className="text-xs text-muted-foreground truncate">{ep.subtitle}</p>}
                       {ep.lockReason && ep.locked && (
-                        <p className="text-[10px] text-orange-500 mt-0.5">{ep.lockReason}</p>
+                        <p className="text-[10px] text-orange-500 mt-0.5">
+                          {ep.prerequisiteEpisodeId ? (
+                            <>
+                              Complete{" "}
+                              <span
+                                role="link"
+                                tabIndex={0}
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setSelectedPastQuizId(ep.prerequisiteEpisodeId!);
+                                  setViewingGroup(null);
+                                  setGroupEpisodes([]);
+                                  setTab("quiz");
+                                }}
+                                className="underline font-semibold hover:text-orange-600 cursor-pointer"
+                              >
+                                Episode {ep.prerequisiteEpisodeNumber}
+                              </span>
+                              {" "}first
+                            </>
+                          ) : ep.lockReason}
+                        </p>
                       )}
                     </div>
                     <div className="shrink-0 ml-2">
@@ -1007,7 +1050,29 @@ export default function Knowledge() {
                       <h3 className="font-serif font-semibold text-sm truncate">{ep.title}</h3>
                       {ep.subtitle && <p className="text-xs text-muted-foreground truncate">{ep.subtitle}</p>}
                       {ep.lockReason && ep.locked && (
-                        <p className="text-[10px] text-orange-500 mt-0.5">{ep.lockReason}</p>
+                        <p className="text-[10px] text-orange-500 mt-0.5">
+                          {ep.prerequisiteEpisodeId ? (
+                            <>
+                              Complete{" "}
+                              <span
+                                role="link"
+                                tabIndex={0}
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setSelectedPastQuizId(ep.prerequisiteEpisodeId!);
+                                  setViewingGroup(null);
+                                  setGroupEpisodes([]);
+                                  setTab("quiz");
+                                }}
+                                className="underline font-semibold hover:text-orange-600 cursor-pointer"
+                              >
+                                Episode {ep.prerequisiteEpisodeNumber}
+                              </span>
+                              {" "}first
+                            </>
+                          ) : ep.lockReason}
+                        </p>
                       )}
                     </div>
                     <div className="shrink-0 ml-2">

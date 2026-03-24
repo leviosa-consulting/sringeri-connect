@@ -2960,6 +2960,8 @@ export async function registerRoutes(
           totalQuestions: attempt?.totalQuestions ?? null,
           locked: lockCheck.locked || isFuture,
           lockReason: isFuture ? `Available on ${new Date(q.publishDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : lockCheck.reason || null,
+          prerequisiteEpisodeId: lockCheck.prerequisiteEpisodeId ?? null,
+          prerequisiteEpisodeNumber: lockCheck.prerequisiteEpisodeNumber ?? null,
         });
       }
       res.json(results);
@@ -3012,7 +3014,7 @@ export async function registerRoutes(
     }
   });
 
-  async function checkGroupLock(quiz: any, uid: string): Promise<{ locked: boolean; reason?: string }> {
+  async function checkGroupLock(quiz: any, uid: string): Promise<{ locked: boolean; reason?: string; prerequisiteEpisodeId?: number; prerequisiteEpisodeNumber?: number }> {
     if (!quiz.groupName || !quiz.episodeNumber || quiz.episodeNumber <= 1) {
       return { locked: false };
     }
@@ -3023,7 +3025,7 @@ export async function registerRoutes(
     if (!prevEpisode) return { locked: false };
     const prevAttempt = await storage.getAttemptByUserAndQuiz(uid, prevEpisode.id);
     if (!prevAttempt) {
-      return { locked: true, reason: `Complete Episode ${quiz.episodeNumber - 1} first` };
+      return { locked: true, reason: `Complete Episode ${quiz.episodeNumber - 1} first`, prerequisiteEpisodeId: prevEpisode.id, prerequisiteEpisodeNumber: quiz.episodeNumber - 1 };
     }
     return { locked: false };
   }
@@ -3048,6 +3050,8 @@ export async function registerRoutes(
           episodeNumber: quiz.episodeNumber,
           locked: true,
           lockReason: lockCheck.reason,
+          prerequisiteEpisodeId: lockCheck.prerequisiteEpisodeId ?? null,
+          prerequisiteEpisodeNumber: lockCheck.prerequisiteEpisodeNumber ?? null,
           questions: [],
           attempt: null,
         });
@@ -3109,6 +3113,8 @@ export async function registerRoutes(
           episodeNumber: q.episodeNumber,
           locked: lockCheck.locked,
           lockReason: lockCheck.reason || null,
+          prerequisiteEpisodeId: lockCheck.prerequisiteEpisodeId ?? null,
+          prerequisiteEpisodeNumber: lockCheck.prerequisiteEpisodeNumber ?? null,
         });
       }
       res.json(results);
@@ -3145,6 +3151,8 @@ export async function registerRoutes(
           episodeNumber: quiz.episodeNumber,
           locked: true,
           lockReason: lockCheck.reason,
+          prerequisiteEpisodeId: lockCheck.prerequisiteEpisodeId ?? null,
+          prerequisiteEpisodeNumber: lockCheck.prerequisiteEpisodeNumber ?? null,
           questions: [],
           attempt: null,
         });
