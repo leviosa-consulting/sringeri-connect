@@ -2709,7 +2709,7 @@ export default function Seva() {
                   >
                     <h3 className="text-sm font-semibold flex items-center gap-1">
                       <Star className="h-4 w-4 text-amber-500" />
-                      Upcoming Special Sevas ({frequentSevas.length})
+                      Upcoming / Frequent Sevas ({frequentSevas.length})
                     </h3>
                     {upcomingSevasOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                   </button>
