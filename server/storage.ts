@@ -94,10 +94,21 @@ export class MemStorage implements IStorage {
   async getAppSetting(_key: string): Promise<string | null> { return null; }
   async setAppSetting(_key: string, _value: string): Promise<void> {}
   async deleteUserData(_odUserId: string): Promise<void> {}
-  async createSupportMessage(_msg: InsertSupportMessage): Promise<SupportMessage> { throw new Error("Not implemented"); }
-  async listUserSupportMessages(_odUserId: string, _type: string): Promise<SupportMessage[]> { return []; }
-  async getSupportMessage(_id: number): Promise<SupportMessage | undefined> { return undefined; }
-  async replySupportMessage(_id: number, _reply: string): Promise<SupportMessage> { throw new Error("Not implemented"); }
+  private supportMsgs: SupportMessage[] = [];
+  private supportMsgIdCounter = 1;
+  async createSupportMessage(msg: InsertSupportMessage): Promise<SupportMessage> {
+    const record: SupportMessage = { id: this.supportMsgIdCounter++, type: msg.type, odUserId: msg.odUserId || null, name: msg.name, email: msg.email, phone: msg.phone || null, subject: msg.subject, message: msg.message, adminReply: null, status: "open", createdAt: new Date(), repliedAt: null };
+    this.supportMsgs.push(record);
+    return record;
+  }
+  async listUserSupportMessages(odUserId: string, type: string): Promise<SupportMessage[]> { return this.supportMsgs.filter(m => m.odUserId === odUserId && m.type === type).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); }
+  async getSupportMessage(id: number): Promise<SupportMessage | undefined> { return this.supportMsgs.find(m => m.id === id); }
+  async replySupportMessage(id: number, reply: string): Promise<SupportMessage> {
+    const msg = this.supportMsgs.find(m => m.id === id);
+    if (!msg) throw new Error("Not found");
+    msg.adminReply = reply; msg.status = "replied"; msg.repliedAt = new Date();
+    return msg;
+  }
 }
 
 let storage: IStorage;
