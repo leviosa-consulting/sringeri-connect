@@ -727,9 +727,15 @@ export default function Donation() {
         return;
       }
 
-      await loadPaytmScript(mid);
+      sessionStorage.setItem("pendingPayment", JSON.stringify({
+        flowType: "donation",
+        itemNames: cart.map((d) => d.subcategoryName || d.donationName),
+        amount,
+        orderId,
+        is80G: donationForm.claim80G === 1,
+      }));
 
-      const is80GFlag = donationForm.claim80G === 1;
+      await loadPaytmScript(mid);
 
       const config = {
         root: "",
@@ -740,110 +746,9 @@ export default function Donation() {
           tokenType: "TXN_TOKEN",
           amount: amount,
         },
-        handler: {
-          transactionStatus: async (paytmResponse: any) => {
-            console.log("Paytm donation transactionStatus:", JSON.stringify(paytmResponse));
-            const clientStatus =
-              paytmResponse.STATUS ||
-              paytmResponse.status ||
-              paytmResponse.body?.resultInfo?.resultStatus ||
-              "";
-
-            const isSuccess = clientStatus === "TXN_SUCCESS" || clientStatus === "S";
-            const resolvedOrderId = paytmResponse.ORDERID || paytmResponse.orderId || orderId;
-
-            if (isSuccess) {
-              setAckData({
-                txnId: paytmResponse.TXNID || "",
-                orderId: resolvedOrderId,
-                amount: paytmResponse.TXNAMOUNT || amount,
-                donationNames: cart.map((d) => d.subcategoryName || d.donationName),
-              });
-              setPaymentSuccess(true);
-            } else {
-              const errorMsg =
-                paytmResponse.RESPMSG ||
-                paytmResponse.body?.resultInfo?.resultMsg ||
-                "Payment was not successful. Please try again.";
-              setErrorMessage(errorMsg);
-            }
-
-            try {
-              const ackBody: Record<string, string> = {};
-              if (paytmResponse.BANKNAME) ackBody.BANKNAME = paytmResponse.BANKNAME;
-              if (paytmResponse.BANKTXNID) ackBody.BANKTXNID = paytmResponse.BANKTXNID;
-              if (paytmResponse.CURRENCY) ackBody.CURRENCY = paytmResponse.CURRENCY;
-              if (paytmResponse.PAYMENTMODE) ackBody.PAYMENTMODE = paytmResponse.PAYMENTMODE;
-              if (paytmResponse.ORDERID) ackBody.ORDERID = paytmResponse.ORDERID;
-              if (paytmResponse.RESPCODE) ackBody.RESPCODE = paytmResponse.RESPCODE;
-              if (paytmResponse.RESPMSG) ackBody.RESPMSG = paytmResponse.RESPMSG;
-              if (paytmResponse.STATUS) ackBody.STATUS = paytmResponse.STATUS;
-              if (paytmResponse.TXNDATE) ackBody.TXNDATE = paytmResponse.TXNDATE;
-              if (paytmResponse.TXNID) ackBody.TXNID = paytmResponse.TXNID;
-              if (paytmResponse.TXNAMOUNT) ackBody.TXNAMOUNT = paytmResponse.TXNAMOUNT;
-
-              if (!ackBody.ORDERID) ackBody.ORDERID = resolvedOrderId;
-
-              await fetch("/api/paymentAck", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(ackBody),
-              });
-            } catch (ackErr) {
-              console.error("Payment ack call failed (non-blocking):", ackErr);
-            }
-
-            if (isSuccess) {
-              try {
-                const verifyRes = await fetch("/api/verifyPaytmTransaction", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ orderId: resolvedOrderId, is80G: is80GFlag }),
-                });
-                if (verifyRes.ok) {
-                  const verifyData = await verifyRes.json();
-                  console.log("Donation server-side verification:", JSON.stringify(verifyData));
-                }
-              } catch (verifyErr) {
-                console.error("Verification call failed (non-blocking):", verifyErr);
-              }
-            }
-
-            try {
-              const checkout = (window as any).Paytm?.CheckoutJS;
-              if (checkout && typeof checkout.close === "function") {
-                checkout.close();
-              }
-            } catch {}
-            setSubmitting(false);
-          },
-          notifyMerchant: (eventName: string, data: any) => {
-            console.log("Paytm donation notifyMerchant:", eventName, data);
-            if (
-              eventName === "APP_CLOSED" ||
-              eventName === "PAYMENT_ERROR" ||
-              eventName === "SESSION_EXPIRED"
-            ) {
-              setErrorMessage(
-                eventName === "APP_CLOSED"
-                  ? "Payment was cancelled. Please try again."
-                  : eventName === "SESSION_EXPIRED"
-                  ? "Payment session expired. Please try again."
-                  : "A payment error occurred. Please try again."
-              );
-              try {
-                const checkout = (window as any).Paytm?.CheckoutJS;
-                if (checkout && typeof checkout.close === "function") {
-                  checkout.close();
-                }
-              } catch {}
-              setSubmitting(false);
-            }
-          },
-        },
         merchant: {
           mid: mid,
-          redirect: false,
+          redirect: true,
         },
       };
 

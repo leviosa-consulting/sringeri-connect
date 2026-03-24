@@ -316,10 +316,19 @@ export default function Accommodation() {
         return;
       }
 
-      await loadPaytmScript(mid);
-
       const roomName = selectedRoom.dispName;
       const reservedDateDisp = selectedDate.dispDate || selectedDate.dbDate;
+
+      sessionStorage.setItem("pendingPayment", JSON.stringify({
+        flowType: "accommodation",
+        itemNames: [roomName],
+        amount,
+        orderId,
+        roomName,
+        reservedDate: reservedDateDisp,
+      }));
+
+      await loadPaytmScript(mid);
 
       const config = {
         root: "",
@@ -330,111 +339,9 @@ export default function Accommodation() {
           tokenType: "TXN_TOKEN",
           amount: amount,
         },
-        handler: {
-          transactionStatus: async (paytmResponse: any) => {
-            console.log("Paytm accommodation transactionStatus:", JSON.stringify(paytmResponse));
-            try {
-              const clientStatus =
-                paytmResponse.STATUS ||
-                paytmResponse.status ||
-                paytmResponse.body?.resultInfo?.resultStatus ||
-                "";
-
-              const isSuccess =
-                clientStatus === "TXN_SUCCESS" || clientStatus === "S";
-
-              const resolvedOrderId = paytmResponse.ORDERID || paytmResponse.orderId || orderId;
-
-              if (isSuccess) {
-                const ackBody: Record<string, string> = {};
-                if (paytmResponse.BANKNAME) ackBody.BANKNAME = paytmResponse.BANKNAME;
-                if (paytmResponse.BANKTXNID) ackBody.BANKTXNID = paytmResponse.BANKTXNID;
-                if (paytmResponse.CURRENCY) ackBody.CURRENCY = paytmResponse.CURRENCY;
-                if (paytmResponse.PAYMENTMODE) ackBody.PAYMENTMODE = paytmResponse.PAYMENTMODE;
-                ackBody.ORDERID = resolvedOrderId;
-                if (paytmResponse.RESPCODE) ackBody.RESPCODE = paytmResponse.RESPCODE;
-                if (paytmResponse.RESPMSG) ackBody.RESPMSG = paytmResponse.RESPMSG;
-                if (paytmResponse.STATUS) ackBody.STATUS = paytmResponse.STATUS;
-                if (paytmResponse.TXNDATE) ackBody.TXNDATE = paytmResponse.TXNDATE;
-                if (paytmResponse.TXNID) ackBody.TXNID = paytmResponse.TXNID;
-                if (paytmResponse.TXNAMOUNT) ackBody.TXNAMOUNT = paytmResponse.TXNAMOUNT;
-
-                try {
-                  await fetch("/api/paymentAck", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(ackBody),
-                  });
-                } catch {}
-
-                setAckData({
-                  txnId: paytmResponse.TXNID || "",
-                  orderId: resolvedOrderId,
-                  amount: paytmResponse.TXNAMOUNT || amount,
-                  roomName: roomName,
-                  reservedDate: reservedDateDisp,
-                });
-                setPaymentSuccess(true);
-
-                try {
-                  const verifyRes = await fetch("/api/verifyPaytmTransaction", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ orderId: resolvedOrderId }),
-                  });
-                  if (verifyRes.ok) {
-                    const verifyData = await verifyRes.json();
-                    console.log("Accommodation server-side verification:", JSON.stringify(verifyData));
-                  }
-                } catch (verifyErr) {
-                  console.error("Verification call failed (non-blocking):", verifyErr);
-                }
-              } else {
-                const errorMsg =
-                  paytmResponse.RESPMSG ||
-                  paytmResponse.body?.resultInfo?.resultMsg ||
-                  "Payment was not successful. Please try again.";
-                setErrorMessage(errorMsg);
-              }
-            } catch {
-              setErrorMessage("Payment completed but acknowledgment failed. Please contact support.");
-            }
-
-            try {
-              const checkout = (window as any).Paytm?.CheckoutJS;
-              if (checkout && typeof checkout.close === "function") {
-                checkout.close();
-              }
-            } catch {}
-            setSubmitting(false);
-          },
-          notifyMerchant: (eventName: string, data: any) => {
-            console.log("Paytm notifyMerchant:", eventName, data);
-            if (
-              eventName === "APP_CLOSED" ||
-              eventName === "PAYMENT_ERROR" ||
-              eventName === "SESSION_EXPIRED"
-            ) {
-              setErrorMessage(
-                eventName === "APP_CLOSED"
-                  ? "Payment was cancelled. Please try again."
-                  : eventName === "SESSION_EXPIRED"
-                  ? "Payment session expired. Please try again."
-                  : "A payment error occurred. Please try again."
-              );
-              try {
-                const checkout = (window as any).Paytm?.CheckoutJS;
-                if (checkout && typeof checkout.close === "function") {
-                  checkout.close();
-                }
-              } catch {}
-              setSubmitting(false);
-            }
-          },
-        },
         merchant: {
           mid: mid,
-          redirect: false,
+          redirect: true,
         },
       };
 

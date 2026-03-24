@@ -956,7 +956,7 @@ export async function registerRoutes(
           userInfo: {
             custId: uid || mobileNumber || "GUEST",
           },
-          callbackUrl: `https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=${orderId}`,
+          callbackUrl: `${req.protocol}://${req.get("host")}/api/paytm-callback`,
         },
       };
 
@@ -1696,7 +1696,7 @@ export async function registerRoutes(
           userInfo: {
             custId: uid || mobileNumber || "GUEST",
           },
-          callbackUrl: `https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=${orderId}`,
+          callbackUrl: `${req.protocol}://${req.get("host")}/api/paytm-callback`,
         },
       };
 
@@ -2271,7 +2271,7 @@ export async function registerRoutes(
           userInfo: {
             custId: mobile || "GUEST",
           },
-          callbackUrl: `https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=${orderId}`,
+          callbackUrl: `${req.protocol}://${req.get("host")}/api/paytm-callback`,
         },
       };
 
@@ -2491,6 +2491,112 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error acknowledging payment:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/paytm-callback", async (req, res) => {
+    try {
+      const paytmResponse = req.body;
+      console.log("Paytm callback received:", JSON.stringify(paytmResponse));
+
+      const PAYTM_MID_VAL = process.env.PAYTM_MID;
+      const PAYTM_KEY_VAL = process.env.PAYTM_MERCHANT_KEY;
+      const PAYTM_MID_SPCT_VAL = process.env.PAYTM_MID_SPCT;
+      const PAYTM_KEY_SPCT_VAL = process.env.PAYTM_MERCHANT_KEY_SPCT;
+
+      let useKey = PAYTM_KEY_VAL;
+      let useMid = PAYTM_MID_VAL;
+      if (paytmResponse.MID && paytmResponse.MID === PAYTM_MID_SPCT_VAL && PAYTM_KEY_SPCT_VAL) {
+        useMid = PAYTM_MID_SPCT_VAL;
+        useKey = PAYTM_KEY_SPCT_VAL;
+      }
+
+      if (useKey && paytmResponse.CHECKSUMHASH) {
+        const { CHECKSUMHASH, ...dataWithoutChecksum } = paytmResponse;
+        const isValid = PaytmChecksum.verifySignature(
+          dataWithoutChecksum,
+          useKey,
+          CHECKSUMHASH
+        );
+        if (!isValid) {
+          console.error("Paytm callback checksum verification FAILED for order:", paytmResponse.ORDERID);
+          return res.redirect(`/payment-result?orderId=${encodeURIComponent(paytmResponse.ORDERID || "")}&status=FAILED&respMsg=${encodeURIComponent("Payment verification failed. Please contact support.")}`);
+        }
+        console.log("Paytm callback checksum verified for order:", paytmResponse.ORDERID);
+      }
+
+      const ackBody: Record<string, string> = {};
+      const fields = ["BANKNAME", "BANKTXNID", "CURRENCY", "PAYMENTMODE", "ORDERID", "RESPCODE", "RESPMSG", "STATUS", "TXNDATE", "TXNID", "TXNAMOUNT"];
+      for (const f of fields) {
+        if (paytmResponse[f]) ackBody[f] = paytmResponse[f];
+      }
+
+      try {
+        await fetch(`${SRINGERI_API_URL}/api/paymentAck`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+          },
+          body: JSON.stringify(ackBody),
+        });
+      } catch (ackErr) {
+        console.error("paymentAck call failed in callback (non-blocking):", ackErr);
+      }
+
+      const orderId = paytmResponse.ORDERID || "";
+      let verifiedStatus = paytmResponse.STATUS || "FAILED";
+      let verifiedTxnId = paytmResponse.TXNID || "";
+      let verifiedAmount = paytmResponse.TXNAMOUNT || "";
+      let verifiedRespMsg = paytmResponse.RESPMSG || "";
+
+      if (useMid && useKey && orderId) {
+        try {
+          const verifyParams: Record<string, any> = {
+            body: { mid: useMid, orderId },
+          };
+          const verifyChecksum = await PaytmChecksum.generateSignature(
+            JSON.stringify(verifyParams.body),
+            useKey
+          );
+          verifyParams.head = { signature: verifyChecksum };
+
+          const verifyRes = await fetch(`https://securegw.paytm.in/v3/order/status`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(verifyParams),
+          });
+          const verifyData = await verifyRes.json();
+          console.log("Paytm callback server-side verification:", JSON.stringify(verifyData));
+
+          if (verifyData.body?.resultInfo?.resultStatus) {
+            const vStatus = verifyData.body.resultInfo.resultStatus;
+            if (vStatus === "TXN_SUCCESS") verifiedStatus = "TXN_SUCCESS";
+            else if (vStatus === "TXN_FAILURE") verifiedStatus = "TXN_FAILURE";
+            else if (vStatus === "PENDING") verifiedStatus = "PENDING";
+            verifiedRespMsg = verifyData.body.resultInfo.resultMsg || verifiedRespMsg;
+          }
+          if (verifyData.body?.txnId) verifiedTxnId = verifyData.body.txnId;
+          if (verifyData.body?.txnAmount) verifiedAmount = verifyData.body.txnAmount;
+        } catch (verifyErr) {
+          console.error("Server-side verification failed, using callback status:", verifyErr);
+        }
+      }
+
+      const params = new URLSearchParams();
+      params.set("orderId", orderId);
+      params.set("status", verifiedStatus);
+      params.set("txnId", verifiedTxnId);
+      params.set("amount", verifiedAmount);
+      params.set("respMsg", verifiedRespMsg);
+      params.set("respCode", paytmResponse.RESPCODE || "");
+      params.set("paymentMode", paytmResponse.PAYMENTMODE || "");
+      params.set("bankName", paytmResponse.BANKNAME || "");
+
+      res.redirect(`/payment-result?${params.toString()}`);
+    } catch (error) {
+      console.error("Error in Paytm callback:", error);
+      res.redirect("/payment-result?status=FAILED&respMsg=Something+went+wrong");
     }
   });
 
