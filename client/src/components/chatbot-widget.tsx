@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageCircle, X, Send, Bot, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -121,6 +121,57 @@ export default function ChatbotWidget() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [, setLocation] = useLocation();
 
+  const [btnPos, setBtnPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number; dragged: boolean } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const getDefaultPos = useCallback(() => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const isLg = w >= 1024;
+    return { x: w - 56 - 16, y: h - (isLg ? 32 : 96) - 56 };
+  }, []);
+
+  useEffect(() => {
+    setBtnPos(getDefaultPos());
+    const onResize = () => {
+      setBtnPos((prev) => {
+        if (!prev) return getDefaultPos();
+        return {
+          x: Math.min(prev.x, window.innerWidth - 56),
+          y: Math.min(prev.y, window.innerHeight - 56),
+        };
+      });
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [getDefaultPos]);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const cur = btnPos || getDefaultPos();
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: cur.x, startPosY: cur.y, dragged: false };
+  }, [btnPos, getDefaultPos]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragRef.current.dragged = true;
+    if (!dragRef.current.dragged) return;
+    const newX = Math.max(0, Math.min(window.innerWidth - 56, dragRef.current.startPosX + dx));
+    const newY = Math.max(0, Math.min(window.innerHeight - 56, dragRef.current.startPosY + dy));
+    setBtnPos({ x: newX, y: newY });
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    const wasDrag = dragRef.current?.dragged;
+    dragRef.current = null;
+    if (!wasDrag) {
+      setIsOpen(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (scrollRef.current) {
       const scrollContainer = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]");
@@ -130,7 +181,7 @@ export default function ChatbotWidget() {
     }
   }, [messages]);
 
-  
+
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -198,18 +249,23 @@ export default function ChatbotWidget() {
   };
 
   return (
-    <div className="fixed bottom-24 lg:bottom-8 right-4 z-50" data-testid="chatbot-widget">
-      {!isOpen && (
-        <Button
-          onClick={() => setIsOpen(true)}
-          className="h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 transition-transform hover:scale-105"
+    <>
+      {!isOpen && btnPos && (
+        <button
+          ref={btnRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          className="fixed z-50 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none"
+          style={{ left: btnPos.x, top: btnPos.y }}
           data-testid="button-open-chat"
         >
-          <MessageCircle className="h-6 w-6 text-white" />
-        </Button>
+          <MessageCircle className="h-6 w-6 text-white pointer-events-none" />
+        </button>
       )}
 
       {isOpen && (
+        <div className="fixed bottom-24 lg:bottom-8 right-4 z-50" data-testid="chatbot-widget">
         <Card className="w-[350px] h-[500px] shadow-2xl border-primary/20 flex flex-col animate-in slide-in-from-bottom-10 fade-in duration-300">
           <CardHeader className="bg-primary text-primary-foreground p-4 flex flex-row items-center justify-between rounded-t-xl shrink-0">
             <div className="flex items-center gap-2">
@@ -318,7 +374,8 @@ export default function ChatbotWidget() {
             </form>
           </CardFooter>
         </Card>
+        </div>
       )}
-    </div>
+    </>
   );
 }
