@@ -68,10 +68,12 @@ export default function PaymentResult() {
     if (!orderId || checking) return;
     setChecking(true);
     try {
+      const verifyBody: Record<string, any> = { orderId };
+      if (pendingPayment?.is80G) verifyBody.is80G = true;
       const res = await fetch("/api/verifyPaytmTransaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify(verifyBody),
       });
       if (res.ok) {
         const data = await res.json();
