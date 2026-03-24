@@ -30,6 +30,9 @@ interface Quiz {
   imageUrls: string[] | null;
   publishDate: string;
   isActive: boolean;
+  groupName: string | null;
+  episodeNumber: number | null;
+  showInUpcoming: boolean;
   questions?: QuizQuestion[];
 }
 
@@ -79,6 +82,9 @@ export default function AdminQuizzes() {
       imageUrls: null,
       publishDate: new Date().toISOString().split("T")[0],
       isActive: true,
+      groupName: null,
+      episodeNumber: null,
+      showInUpcoming: true,
     });
     setQuestions([]);
   };
@@ -98,6 +104,9 @@ export default function AdminQuizzes() {
         imageUrls: editing.imageUrls?.filter(Boolean) || null,
         publishDate: editing.publishDate,
         isActive: editing.isActive,
+        groupName: editing.groupName || null,
+        episodeNumber: editing.episodeNumber || null,
+        showInUpcoming: editing.showInUpcoming,
       };
 
       let quizId = editing.id;
@@ -267,6 +276,28 @@ export default function AdminQuizzes() {
               </label>
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Group / Course Name</label>
+              <Input value={editing.groupName || ""} onChange={e => setEditing({ ...editing, groupName: e.target.value || null })} placeholder="e.g. Bhagavad Gita" data-testid="input-quiz-group" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Episode #</label>
+              <Input type="number" min={1} value={editing.episodeNumber ?? ""} onChange={e => setEditing({ ...editing, episodeNumber: e.target.value ? parseInt(e.target.value) : null })} placeholder="1" data-testid="input-quiz-episode" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={editing.showInUpcoming}
+                onChange={e => setEditing({ ...editing, showInUpcoming: e.target.checked })}
+                className="w-4 h-4 accent-primary"
+                data-testid="input-quiz-upcoming"
+              />
+              <span className="text-sm font-medium">Show in Upcoming</span>
+            </label>
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -372,11 +403,16 @@ export default function AdminQuizzes() {
             <div key={q.id} className="bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between" data-testid={`quiz-item-${q.id}`}>
               <div className="space-y-0.5 flex-1 min-w-0">
                 <h3 className="font-serif font-semibold text-sm truncate">{q.title}</h3>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                   <span>{q.publishDate}</span>
                   <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold", q.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600")}>
                     {q.isActive ? "ACTIVE" : "INACTIVE"}
                   </span>
+                  {q.groupName && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
+                      {q.groupName} Ep.{q.episodeNumber}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">

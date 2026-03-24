@@ -2897,6 +2897,43 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/quiz/upcoming", async (req, res) => {
+    try {
+      const today = getISTDate();
+      const allQuizzes = await storage.listQuizzes();
+      const upcoming = allQuizzes
+        .filter(q => q.isActive && q.publishDate > today && q.showInUpcoming)
+        .sort((a, b) => a.publishDate.localeCompare(b.publishDate));
+      res.json(upcoming.map(q => ({
+        id: q.id,
+        title: q.title,
+        subtitle: q.subtitle,
+        publishDate: q.publishDate,
+        groupName: q.groupName,
+        episodeNumber: q.episodeNumber,
+      })));
+    } catch (error) {
+      console.error("Error getting upcoming quizzes:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  async function checkGroupLock(quiz: any, uid: string): Promise<{ locked: boolean; reason?: string }> {
+    if (!quiz.groupName || !quiz.episodeNumber || quiz.episodeNumber <= 1) {
+      return { locked: false };
+    }
+    const allQuizzes = await storage.listQuizzes();
+    const prevEpisode = allQuizzes.find(q =>
+      q.isActive && q.groupName === quiz.groupName && q.episodeNumber === quiz.episodeNumber - 1
+    );
+    if (!prevEpisode) return { locked: false };
+    const prevAttempt = await storage.getAttemptByUserAndQuiz(uid, prevEpisode.id);
+    if (!prevAttempt) {
+      return { locked: true, reason: `Complete Episode ${quiz.episodeNumber - 1} first` };
+    }
+    return { locked: false };
+  }
+
   app.get("/api/quiz/by-id/:id", async (req, res) => {
     try {
       const uid = await getFirebaseUid(req);
@@ -2904,6 +2941,24 @@ export async function registerRoutes(
       const quizId = Number(req.params.id);
       const quiz = await storage.getQuizById(quizId);
       if (!quiz || !quiz.isActive) return res.status(404).json({ error: "Quiz not found" });
+
+      const lockCheck = await checkGroupLock(quiz, uid);
+      if (lockCheck.locked) {
+        return res.json({
+          id: quiz.id,
+          title: quiz.title,
+          subtitle: quiz.subtitle,
+          description: quiz.description,
+          publishDate: quiz.publishDate,
+          groupName: quiz.groupName,
+          episodeNumber: quiz.episodeNumber,
+          locked: true,
+          lockReason: lockCheck.reason,
+          questions: [],
+          attempt: null,
+        });
+      }
+
       const questions = await storage.getQuestionsByQuizId(quiz.id);
       const attempt = await storage.getAttemptByUserAndQuiz(uid, quiz.id);
       const mappedQuestions = questions.map(q => ({
@@ -2924,6 +2979,8 @@ export async function registerRoutes(
         audioUrl: quiz.audioUrl,
         imageUrls: quiz.imageUrls,
         publishDate: quiz.publishDate,
+        groupName: quiz.groupName,
+        episodeNumber: quiz.episodeNumber,
         questions: mappedQuestions,
         attempt: attempt ? { score: attempt.score, totalQuestions: attempt.totalQuestions, answers: attempt.answers, completedAt: attempt.completedAt } : null,
       });
@@ -2937,13 +2994,14 @@ export async function registerRoutes(
     try {
       const uid = await getFirebaseUid(req);
       if (!uid) return res.status(401).json({ error: "Authentication required" });
-      const today = new Date().toISOString().split("T")[0];
+      const today = getISTDate();
       const allQuizzes = await storage.listQuizzes();
       const pastQuizzes = allQuizzes.filter(q => q.isActive && q.publishDate < today);
       const results = [];
       for (const q of pastQuizzes) {
         const questions = await storage.getQuestionsByQuizId(q.id);
         const attempt = await storage.getAttemptByUserAndQuiz(uid, q.id);
+        const lockCheck = await checkGroupLock(q, uid);
         results.push({
           id: q.id,
           title: q.title,
@@ -2953,6 +3011,10 @@ export async function registerRoutes(
           attempted: !!attempt,
           score: attempt?.score ?? null,
           totalQuestions: attempt?.totalQuestions ?? null,
+          groupName: q.groupName,
+          episodeNumber: q.episodeNumber,
+          locked: lockCheck.locked,
+          lockReason: lockCheck.reason || null,
         });
       }
       res.json(results);
@@ -2966,9 +3028,27 @@ export async function registerRoutes(
     try {
       const uid = await getFirebaseUid(req);
       if (!uid) return res.status(401).json({ error: "Authentication required" });
-      const today = new Date().toISOString().split("T")[0];
+      const today = getISTDate();
       const quiz = await storage.getQuizByDate(today);
       if (!quiz) return res.json(null);
+
+      const lockCheck = await checkGroupLock(quiz, uid);
+      if (lockCheck.locked) {
+        return res.json({
+          id: quiz.id,
+          title: quiz.title,
+          subtitle: quiz.subtitle,
+          description: quiz.description,
+          publishDate: quiz.publishDate,
+          groupName: quiz.groupName,
+          episodeNumber: quiz.episodeNumber,
+          locked: true,
+          lockReason: lockCheck.reason,
+          questions: [],
+          attempt: null,
+        });
+      }
+
       const questions = await storage.getQuestionsByQuizId(quiz.id);
       const attempt = await storage.getAttemptByUserAndQuiz(uid, quiz.id);
       const mappedQuestions = questions.map(q => ({
@@ -2989,6 +3069,8 @@ export async function registerRoutes(
         audioUrl: quiz.audioUrl,
         imageUrls: quiz.imageUrls,
         publishDate: quiz.publishDate,
+        groupName: quiz.groupName,
+        episodeNumber: quiz.episodeNumber,
         questions: mappedQuestions,
         attempt: attempt ? { score: attempt.score, totalQuestions: attempt.totalQuestions, answers: attempt.answers, completedAt: attempt.completedAt } : null,
       });
@@ -3008,6 +3090,11 @@ export async function registerRoutes(
 
       const quiz = await storage.getQuizById(quizId);
       if (!quiz || !quiz.isActive) return res.status(403).json({ error: "Quiz not available for submission" });
+
+      const lockCheck = await checkGroupLock(quiz, uid);
+      if (lockCheck.locked) {
+        return res.status(403).json({ error: "locked", reason: lockCheck.reason });
+      }
 
       const existing = await storage.getAttemptByUserAndQuiz(uid, quizId);
       if (existing) return res.status(409).json({ error: "Already submitted", attempt: existing });

@@ -69,10 +69,14 @@ export const quizzes = pgTable("quizzes", {
   imageUrls: text("image_urls").array(),
   publishDate: date("publish_date").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  groupName: text("group_name"),
+  episodeNumber: integer("episode_number"),
+  showInUpcoming: boolean("show_in_upcoming").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("quizzes_publish_date_idx").on(table.publishDate),
+  index("quizzes_group_name_idx").on(table.groupName),
 ]);
 
 export const quizQuestions = pgTable("quiz_questions", {

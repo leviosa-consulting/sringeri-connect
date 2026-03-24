@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useParams, useLocation } from "wouter";
-import { BookOpenCheck, ChevronLeft, ChevronRight, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check, Library, Flame } from "lucide-react";
+import { BookOpenCheck, ChevronLeft, ChevronRight, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check, Library, Flame, Lock, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -117,6 +117,10 @@ interface QuizData {
   audioUrl: string | null;
   imageUrls: string[] | null;
   publishDate: string;
+  groupName?: string | null;
+  episodeNumber?: number | null;
+  locked?: boolean;
+  lockReason?: string;
   questions: QuizQuestion[];
   attempt: { score: number; totalQuestions: number; answers: Record<string, number[]>; completedAt: string } | null;
 }
@@ -140,6 +144,19 @@ interface PastQuizItem {
   attempted: boolean;
   score: number | null;
   totalQuestions: number | null;
+  groupName?: string | null;
+  episodeNumber?: number | null;
+  locked?: boolean;
+  lockReason?: string | null;
+}
+
+interface UpcomingQuizItem {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  publishDate: string;
+  groupName?: string | null;
+  episodeNumber?: number | null;
 }
 
 function getYouTubeId(url: string): string | null {
@@ -161,6 +178,7 @@ export default function Knowledge() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [pastQuizzes, setPastQuizzes] = useState<PastQuizItem[]>([]);
   const [pastLoading, setPastLoading] = useState(false);
+  const [upcomingQuizzes, setUpcomingQuizzes] = useState<UpcomingQuizItem[]>([]);
   const [copied, setCopied] = useState(false);
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -262,6 +280,10 @@ export default function Knowledge() {
     setShowCelebration(false);
     fetchQuiz();
     fetchGamification();
+    fetch("/api/quiz/upcoming")
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setUpcomingQuizzes(data))
+      .catch(() => {});
   }, [fetchQuiz, fetchGamification]);
 
   useEffect(() => {
@@ -386,6 +408,33 @@ export default function Knowledge() {
               <p className="text-muted-foreground font-medium">No quiz available today</p>
               <p className="text-sm text-muted-foreground/70">Check back tomorrow for a new quiz!</p>
             </div>
+          ) : quiz.locked ? (
+            <div className="space-y-5">
+              {selectedPastQuizId && (
+                <button
+                  onClick={() => { setSelectedPastQuizId(null); setTab("past"); }}
+                  className="flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
+                  data-testid="button-back-to-past"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Past Quizzes
+                </button>
+              )}
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 space-y-2">
+                {quiz.groupName && (
+                  <p className="text-xs text-primary font-semibold uppercase tracking-wider">{quiz.groupName}{quiz.episodeNumber ? ` — Episode ${quiz.episodeNumber}` : ""}</p>
+                )}
+                <h2 className="font-serif font-bold text-lg text-foreground" data-testid="text-quiz-title">{quiz.title}</h2>
+                {quiz.subtitle && <p className="text-sm text-muted-foreground">{quiz.subtitle}</p>}
+              </div>
+              <div className="text-center py-10 space-y-3 bg-card rounded-xl border border-border/50 p-6" data-testid="quiz-locked">
+                <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-2">
+                  <Lock className="w-7 h-7 text-orange-500" />
+                </div>
+                <p className="font-medium text-foreground">This episode is locked</p>
+                <p className="text-sm text-muted-foreground">{quiz.lockReason}</p>
+              </div>
+            </div>
           ) : (
             <div className="space-y-5">
               {selectedPastQuizId && (
@@ -401,6 +450,9 @@ export default function Knowledge() {
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 space-y-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1 flex-1">
+                    {quiz.groupName && (
+                      <p className="text-xs text-primary font-semibold uppercase tracking-wider">{quiz.groupName}{quiz.episodeNumber ? ` — Episode ${quiz.episodeNumber}` : ""}</p>
+                    )}
                     <h2 className="font-serif font-bold text-lg text-foreground" data-testid="text-quiz-title">{quiz.title}</h2>
                     {quiz.subtitle && <p className="text-sm text-muted-foreground" data-testid="text-quiz-subtitle">{quiz.subtitle}</p>}
                     {hasQuestions && (
@@ -672,13 +724,21 @@ export default function Knowledge() {
               <button
                 key={pq.id}
                 onClick={() => {
+                  if (pq.locked) return;
                   setSelectedPastQuizId(pq.id);
                   setTab("quiz");
                 }}
-                className="w-full bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between text-left hover:border-primary/30 transition-colors"
+                className={cn(
+                  "w-full bg-card rounded-xl border border-border/50 p-4 flex items-center justify-between text-left transition-colors",
+                  pq.locked ? "opacity-60 cursor-not-allowed" : "hover:border-primary/30"
+                )}
                 data-testid={`past-quiz-${pq.id}`}
+                disabled={!!pq.locked}
               >
                 <div className="space-y-0.5 flex-1">
+                  {pq.groupName && (
+                    <p className="text-[10px] text-primary font-semibold uppercase tracking-wider">{pq.groupName}{pq.episodeNumber ? ` — Ep. ${pq.episodeNumber}` : ""}</p>
+                  )}
                   <h3 className="font-serif font-semibold text-sm">{pq.title}</h3>
                   {pq.subtitle && <p className="text-xs text-muted-foreground">{pq.subtitle}</p>}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground/70 mt-1">
@@ -687,7 +747,9 @@ export default function Knowledge() {
                   </div>
                 </div>
                 <div className="shrink-0 ml-3">
-                  {pq.attempted ? (
+                  {pq.locked ? (
+                    <Lock className="w-5 h-5 text-muted-foreground/50" />
+                  ) : pq.attempted ? (
                     <div className={cn(
                       "text-center px-3 py-1.5 rounded-lg text-xs font-bold",
                       pq.score === pq.totalQuestions ? "bg-green-50 text-green-600" :
@@ -704,6 +766,33 @@ export default function Knowledge() {
                 </div>
               </button>
             ))
+          )}
+
+          {upcomingQuizzes.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-primary" />
+                Upcoming
+              </h3>
+              {upcomingQuizzes.map((uq) => (
+                <div
+                  key={uq.id}
+                  className="bg-muted/50 rounded-xl border border-border/30 p-4 flex items-center justify-between opacity-70"
+                  data-testid={`upcoming-quiz-${uq.id}`}
+                >
+                  <div className="space-y-0.5 flex-1">
+                    {uq.groupName && (
+                      <p className="text-[10px] text-primary font-semibold uppercase tracking-wider">{uq.groupName}{uq.episodeNumber ? ` — Ep. ${uq.episodeNumber}` : ""}</p>
+                    )}
+                    <h3 className="font-serif font-semibold text-sm text-foreground">{uq.title}</h3>
+                    {uq.subtitle && <p className="text-xs text-muted-foreground">{uq.subtitle}</p>}
+                  </div>
+                  <div className="shrink-0 ml-3 text-xs text-muted-foreground font-medium">
+                    {new Date(uq.publishDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
