@@ -2615,25 +2615,27 @@ export default function Seva() {
   // ========== HOME ==========
   return (
     <div className="min-h-screen bg-[#F7F2EC] pb-24" data-testid="seva-home">
-      <div className="fixed inset-0 z-50 bg-[#F7F2EC]/95 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center" data-testid="booking-placeholder-overlay">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-orange-100 flex items-center justify-center">
-            <BookCopy className="h-8 w-8 text-orange-600" />
+      {/Android/i.test(navigator.userAgent) && (
+        <div className="fixed inset-0 z-50 bg-[#F7F2EC]/95 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center" data-testid="booking-placeholder-overlay">
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-orange-100 flex items-center justify-center">
+              <BookCopy className="h-8 w-8 text-orange-600" />
+            </div>
+            <h2 className="text-xl font-serif font-bold text-[#8B4513]">Seva Booking</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Bookings available from midnight of 25th March 2026
+            </p>
+            <button
+              onClick={() => navigate("/home")}
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+              data-testid="button-placeholder-back"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </button>
           </div>
-          <h2 className="text-xl font-serif font-bold text-[#8B4513]">Seva Booking</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Bookings available from midnight of 25th March 2026
-          </p>
-          <button
-            onClick={() => navigate("/home")}
-            className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-            data-testid="button-placeholder-back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </button>
         </div>
-      </div>
+      )}
       <div className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] text-white px-4 pt-6 pb-5 shadow-md">
         <button onClick={() => navigate("/home")}
           className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3" data-testid="button-back-home">
