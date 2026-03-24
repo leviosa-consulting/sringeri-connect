@@ -129,7 +129,7 @@ const INITIAL_MESSAGE: ChatMessage = {
 };
 
 function MessageForm({ type }: { type: "support" | "feedback" }) {
-  const { profile, devoteeData } = useAuth();
+  const { profile, devoteeData, getToken } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -149,11 +149,17 @@ function MessageForm({ type }: { type: "support" | "feedback" }) {
   useEffect(() => {
     if (profile?.uid) {
       setLoadingHistory(true);
-      fetch(`/api/support-messages/${type}/${profile.uid}`)
-        .then(r => r.ok ? r.json() : [])
-        .then(setPastMessages)
-        .catch(() => {})
-        .finally(() => setLoadingHistory(false));
+      (async () => {
+        try {
+          const token = await getToken();
+          if (!token) return;
+          const r = await fetch(`/api/support-messages/me/${type}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (r.ok) setPastMessages(await r.json());
+        } catch {}
+        finally { setLoadingHistory(false); }
+      })();
     }
   }, [profile?.uid, type, submitted]);
 
@@ -162,12 +168,14 @@ function MessageForm({ type }: { type: "support" | "feedback" }) {
     if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) return;
     setSubmitting(true);
     try {
+      const token = await getToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch("/api/support-messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           type,
-          odUserId: profile?.uid || null,
           name: name.trim(),
           email: email.trim(),
           phone: phone.trim() || null,

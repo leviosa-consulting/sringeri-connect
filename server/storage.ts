@@ -39,6 +39,7 @@ export interface IStorage {
   createSupportMessage(msg: InsertSupportMessage): Promise<SupportMessage>;
   listUserSupportMessages(odUserId: string, type: string): Promise<SupportMessage[]>;
   getSupportMessage(id: number): Promise<SupportMessage | undefined>;
+  replySupportMessage(id: number, reply: string): Promise<SupportMessage>;
 }
 
 export class MemStorage implements IStorage {
@@ -96,6 +97,7 @@ export class MemStorage implements IStorage {
   async createSupportMessage(_msg: InsertSupportMessage): Promise<SupportMessage> { throw new Error("Not implemented"); }
   async listUserSupportMessages(_odUserId: string, _type: string): Promise<SupportMessage[]> { return []; }
   async getSupportMessage(_id: number): Promise<SupportMessage | undefined> { return undefined; }
+  async replySupportMessage(_id: number, _reply: string): Promise<SupportMessage> { throw new Error("Not implemented"); }
 }
 
 let storage: IStorage;
@@ -452,6 +454,14 @@ if (process.env.DATABASE_URL) {
 
     async getSupportMessage(id: number): Promise<SupportMessage | undefined> {
       const [result] = await db.select().from(supportMessages).where(eq(supportMessages.id, id));
+      return result;
+    }
+
+    async replySupportMessage(id: number, reply: string): Promise<SupportMessage> {
+      const [result] = await db.update(supportMessages)
+        .set({ adminReply: reply, status: "replied", repliedAt: new Date() })
+        .where(eq(supportMessages.id, id))
+        .returning();
       return result;
     }
   }

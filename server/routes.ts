@@ -2685,7 +2685,13 @@ export async function registerRoutes(
 
   app.post("/api/support-messages", async (req, res) => {
     try {
-      const { type, name, email, phone, subject, message, odUserId } = req.body;
+      const authHeader = req.headers.authorization;
+      let uid: string | null = null;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        uid = await verifyFirebaseToken(authHeader.slice(7));
+      }
+
+      const { type, name, email, phone, subject, message } = req.body;
       if (!type || !["support", "feedback"].includes(type)) {
         return res.status(400).json({ error: "Type must be 'support' or 'feedback'" });
       }
@@ -2695,7 +2701,7 @@ export async function registerRoutes(
 
       const msg = await storage.createSupportMessage({
         type,
-        odUserId: odUserId || null,
+        odUserId: uid,
         name,
         email,
         phone: phone || null,
@@ -2709,16 +2715,49 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/support-messages/:type/:userId", async (req, res) => {
+  app.get("/api/support-messages/me/:type", async (req, res) => {
     try {
-      const { type, userId } = req.params;
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      const uid = await verifyFirebaseToken(authHeader.slice(7));
+      if (!uid) {
+        return res.status(401).json({ error: "Invalid token" });
+      }
+
+      const { type } = req.params;
       if (!["support", "feedback"].includes(type)) {
         return res.status(400).json({ error: "Type must be 'support' or 'feedback'" });
       }
-      const messages = await storage.listUserSupportMessages(userId, type);
+      const messages = await storage.listUserSupportMessages(uid, type);
       res.json(messages);
     } catch (error) {
       console.error("Error listing support messages:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/support-messages/:id/reply", async (req, res) => {
+    try {
+      if (!(await isAdmin(req))) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid message ID" });
+
+      const { reply } = req.body;
+      if (!reply || typeof reply !== "string") {
+        return res.status(400).json({ error: "Reply text is required" });
+      }
+
+      const msg = await storage.getSupportMessage(id);
+      if (!msg) return res.status(404).json({ error: "Message not found" });
+
+      const updated = await storage.replySupportMessage(id, reply);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error replying to support message:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
