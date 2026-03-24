@@ -335,7 +335,7 @@ export default function Knowledge() {
   }, [fetchQuiz, fetchGamification]);
 
   useEffect(() => {
-    if (tab === "courses") { fetchCourses(); fetchGamification(); }
+    if (tab === "courses") { fetchCourses(); fetchHistory(); fetchGamification(); }
     if (tab === "past") { fetchPastQuizzes(); fetchHistory(); fetchGamification(); }
   }, [tab, fetchCourses, fetchHistory, fetchPastQuizzes, fetchGamification]);
 
@@ -835,34 +835,6 @@ export default function Knowledge() {
             </div>
           ) : (
             <>
-              {history.length > 0 && (
-                <div className="rounded-xl overflow-hidden border border-border/50 shadow-sm" data-testid="score-summary-card">
-                  <div className="bg-gradient-to-r from-primary via-orange-500 to-amber-500 px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 text-white">
-                      <Trophy className="w-5 h-5" />
-                      <div>
-                        <p className="text-lg font-bold font-serif leading-tight">
-                          {history.reduce((s, h) => s + h.score, 0)}
-                          <span className="text-xs font-normal text-white/70 ml-1">
-                            / {history.reduce((s, h) => s + h.totalQuestions, 0)} pts
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 text-white/90">
-                      <div className="text-center">
-                        <p className="text-sm font-bold">{history.length}</p>
-                        <p className="text-[8px] uppercase tracking-wider text-white/60">Played</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm font-bold">{history.filter(h => h.score === h.totalQuestions).length}</p>
-                        <p className="text-[8px] uppercase tracking-wider text-white/60">Perfect</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {upcomingQuizzes.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -1127,6 +1099,33 @@ export default function Knowledge() {
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {history.length > 0 && !viewingGroup && (
+            <div className="rounded-xl overflow-hidden border border-border/50 shadow-sm" data-testid="score-summary-card">
+              <div className="bg-gradient-to-br from-primary via-orange-500 to-amber-500 p-5 text-white text-center relative overflow-hidden">
+                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 60% 80%, white 1px, transparent 1px)", backgroundSize: "60px 60px, 40px 40px, 50px 50px" }} />
+                <div className="relative">
+                  <p className="text-xs font-medium text-white/70 uppercase tracking-widest mb-1">Total Points</p>
+                  <p className="text-4xl font-bold font-serif tracking-tight">{history.reduce((s, h) => s + h.score, 0)}</p>
+                  <p className="text-xs text-white/70 mt-0.5">out of {history.reduce((s, h) => s + h.totalQuestions, 0)}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-border/30 bg-card">
+                <div className="py-2.5 text-center">
+                  <p className="text-sm font-bold font-serif text-foreground">{history.length}</p>
+                  <p className="text-[8px] text-muted-foreground font-semibold uppercase tracking-wider">Played</p>
+                </div>
+                <div className="py-2.5 text-center">
+                  <p className="text-sm font-bold font-serif text-green-600">{history.filter(h => h.score === h.totalQuestions).length}</p>
+                  <p className="text-[8px] text-muted-foreground font-semibold uppercase tracking-wider">Perfect</p>
+                </div>
+                <div className="py-2.5 text-center">
+                  <p className="text-sm font-bold font-serif text-orange-500">{gamification?.currentStreak ?? 0}</p>
+                  <p className="text-[8px] text-muted-foreground font-semibold uppercase tracking-wider">Streak</p>
+                </div>
+              </div>
             </div>
           )}
 
