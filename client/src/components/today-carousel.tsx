@@ -513,7 +513,7 @@ function JagadguruAnugrahaSlide({ video }: { video: YouTubeVideo | null }) {
         data-testid="link-anugraha-video"
       >
         <img
-          src={`https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`}
+          src={video.thumbnail}
           alt={video.title}
           className="w-full h-full object-cover"
         />
