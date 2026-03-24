@@ -339,15 +339,8 @@ export default function Home() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-serif font-bold text-lg flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-[#ff6600]" />
-              Events at the Peetham
+              Recent Events
             </h2>
-            <a
-              href="/updates"
-              className="text-sm text-primary hover:underline cursor-pointer"
-              data-testid="link-view-all-events"
-            >
-              View All
-            </a>
           </div>
 
           {/* Mobile: full-width swipeable cards */}
