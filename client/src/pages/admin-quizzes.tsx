@@ -119,7 +119,7 @@ export default function AdminQuizzes() {
         publishDate: editing.publishDate,
         isActive: editing.isActive,
         groupName: editing.groupName || null,
-        episodeNumber: editing.episodeNumber || null,
+        episodeNumber: editing.episodeNumber != null ? editing.episodeNumber : null,
         showInUpcoming: editing.showInUpcoming,
       };
 
@@ -332,7 +332,7 @@ export default function AdminQuizzes() {
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">Episode #</label>
-              <Input type="number" min={1} value={editing.episodeNumber ?? ""} onChange={e => setEditing({ ...editing, episodeNumber: e.target.value ? parseInt(e.target.value) : null })} placeholder="1" data-testid="input-quiz-episode" />
+              <Input type="number" min={1} value={editing.episodeNumber ?? ""} onChange={e => { const val = e.target.value.trim(); setEditing({ ...editing, episodeNumber: val === "" ? null : (isNaN(Number(val)) ? editing.episodeNumber : Number(val)) }); }} placeholder="1" data-testid="input-quiz-episode" />
             </div>
           </div>
           <div className="flex items-center gap-2">
