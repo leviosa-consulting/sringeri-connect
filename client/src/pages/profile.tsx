@@ -1045,7 +1045,7 @@ export default function Profile() {
             <DialogHeader>
               <DialogTitle className="font-serif">Edit Seva Karta</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3 py-2">
+            <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto">
               <div>
                 <Label htmlFor="karta-name" className="text-xs">Name</Label>
                 <Input id="karta-name" value={kartaName} onChange={(e) => handleKartaNameChange(e.target.value)} className="mt-1" data-testid="input-karta-name" />

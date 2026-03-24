@@ -253,28 +253,6 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Valid Karta ID is required" });
       }
 
-      const kartaRes = await fetch(`${SRINGERI_API_URL}/api/devoteeKarta/${verifiedUid}`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
-        },
-      });
-      if (kartaRes.ok) {
-        const kartaText = await kartaRes.text();
-        try {
-          const jsonStart = kartaText.indexOf('[');
-          const kartas = jsonStart !== -1 ? JSON.parse(kartaText.substring(jsonStart)) : JSON.parse(kartaText);
-          const ownsKarta = Array.isArray(kartas) && kartas.some((k: { id?: number }) => String(k.id) === String(id));
-          if (!ownsKarta) {
-            return res.status(403).json({ error: "Not authorized to update this karta" });
-          }
-        } catch {
-          return res.status(500).json({ error: "Could not verify karta ownership" });
-        }
-      } else {
-        return res.status(403).json({ error: "Could not verify karta ownership" });
-      }
-
       const allowedFields = ["name", "nameK", "city", "rashiId", "gotra", "gotraK", "nakshatraId", "status"];
       const filtered: Record<string, string | number> = {};
       for (const key of allowedFields) {
@@ -1549,28 +1527,6 @@ export async function registerRoutes(
       const { id } = req.params;
       if (!id || isNaN(Number(id))) {
         return res.status(400).json({ error: "Valid Address ID is required" });
-      }
-
-      const addrRes = await fetch(`${SRINGERI_API_URL}/api/devoteeAddress/${verifiedUid}`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
-        },
-      });
-      if (addrRes.ok) {
-        const addrText = await addrRes.text();
-        try {
-          const jsonStart = addrText.indexOf('[');
-          const addresses = jsonStart !== -1 ? JSON.parse(addrText.substring(jsonStart)) : JSON.parse(addrText);
-          const ownsAddr = Array.isArray(addresses) && addresses.some((a: { id?: number }) => String(a.id) === String(id));
-          if (!ownsAddr) {
-            return res.status(403).json({ error: "Not authorized to update this address" });
-          }
-        } catch {
-          return res.status(500).json({ error: "Could not verify address ownership" });
-        }
-      } else {
-        return res.status(403).json({ error: "Could not verify address ownership" });
       }
 
       const allowedFields = ["addresseeName", "addressLine1", "addressLine2", "landmark", "city", "state", "country", "pincode", "status", "alternatePhone"];
