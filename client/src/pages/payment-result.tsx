@@ -39,19 +39,22 @@ export default function PaymentResult() {
   const isSuccess = status === "TXN_SUCCESS" || status === "S";
   const isPending = status === "PENDING" || status === "P";
 
-  const pendingPaymentRaw = sessionStorage.getItem("pendingPayment");
-  let pendingPayment: PendingPayment | null = null;
-  try {
-    if (pendingPaymentRaw) {
-      const parsed = JSON.parse(pendingPaymentRaw);
-      const THIRTY_MIN = 30 * 60 * 1000;
-      if (parsed.ts && Date.now() - parsed.ts > THIRTY_MIN) {
-        sessionStorage.removeItem("pendingPayment");
-      } else {
-        pendingPayment = parsed;
+  const pendingPaymentRef = useRef<PendingPayment | null>(null);
+  if (pendingPaymentRef.current === null) {
+    try {
+      const raw = sessionStorage.getItem("pendingPayment");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const THIRTY_MIN = 30 * 60 * 1000;
+        if (parsed.ts && Date.now() - parsed.ts > THIRTY_MIN) {
+          sessionStorage.removeItem("pendingPayment");
+        } else {
+          pendingPaymentRef.current = parsed;
+        }
       }
-    }
-  } catch {}
+    } catch {}
+  }
+  const pendingPayment = pendingPaymentRef.current;
 
   const flowType = pendingPayment?.flowType || "";
   const itemNames = pendingPayment?.itemNames || [];
