@@ -1,0 +1,30 @@
+<?php if($get_pg["paymentMode"] == "FLR" && $success) {?>
+										<a href="../onlineServicesReceipt/1/<?=$get_receipt["ref"]?>" target="_blank" class="rounded-md bg-indigo-200 mt-2 px-3 py-2 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-indigo-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-200">View/Download Receipt</a>
+										<div class="mt-6 text-lg italic mx-6 md:mx-64">
+											Go to the nearest kiosk to print your receipt. Use the same phone number <span class="">(<?= $mobile ?>)</span> you have used in the seva booking form.
+											<br><br>
+											<span class="">Kiosk locations:</span>
+											<br>
+											At Sringeri - Guru Nivasa entrance, PS Office,<br> 
+											Archana  Counters  (Sri  Sharadamba  Sannidhi)
+										</div>
+									<?php } else if(($get_pg["paymentMode"] == "FSR" || $get_pg["paymentMode"] == "RSR") && $success) {?>
+										<a href="../onlineServicesReceipt/<?=$url_mode?>/<?=$get_receipt["ref"]?>" target="_blank" class="rounded-md bg-indigo-200 mt-2 px-3 py-2 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-indigo-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-200">View/Download Receipt</a>
+										<div class="mt-6 text-lg italic mx-6 md:mx-64">
+											For in-person: Go to the nearest kiosk to print your receipt. Use the same phone number <span class="">(<?= $mobile ?>)</span> you have used in the seva booking form.
+											<br><br>
+											<span class="">Kiosk locations:</span>
+											<br>
+											At Sringeri - Guru Nivasa entrance, PS Office,<br> 
+											Archana  Counters  (Sri  Sharadamba  Sannidhi)
+										</div>
+										<div class="mt-6 text-lg">
+											For in-absentia : The seva will be performed on the chosen date. If you have opted for prasadam by post, it will be sent to your address.
+										</div>
+									<?php } else if($get_pg["paymentMode"] == "YATRI" && $success) {?>
+									</div>
+										<div class="text-center text-white mt-8 md:mt-20 md:ml-6">
+											<div class="mt-6 text-lg">
+												Your room booking has been confirmed. Booking RefNo: <?=$get_reservation["id"]?> <br/><br/> Please use this reference number for any assistance with your booking, <br/><br/>  You will receive an SMS with the booking reference details.
+											</div>
+										</div>
