@@ -486,6 +486,7 @@ export default function Seva() {
           setPayeeEmail(data.email || "");
           setPayeeMobile(data.mobile || "");
           setPayeeCountryCode(data.countryCode || "+91");
+          if (data.city) setPayeePlace(data.city);
         })
         .catch(() => {});
     }
