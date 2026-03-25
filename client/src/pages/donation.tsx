@@ -487,6 +487,12 @@ export default function Donation() {
     }
   }, [subcategories, pendingFocusSubcategoryId]);
 
+  useEffect(() => {
+    if (subcategories.length === 1 && !selectedSubCategory) {
+      handleSelectSubCategory(subcategories[0]);
+    }
+  }, [subcategories]);
+
   const kartas = devoteeData?.kartas || [];
   const addresses = devoteeData?.addresses || [];
 
