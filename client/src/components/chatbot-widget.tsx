@@ -288,7 +288,7 @@ export default function ChatbotWidget() {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const isLg = w >= 1024;
-    return { x: w - 56 - 16, y: h - (isLg ? 32 : 96) - 56 };
+    return { x: w - 56 - 16, y: h - (isLg ? 32 : 160) - 56 };
   }, []);
 
   useEffect(() => {
