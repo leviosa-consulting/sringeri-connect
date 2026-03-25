@@ -422,7 +422,7 @@ export default function ChatbotWidget() {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          className="fixed z-50 rounded-full shadow-xl bg-primary hover:bg-primary/90 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none px-5 h-12"
+          className="fixed z-50 rounded-full shadow-xl bg-primary/60 hover:bg-primary flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none px-5 h-12 transition-colors"
           style={{ left: btnPos.x, top: btnPos.y }}
           data-testid="button-open-chat"
         >
