@@ -205,10 +205,10 @@ export default function PaymentResult() {
   };
 
   const getFlowLabel = () => {
-    if (flowType === "fastline") return "Seva Booking";
-    if (flowType === "seva") return "Seva Booking";
+    if (flowType === "fastline") return "Seva";
+    if (flowType === "seva") return "Seva";
     if (flowType === "donation") return "Donation";
-    if (flowType === "accommodation") return "Accommodation Booking";
+    if (flowType === "accommodation") return "Booking";
     return "Payment";
   };
 
@@ -270,9 +270,9 @@ export default function PaymentResult() {
 
           <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-sm">
             {txnId && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Transaction ID</span>
-                <span className="font-medium text-primary" data-testid="text-ack-txnid">{txnId}</span>
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground shrink-0">Transaction ID</span>
+                <span className="font-medium text-primary text-right text-xs break-all" data-testid="text-ack-txnid">{txnId}</span>
               </div>
             )}
             {orderId && (
