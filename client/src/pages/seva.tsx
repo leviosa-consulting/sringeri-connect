@@ -2811,7 +2811,7 @@ export default function Seva() {
                       data-testid={`button-seva-type-${type.short}`}
                       disabled={isComingSoon}
                     >
-                      <Card className={`w-full h-full transition-shadow ${isComingSoon ? "opacity-40 blur-[1px]" : "hover:shadow-lg"}`}>
+                      <Card className={`w-full h-full transition-shadow ${isComingSoon ? "opacity-60" : "hover:shadow-lg"}`}>
                         <CardContent className="p-3 flex flex-col items-center justify-center gap-2 h-full">
                           <div className="rounded-2xl w-12 h-12 flex items-center justify-center" style={{ backgroundColor: '#fcfbf7' }}>
                             <Icon className="h-6 w-6" color="#ff6600" />
