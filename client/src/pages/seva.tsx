@@ -258,6 +258,7 @@ export default function Seva() {
   const [kartaGotraK, setKartaGotraK] = useState("");
   const [kartaCity, setKartaCity] = useState("");
   const [showKartaList, setShowKartaList] = useState(false);
+  const [showFlKartaList, setShowFlKartaList] = useState(false);
 
   const [fromDate, setFromDate] = useState(getTomorrowDate());
   const [toDate, setToDate] = useState("");
@@ -1899,6 +1900,36 @@ export default function Seva() {
 
         <div className="px-4 mt-4">
           <div className="bg-white rounded-lg shadow-md px-5 py-6">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-xs font-semibold text-primary/70 uppercase tracking-wide">Karta Details</label>
+              <button className="text-xs text-primary underline" onClick={() => setShowFlKartaList(!showFlKartaList)}
+                data-testid="button-fl-pick-karta">
+                + Pick karta
+              </button>
+            </div>
+            {showFlKartaList && (
+              <div className="bg-muted/50 rounded-lg p-2 mb-3 max-h-32 overflow-y-auto">
+                {kartas.length > 0 ? kartas.map((karta: any, i: number) => (
+                  <button key={i} className="w-full text-left text-xs p-2 rounded hover:bg-primary/10"
+                    onClick={() => {
+                      setKartaName(karta.name || "");
+                      if (karta.nameK) {
+                        setKannadaName(karta.nameK);
+                      }
+                      setKartaNakshatraId(String(karta.nakshatraId || ""));
+                      setKartaRashiId(String(karta.rashiId || ""));
+                      setKartaCity(karta.city || "");
+                      setShowFlKartaList(false);
+                    }}
+                    data-testid={`button-fl-karta-${i}`}
+                  >
+                    {karta.name}{karta.gotra ? ` (${karta.gotra})` : ""}
+                  </button>
+                )) : (
+                  <p className="text-xs text-muted-foreground text-center py-2">No saved kartas found</p>
+                )}
+              </div>
+            )}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-medium text-primary/70">Name</label>
