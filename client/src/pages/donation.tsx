@@ -1247,27 +1247,6 @@ export default function Donation() {
 
   return (
     <div className="min-h-screen bg-[#F7F2EC] pb-24">
-      {/Android/i.test(navigator.userAgent) && (
-        <div className="fixed inset-0 z-50 bg-[#F7F2EC]/95 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center" data-testid="booking-placeholder-overlay">
-          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-red-100 flex items-center justify-center">
-              <HandHeart className="h-8 w-8 text-red-600" />
-            </div>
-            <h2 className="text-xl font-serif font-bold text-[#8B4513]">Donation (Kanike)</h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Bookings available from midnight of 25th March 2026
-            </p>
-            <button
-              onClick={() => navigate("/home")}
-              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-              data-testid="button-placeholder-back"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Home
-            </button>
-          </div>
-        </div>
-      )}
       <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10">

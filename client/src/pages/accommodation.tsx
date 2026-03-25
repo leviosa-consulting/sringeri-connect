@@ -428,27 +428,6 @@ export default function Accommodation() {
   if (!termsAccepted) {
     return (
       <div className="pb-24 lg:pb-8">
-        {/Android/i.test(navigator.userAgent) && (
-          <div className="fixed inset-0 z-50 bg-[#F7F2EC]/95 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center" data-testid="booking-placeholder-overlay">
-            <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full space-y-4">
-              <div className="w-16 h-16 mx-auto rounded-full bg-blue-100 flex items-center justify-center">
-                <Hotel className="h-8 w-8 text-blue-600" />
-              </div>
-              <h2 className="text-xl font-serif font-bold text-[#8B4513]">Rooms (Stay)</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Bookings available from midnight of 25th March 2026
-              </p>
-              <button
-                onClick={() => setLocation("/home")}
-                className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-                data-testid="button-placeholder-back"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Home
-              </button>
-            </div>
-          </div>
-        )}
         <div className="bg-primary pt-8 pb-6 px-6 text-primary-foreground relative overflow-hidden">
           <div className="absolute inset-0 bg-black/10" />
           <div className="relative z-10">

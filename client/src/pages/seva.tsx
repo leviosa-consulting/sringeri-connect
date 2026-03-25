@@ -2734,27 +2734,6 @@ export default function Seva() {
   // ========== HOME ==========
   return (
     <div className="min-h-screen bg-[#F7F2EC] pb-24" data-testid="seva-home">
-      {/Android/i.test(navigator.userAgent) && (
-        <div className="fixed inset-0 z-50 bg-[#F7F2EC]/95 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center" data-testid="booking-placeholder-overlay">
-          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-orange-100 flex items-center justify-center">
-              <BookCopy className="h-8 w-8 text-orange-600" />
-            </div>
-            <h2 className="text-xl font-serif font-bold text-[#8B4513]">Seva Booking</h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Bookings available from midnight of 25th March 2026
-            </p>
-            <button
-              onClick={() => navigate("/home")}
-              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-              data-testid="button-placeholder-back"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Home
-            </button>
-          </div>
-        </div>
-      )}
       <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10">
@@ -2824,13 +2803,15 @@ export default function Seva() {
                 {SEVA_TYPES.map((type) => {
                   const icons = { fl: Zap, otfs: CalendarDays, ps: RefreshCw };
                   const Icon = icons[type.short as keyof typeof icons];
+                  const isComingSoon = type.short === "ps";
                   return (
                     <button key={type.id}
-                      onClick={() => selectSevaType(type)}
-                      className="flex flex-col items-center h-full"
+                      onClick={() => !isComingSoon && selectSevaType(type)}
+                      className={`flex flex-col items-center h-full relative ${isComingSoon ? "cursor-not-allowed" : ""}`}
                       data-testid={`button-seva-type-${type.short}`}
+                      disabled={isComingSoon}
                     >
-                      <Card className="w-full h-full hover:shadow-lg transition-shadow">
+                      <Card className={`w-full h-full transition-shadow ${isComingSoon ? "opacity-40 blur-[1px]" : "hover:shadow-lg"}`}>
                         <CardContent className="p-3 flex flex-col items-center justify-center gap-2 h-full">
                           <div className="rounded-2xl w-12 h-12 flex items-center justify-center" style={{ backgroundColor: '#fcfbf7' }}>
                             <Icon className="h-6 w-6" color="#ff6600" />
@@ -2838,6 +2819,9 @@ export default function Seva() {
                           <span className="text-xs font-semibold text-center leading-tight">{type.name}</span>
                         </CardContent>
                       </Card>
+                      {isComingSoon && (
+                        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-muted-foreground">Coming Soon</span>
+                      )}
                     </button>
                   );
                 })}
