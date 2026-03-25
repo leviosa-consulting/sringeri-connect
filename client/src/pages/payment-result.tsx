@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Loader2, Home, ArrowLeft } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Home, ArrowLeft, RotateCcw } from "lucide-react";
 
 interface PendingPayment {
   flowType: string;
@@ -13,6 +13,7 @@ interface PendingPayment {
   roomName?: string;
   reservedDate?: string;
   ts?: number;
+  retryData?: any;
 }
 
 export default function PaymentResult() {
@@ -20,6 +21,8 @@ export default function PaymentResult() {
   const [processed, setProcessed] = useState(false);
   const processedRef = useRef(false);
   const [checking, setChecking] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState("");
   const [liveStatus, setLiveStatus] = useState("");
   const [liveTxnId, setLiveTxnId] = useState("");
 
@@ -58,7 +61,7 @@ export default function PaymentResult() {
     if (processedRef.current) return;
     processedRef.current = true;
 
-    if (isSuccess || (!isPending && status)) {
+    if (isSuccess) {
       sessionStorage.removeItem("pendingPayment");
     }
     setProcessed(true);
@@ -90,6 +93,103 @@ export default function PaymentResult() {
     } catch {}
     setChecking(false);
   };
+
+  const retryPayment = async () => {
+    if (!pendingPayment?.retryData || retrying) return;
+    setRetrying(true);
+    setRetryError("");
+
+    try {
+      const rd = pendingPayment.retryData;
+      const isSeva = pendingPayment.flowType === "seva" || pendingPayment.flowType === "fastline";
+      const isDonation = pendingPayment.flowType === "donation";
+
+      let txnToken: string, newOrderId: string, mid: string;
+
+      if (isDonation) {
+        const initRes = await fetch(rd.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(rd.payload),
+        });
+        if (!initRes.ok) {
+          const errData = await initRes.json().catch(() => ({}));
+          throw new Error(errData.details || errData.error || "Failed to initiate payment");
+        }
+        const data = await initRes.json();
+        txnToken = data.txnToken;
+        newOrderId = data.orderId;
+        mid = data.mid;
+      } else if (pendingPayment.flowType === "accommodation") {
+        const initRes = await fetch(rd.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(rd.payload),
+        });
+        if (!initRes.ok) {
+          const errData = await initRes.json().catch(() => ({}));
+          throw new Error(errData.details || errData.error || "Failed to initiate payment");
+        }
+        const data = await initRes.json();
+        txnToken = data.txnToken;
+        newOrderId = data.orderId;
+        mid = data.mid;
+      } else {
+        const initRes = await fetch("/api/initiatePaytmTransaction", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: rd.amount, mobile: rd.mobile, orderPrefix: rd.orderPrefix }),
+        });
+        if (!initRes.ok) {
+          const errData = await initRes.json().catch(() => ({}));
+          throw new Error(errData.details || "Failed to initiate payment");
+        }
+        const data = await initRes.json();
+        txnToken = data.txnToken;
+        newOrderId = data.orderId;
+        mid = data.mid;
+
+        const now = new Date();
+        const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+        const receiptBody = { ...rd.receiptBody, paymentRef: newOrderId, addedAt };
+
+        const receiptRes = await fetch(rd.receiptEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(receiptBody),
+        });
+        if (!receiptRes.ok) {
+          throw new Error("Failed to create booking record");
+        }
+      }
+
+      sessionStorage.setItem("pendingPayment", JSON.stringify({
+        ...pendingPayment,
+        orderId: newOrderId,
+        ts: Date.now(),
+      }));
+
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = `https://securegw.paytm.in/theia/api/v1/showPaymentPage?mid=${encodeURIComponent(mid)}&orderId=${encodeURIComponent(newOrderId)}`;
+      form.style.display = "none";
+      for (const [key, value] of Object.entries({ mid, orderId: newOrderId, txnToken })) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
+    } catch (err: any) {
+      console.error("Retry payment error:", err);
+      setRetryError(err.message || "Something went wrong. Please try again.");
+      setRetrying(false);
+    }
+  };
+
+  const hasRetryData = !!pendingPayment?.retryData;
 
   const getReturnPath = () => {
     if (flowType === "fastline") return "/fastline";
@@ -247,23 +347,43 @@ export default function PaymentResult() {
             </div>
           )}
 
-          <div className="flex gap-2 pt-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setLocation(getReturnPath())}
-              data-testid="button-back-to-flow"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              {isSuccess ? `New ${getFlowLabel()}` : "Try Again"}
-            </Button>
-            <Button
-              className="flex-1 bg-[#FF6600] hover:bg-[#e55b00]"
-              onClick={() => setLocation("/home")}
-              data-testid="button-go-home"
-            >
-              <Home className="h-4 w-4 mr-1" />Home
-            </Button>
+          {retryError && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-2">
+              <p className="text-red-600 text-xs">{retryError}</p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 pt-2">
+            {!isSuccess && !isPending && hasRetryData && (
+              <Button
+                className="w-full bg-[#FF6600] hover:bg-[#e55b00]"
+                onClick={retryPayment}
+                disabled={retrying}
+                data-testid="button-retry-payment"
+              >
+                {retrying ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RotateCcw className="h-4 w-4 mr-1" />}
+                {retrying ? "Retrying..." : "Retry Payment"}
+              </Button>
+            )}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setLocation(getReturnPath())}
+                data-testid="button-back-to-flow"
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                {isSuccess ? `New ${getFlowLabel()}` : "Start Over"}
+              </Button>
+              <Button
+                variant={!isSuccess && hasRetryData ? "outline" : "default"}
+                className={`flex-1 ${!isSuccess && hasRetryData ? "" : "bg-[#FF6600] hover:bg-[#e55b00]"}`}
+                onClick={() => setLocation("/home")}
+                data-testid="button-go-home"
+              >
+                <Home className="h-4 w-4 mr-1" />Home
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -206,6 +206,12 @@ export default function Fastline() {
         amount,
         orderId,
         ts: Date.now(),
+        retryData: {
+          amount: total,
+          mobile: kartaMobile,
+          receiptBody,
+          receiptEndpoint: "/api/newReceiptFl",
+        },
       }));
 
       const form = document.createElement("form");

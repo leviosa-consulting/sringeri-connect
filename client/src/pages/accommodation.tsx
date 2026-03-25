@@ -299,6 +299,10 @@ export default function Accommodation() {
         roomName,
         reservedDate: reservedDateDisp,
         ts: Date.now(),
+        retryData: {
+          payload: reservationData,
+          endpoint: "/api/onlineReservationPtm",
+        },
       }));
 
       const form = document.createElement("form");

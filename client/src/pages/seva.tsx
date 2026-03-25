@@ -1092,6 +1092,13 @@ export default function Seva() {
         amount,
         orderId,
         ts: Date.now(),
+        retryData: {
+          amount: totalSevaAmount,
+          mobile: payeeMobile,
+          orderPrefix,
+          receiptBody,
+          receiptEndpoint,
+        },
       }));
 
       const form = document.createElement("form");
@@ -1217,11 +1224,17 @@ export default function Seva() {
       }
 
       sessionStorage.setItem("pendingPayment", JSON.stringify({
-        flowType: "seva",
+        flowType: "fastline",
         itemNames: selectedSevasList.map((s: any) => s.name),
         amount,
         orderId,
         ts: Date.now(),
+        retryData: {
+          amount: total,
+          mobile: payeeMobile,
+          receiptBody,
+          receiptEndpoint: "/api/newReceiptFl",
+        },
       }));
 
       const form = document.createElement("form");

@@ -711,6 +711,10 @@ export default function Donation() {
         orderId,
         is80G: donationForm.claim80G === 1,
         ts: Date.now(),
+        retryData: {
+          payload: { ...donationForm, selectedDonations: cart, totalAmount: totalAmount, uid: user?.uid || "" },
+          endpoint: "/api/makeDonation",
+        },
       }));
 
       const form = document.createElement("form");
