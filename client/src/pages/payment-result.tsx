@@ -327,6 +327,50 @@ export default function PaymentResult() {
             </div>
           )}
 
+          {isSuccess && flowType === "fastline" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm" data-testid="text-fl-success-info">
+              <p className="italic text-amber-900">
+                Go to the nearest kiosk to print your receipt. Use the same phone number you used in the seva booking form.
+              </p>
+              <p className="mt-2 font-medium text-amber-800">Kiosk locations:</p>
+              <p className="text-amber-900">
+                At Sringeri — Guru Nivasa entrance, PS Office,{" "}
+                Archana Counters (Sri Sharadamba Sannidhi)
+              </p>
+            </div>
+          )}
+
+          {isSuccess && flowType === "seva" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm space-y-3" data-testid="text-seva-success-info">
+              <div>
+                <p className="italic text-amber-900">
+                  For in-person: Go to the nearest kiosk to print your receipt. Use the same phone number you used in the seva booking form.
+                </p>
+                <p className="mt-2 font-medium text-amber-800">Kiosk locations:</p>
+                <p className="text-amber-900">
+                  At Sringeri — Guru Nivasa entrance, PS Office,{" "}
+                  Archana Counters (Sri Sharadamba Sannidhi)
+                </p>
+              </div>
+              <div className="border-t border-amber-200 pt-2">
+                <p className="text-amber-900">
+                  For in-absentia: The seva will be performed on the chosen date. If you have opted for prasadam by post, it will be sent to your address.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {isSuccess && flowType === "accommodation" && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm" data-testid="text-accom-success-info">
+              <p className="text-green-900">
+                Your room booking has been confirmed. Please use the Order ID above for any assistance with your booking.
+              </p>
+              <p className="text-green-900 mt-2">
+                You will receive an SMS with the booking reference details.
+              </p>
+            </div>
+          )}
+
           {isPending && (
             <div className="text-center space-y-2">
               <p className="text-xs text-yellow-600">
