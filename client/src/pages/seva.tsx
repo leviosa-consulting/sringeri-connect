@@ -618,6 +618,15 @@ export default function Seva() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  useEffect(() => {
+    if (sevaDate && sevaDate === new Date().toISOString().split("T")[0]) {
+      setInAbsentia("0");
+      setReceivePrasadam("");
+      setPostageId("");
+      setPostageCharges(0);
+    }
+  }, [sevaDate]);
+
   function resetSevaForm() {
     setSelectedSannidhi(null);
     setSelectedSeva(null);
@@ -2315,7 +2324,9 @@ export default function Seva() {
             </Card>
           )}
 
-          {selectedSeva && selectedSevaType?.id === 2 && (
+          {selectedSeva && selectedSevaType?.id === 2 && (() => {
+            const isToday = sevaDate === new Date().toISOString().split("T")[0];
+            return (
             <Card>
               <CardContent className="p-5 space-y-4">
                 <div>
@@ -2326,12 +2337,14 @@ export default function Seva() {
                       data-testid="button-in-person">
                       In Person
                     </button>
-                    <button onClick={() => setInAbsentia("1")}
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${inAbsentia === "1" ? "bg-primary text-white" : "bg-white border border-border"}`}
+                    <button onClick={() => !isToday && setInAbsentia("1")}
+                      disabled={isToday}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${inAbsentia === "1" ? "bg-primary text-white" : "bg-white border border-border"} ${isToday ? "opacity-40 cursor-not-allowed" : ""}`}
                       data-testid="button-in-absentia">
                       In Absentia
                     </button>
                   </div>
+                  {isToday && <p className="text-xs text-muted-foreground mt-1">In-person only for today's date</p>}
                 </div>
 
                 {inAbsentia === "1" && (
@@ -2372,7 +2385,7 @@ export default function Seva() {
                 )}
               </CardContent>
             </Card>
-          )}
+          );})()}
 
           {selectedSeva && selectedSevaType?.id === 3 && (
             <Card>
