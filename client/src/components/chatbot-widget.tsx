@@ -422,11 +422,11 @@ export default function ChatbotWidget() {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          className="fixed z-50 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none"
+          className="fixed z-50 rounded-full shadow-xl bg-primary hover:bg-primary/90 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none px-5 h-12"
           style={{ left: btnPos.x, top: btnPos.y }}
           data-testid="button-open-chat"
         >
-          <MessageCircle className="h-6 w-6 text-white pointer-events-none" />
+          <span className="text-white text-sm font-semibold pointer-events-none">Help</span>
         </button>
       )}
 
