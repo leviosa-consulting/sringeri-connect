@@ -339,14 +339,14 @@ export default function Seva() {
   }, []);
 
   useEffect(() => {
-    if (selectedSevaType?.id !== 1 && selectedSevaType?.id !== 3) return;
+    if (!selectedSevaType) return;
     if (nameTimerRef.current) clearTimeout(nameTimerRef.current);
     nameTimerRef.current = setTimeout(() => transliterate(kartaName, setKannadaName, nameAbortRef), 400);
     return () => { if (nameTimerRef.current) clearTimeout(nameTimerRef.current); };
   }, [kartaName, transliterate, selectedSevaType]);
 
   useEffect(() => {
-    if (selectedSevaType?.id !== 1 && selectedSevaType?.id !== 3) return;
+    if (!selectedSevaType) return;
     if (cityTimerRef.current) clearTimeout(cityTimerRef.current);
     cityTimerRef.current = setTimeout(() => transliterate(kartaCity, setKannadaCity, cityAbortRef), 400);
     return () => { if (cityTimerRef.current) clearTimeout(cityTimerRef.current); };
@@ -1670,6 +1670,9 @@ export default function Seva() {
                     <button key={i} className="w-full text-left text-xs p-2 rounded hover:bg-primary/10"
                       onClick={() => {
                         setKartaName(karta.name || "");
+                        if (karta.nameK) {
+                          setKannadaName(karta.nameK);
+                        }
                         setKartaNakshatraId(String(karta.nakshatraId || ""));
                         setKartaRashiId(String(karta.rashiId || ""));
                         setKartaGotra(karta.gotra || "");
@@ -1689,7 +1692,10 @@ export default function Seva() {
 
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Devotee Name *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-muted-foreground">Devotee Name *</label>
+                    {kannadaName && <span className="text-xs font-medium text-orange-500">{kannadaName}</span>}
+                  </div>
                   <input type="text" value={kartaName} onChange={(e) => setKartaName(e.target.value)}
                     className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                     data-testid="input-karta-name" />
