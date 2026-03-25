@@ -1364,25 +1364,21 @@ export default function Donation() {
         {selectedHeading && filteredCategories.length > 0 && (
           <div>
             <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-category">Choose Category</h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {filteredCategories.map((cat) => {
-                const Icon = getIconForName(cat.name);
                 const isSelected = selectedCategory?.id === cat.id;
                 return (
                   <button
                     key={cat.id}
                     onClick={() => handleSelectCategory(cat)}
-                    className={`flex flex-col items-center rounded-xl p-3 pt-4 pb-3 transition-all min-h-[100px] ${
+                    className={`flex items-center justify-center rounded-xl p-4 transition-all min-h-[56px] ${
                       isSelected
                         ? "bg-primary text-white shadow-lg ring-2 ring-primary/30"
                         : "bg-white border border-border text-foreground hover:border-primary/50 hover:shadow-md"
                     }`}
                     data-testid={`button-category-${cat.id}`}
                   >
-                    <div className="flex-1 flex items-center">
-                      <Icon className={`h-6 w-6 ${isSelected ? "text-white" : "text-primary"}`} />
-                    </div>
-                    <span className="text-[11px] font-medium text-center leading-tight line-clamp-2 mt-2">{cat.name}</span>
+                    <span className="text-sm font-medium text-center leading-snug">{cat.name}</span>
                   </button>
                 );
               })}
