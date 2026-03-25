@@ -2007,18 +2007,24 @@ export default function Seva() {
                   <p className="text-sm text-muted-foreground ml-1">No sevas available for today.</p>
                 ) : (
                   <div className="mx-2">
-                    {flCentreSevas.map((seva: any) => {
+                    {(() => {
+                      const isGuruNivas = flCentre?.name?.toLowerCase().includes("guru nivas");
+                      return flCentreSevas.map((seva: any) => {
                       const isSelected = flSelectedSevas.has(seva.id);
                       return (
                         <div key={seva.id}>
                           <div className="flex items-center justify-between py-2.5">
                             <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0" data-testid={`button-fl-seva-${seva.id}`}>
-                              <input type="checkbox" checked={isSelected}
+                              <input type={isGuruNivas ? "checkbox" : "radio"} name="fl-seva-radio" checked={isSelected}
                                 onChange={() => {
-                                  const next = new Set(flSelectedSevas);
-                                  if (isSelected) next.delete(seva.id);
-                                  else next.add(seva.id);
-                                  setFlSelectedSevas(next);
+                                  if (isGuruNivas) {
+                                    const next = new Set(flSelectedSevas);
+                                    if (isSelected) next.delete(seva.id);
+                                    else next.add(seva.id);
+                                    setFlSelectedSevas(next);
+                                  } else {
+                                    setFlSelectedSevas(new Set([seva.id]));
+                                  }
                                 }}
                                 className="w-4 h-4 accent-primary shrink-0" />
                               <span className="text-sm text-primary truncate">{seva.name}</span>
@@ -2044,7 +2050,8 @@ export default function Seva() {
                           <div className="border-b border-primary/20" />
                         </div>
                       );
-                    })}
+                    });
+                    })()}
 
                     {flSelectedSevas.size > 0 && (
                       <div className="mt-4 text-right">
