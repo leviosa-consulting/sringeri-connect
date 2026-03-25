@@ -2181,65 +2181,6 @@ export default function Seva() {
             </Card>
           )}
 
-          {selectedSeva && selectedSevaType?.id === 2 && (
-            <Card>
-              <CardContent className="p-5 space-y-4">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-2 block">Attending</label>
-                  <div className="flex gap-2">
-                    <button onClick={() => { setInAbsentia("0"); setReceivePrasadam(""); setPostageId(""); setPostageCharges(0); }}
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${inAbsentia === "0" ? "bg-primary text-white" : "bg-white border border-border"}`}
-                      data-testid="button-in-person">
-                      In Person
-                    </button>
-                    <button onClick={() => setInAbsentia("1")}
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${inAbsentia === "1" ? "bg-primary text-white" : "bg-white border border-border"}`}
-                      data-testid="button-in-absentia">
-                      In Absentia
-                    </button>
-                  </div>
-                </div>
-
-                {inAbsentia === "1" && (
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-2 block">Receive Prasadam by post?</label>
-                    <div className="flex gap-2">
-                      <button onClick={() => setReceivePrasadam("true")}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium ${receivePrasadam === "true" ? "bg-primary text-white" : "bg-white border border-border"}`}
-                        data-testid="button-prasadam-yes">
-                        Yes
-                      </button>
-                      <button onClick={() => { setReceivePrasadam("false"); setPostageId(""); setPostageCharges(0); }}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium ${receivePrasadam === "false" ? "bg-primary text-white" : "bg-white border border-border"}`}
-                        data-testid="button-prasadam-no">
-                        No
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {inAbsentia === "1" && receivePrasadam === "true" && !hideCalendarPostage && (
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-2 block">Postage Option</label>
-                    <div className="space-y-2">
-                      {postageOptions.map((opt) => (
-                        <button key={opt.id} onClick={() => handlePostageSelect(opt)}
-                          className={`w-full text-left rounded-lg p-3 text-sm ${postageId === String(opt.id) ? "bg-primary text-white" : "bg-white border border-border"}`}
-                          data-testid={`button-postage-${opt.id}`}
-                        >
-                          <div className="flex justify-between">
-                            <span>{opt.name}</span>
-                            <span className="font-medium">₹{formatNumber(opt.amount)}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
           {selectedSeva && selectedSevaType?.id === 2 && !hideCalendarPostage && (
             <Card>
               <CardContent className="p-5 space-y-3">
@@ -2307,6 +2248,65 @@ export default function Seva() {
                   </>
                 )}
                 {sevaDate && <p className="text-xs text-primary font-medium text-center mt-1">Selected: {formatDate(sevaDate)}</p>}
+              </CardContent>
+            </Card>
+          )}
+
+          {selectedSeva && selectedSevaType?.id === 2 && (
+            <Card>
+              <CardContent className="p-5 space-y-4">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-2 block">Attending</label>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setInAbsentia("0"); setReceivePrasadam(""); setPostageId(""); setPostageCharges(0); }}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${inAbsentia === "0" ? "bg-primary text-white" : "bg-white border border-border"}`}
+                      data-testid="button-in-person">
+                      In Person
+                    </button>
+                    <button onClick={() => setInAbsentia("1")}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${inAbsentia === "1" ? "bg-primary text-white" : "bg-white border border-border"}`}
+                      data-testid="button-in-absentia">
+                      In Absentia
+                    </button>
+                  </div>
+                </div>
+
+                {inAbsentia === "1" && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-2 block">Receive Prasadam by post?</label>
+                    <div className="flex gap-2">
+                      <button onClick={() => setReceivePrasadam("true")}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium ${receivePrasadam === "true" ? "bg-primary text-white" : "bg-white border border-border"}`}
+                        data-testid="button-prasadam-yes">
+                        Yes
+                      </button>
+                      <button onClick={() => { setReceivePrasadam("false"); setPostageId(""); setPostageCharges(0); }}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium ${receivePrasadam === "false" ? "bg-primary text-white" : "bg-white border border-border"}`}
+                        data-testid="button-prasadam-no">
+                        No
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {inAbsentia === "1" && receivePrasadam === "true" && !hideCalendarPostage && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-2 block">Postage Option</label>
+                    <div className="space-y-2">
+                      {postageOptions.map((opt) => (
+                        <button key={opt.id} onClick={() => handlePostageSelect(opt)}
+                          className={`w-full text-left rounded-lg p-3 text-sm ${postageId === String(opt.id) ? "bg-primary text-white" : "bg-white border border-border"}`}
+                          data-testid={`button-postage-${opt.id}`}
+                        >
+                          <div className="flex justify-between">
+                            <span>{opt.name}</span>
+                            <span className="font-medium">₹{formatNumber(opt.amount)}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
