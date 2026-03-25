@@ -112,7 +112,11 @@ export default function Fastline() {
       const res = await fetch(`/api/centreSevas?endpoint=${encodeURIComponent(centre.endpoint)}`);
       if (!res.ok) throw new Error("Failed to fetch sevas");
       const sevas = await res.json();
-      setFlCentreSevas(sevas.map((s: any) => ({ ...s, selected: false, price: parseFloat(s.price) || 0 })));
+      const mapped = sevas.map((s: any) => ({ ...s, selected: false, price: parseFloat(s.price) || 0 }));
+      setFlCentreSevas(mapped);
+      if (mapped.length === 1) {
+        setFlSelectedSevas(new Set([mapped[0].id]));
+      }
     } catch (err) {
       console.error("Error fetching centre sevas:", err);
       setFlCentreSevas([]);
@@ -444,18 +448,24 @@ export default function Fastline() {
                   <p className="text-sm text-muted-foreground ml-1">No sevas available for today.</p>
                 ) : (
                   <div className="mx-2">
-                    {flCentreSevas.map((seva: any) => {
+                    {(() => {
+                      const isGuruNivas = flCentre?.name?.toLowerCase().includes("guru nivas");
+                      return flCentreSevas.map((seva: any) => {
                       const isSelected = flSelectedSevas.has(seva.id);
                       return (
                         <div key={seva.id}>
                           <div className="flex items-center justify-between py-2.5">
                             <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0" data-testid={`button-fl-seva-${seva.id}`}>
-                              <input type="checkbox" checked={isSelected}
+                              <input type={isGuruNivas ? "checkbox" : "radio"} name="fl-seva-radio" checked={isSelected}
                                 onChange={() => {
-                                  const next = new Set(flSelectedSevas);
-                                  if (isSelected) next.delete(seva.id);
-                                  else next.add(seva.id);
-                                  setFlSelectedSevas(next);
+                                  if (isGuruNivas) {
+                                    const next = new Set(flSelectedSevas);
+                                    if (isSelected) next.delete(seva.id);
+                                    else next.add(seva.id);
+                                    setFlSelectedSevas(next);
+                                  } else {
+                                    setFlSelectedSevas(new Set([seva.id]));
+                                  }
                                 }}
                                 className="w-4 h-4 accent-primary shrink-0" />
                               <span className="text-sm text-primary truncate">{seva.name}</span>
@@ -481,7 +491,8 @@ export default function Fastline() {
                           <div className="border-b border-primary/20" />
                         </div>
                       );
-                    })}
+                    });
+                    })()}
 
                     {flSelectedSevas.size > 0 && (
                       <div className="mt-4 text-right">
