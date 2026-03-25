@@ -2040,6 +2040,44 @@ export default function Seva() {
         </div>
 
         <div className="px-4 mt-4 space-y-4">
+          {selectedSevaType?.id === 2 && frequentSevas.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <button
+                  onClick={() => setUpcomingSevasOpen(!upcomingSevasOpen)}
+                  className="w-full flex items-center justify-between"
+                  data-testid="button-toggle-upcoming-sevas-otfs"
+                >
+                  <h3 className="text-sm font-semibold flex items-center gap-1">
+                    <Star className="h-4 w-4 text-amber-500" />
+                    Upcoming / Frequent Sevas ({frequentSevas.length})
+                  </h3>
+                  {upcomingSevasOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+                {upcomingSevasOpen && (
+                  <div className="space-y-2 mt-3">
+                    {[...frequentSevas].sort((a, b) => (a.orderId ?? 0) - (b.orderId ?? 0)).map((fs) => (
+                      <button
+                        key={fs.dsId}
+                        onClick={() => handleFrequentSeva(String(fs.dsId))}
+                        className="w-full flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-4 py-3 transition-all hover:shadow-md hover:border-amber-300 cursor-pointer active:scale-[0.99] text-left"
+                        data-testid={`button-frequent-seva-otfs-${fs.dsId}`}
+                      >
+                        <div className="bg-amber-100 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
+                          <Star className="h-5 w-5 text-amber-700" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-semibold text-foreground leading-tight block">{fs.deityName} - {fs.sevaName}</span>
+                          <span className="text-xs text-amber-700 font-medium">₹{formatNumber(fs.price)}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardContent className="p-5 space-y-3">
               <h3 className="font-serif font-bold text-sm">Select Sannidhi (Deity)</h3>
@@ -2725,43 +2763,6 @@ export default function Seva() {
               </div>
             </div>
 
-            {selectedSevaType?.id === 2 && frequentSevas.length > 0 && (
-              <Card>
-                <CardContent className="p-4">
-                  <button
-                    onClick={() => setUpcomingSevasOpen(!upcomingSevasOpen)}
-                    className="w-full flex items-center justify-between"
-                    data-testid="button-toggle-upcoming-sevas"
-                  >
-                    <h3 className="text-sm font-semibold flex items-center gap-1">
-                      <Star className="h-4 w-4 text-amber-500" />
-                      Upcoming / Frequent Sevas ({frequentSevas.length})
-                    </h3>
-                    {upcomingSevasOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                  </button>
-                  {upcomingSevasOpen && (
-                    <div className="space-y-2 mt-3">
-                      {[...frequentSevas].sort((a, b) => (a.orderId ?? 0) - (b.orderId ?? 0)).map((fs) => (
-                        <button
-                          key={fs.dsId}
-                          onClick={() => handleFrequentSeva(String(fs.dsId))}
-                          className="w-full flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-4 py-3 transition-all hover:shadow-md hover:border-amber-300 cursor-pointer active:scale-[0.99] text-left"
-                          data-testid={`button-frequent-seva-${fs.dsId}`}
-                        >
-                          <div className="bg-amber-100 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
-                            <Star className="h-5 w-5 text-amber-700" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-sm font-semibold text-foreground leading-tight block">{fs.deityName} - {fs.sevaName}</span>
-                            <span className="text-xs text-amber-700 font-medium">₹{formatNumber(fs.price)}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
           </>
         )}
       </div>
