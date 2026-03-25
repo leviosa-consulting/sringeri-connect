@@ -288,7 +288,7 @@ export default function ChatbotWidget() {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const isLg = w >= 1024;
-    return { x: w - 56 - 16, y: h - (isLg ? 32 : 160) - 56 };
+    return { x: w - 150 - 16, y: h - (isLg ? 32 : 160) - 48 };
   }, []);
 
   useEffect(() => {
@@ -297,8 +297,8 @@ export default function ChatbotWidget() {
       setBtnPos((prev) => {
         if (!prev) return getDefaultPos();
         return {
-          x: Math.min(prev.x, window.innerWidth - 56),
-          y: Math.min(prev.y, window.innerHeight - 56),
+          x: Math.min(prev.x, window.innerWidth - 150),
+          y: Math.min(prev.y, window.innerHeight - 48),
         };
       });
     };
