@@ -12,6 +12,7 @@ interface PendingPayment {
   is80G?: boolean;
   roomName?: string;
   reservedDate?: string;
+  inAbsentia?: number;
   ts?: number;
   retryData?: any;
 }
@@ -56,6 +57,7 @@ export default function PaymentResult() {
   const itemNames = pendingPayment?.itemNames || [];
   const roomName = pendingPayment?.roomName || "";
   const reservedDate = pendingPayment?.reservedDate || "";
+  const sevaInAbsentia = pendingPayment?.inAbsentia === 1;
 
   useEffect(() => {
     if (processedRef.current) return;
@@ -340,23 +342,24 @@ export default function PaymentResult() {
             </div>
           )}
 
-          {isSuccess && flowType === "seva" && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm space-y-3" data-testid="text-seva-success-info">
-              <div>
-                <p className="italic text-amber-900">
-                  For in-person: Go to the nearest kiosk to print your receipt. Use the same phone number you used in the seva booking form.
-                </p>
-                <p className="mt-2 font-medium text-amber-800">Kiosk locations:</p>
-                <p className="text-amber-900">
-                  At Sringeri — Guru Nivasa entrance, PS Office,{" "}
-                  Archana Counters (Sri Sharadamba Sannidhi)
-                </p>
-              </div>
-              <div className="border-t border-amber-200 pt-2">
-                <p className="text-amber-900">
-                  For in-absentia: The seva will be performed on the chosen date. If you have opted for prasadam by post, it will be sent to your address.
-                </p>
-              </div>
+          {isSuccess && flowType === "seva" && !sevaInAbsentia && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm" data-testid="text-seva-success-info">
+              <p className="italic text-amber-900">
+                Go to the nearest kiosk to print your receipt. Use the same phone number you used in the seva booking form.
+              </p>
+              <p className="mt-2 font-medium text-amber-800">Kiosk locations:</p>
+              <p className="text-amber-900">
+                At Sringeri — Guru Nivasa entrance, PS Office,{" "}
+                Archana Counters (Sri Sharadamba Sannidhi)
+              </p>
+            </div>
+          )}
+
+          {isSuccess && flowType === "seva" && sevaInAbsentia && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm" data-testid="text-seva-absentia-info">
+              <p className="text-amber-900">
+                The seva will be performed on the chosen date. If you have opted for prasadam by post, it will be sent to your address.
+              </p>
             </div>
           )}
 

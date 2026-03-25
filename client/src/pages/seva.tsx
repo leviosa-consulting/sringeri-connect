@@ -1092,6 +1092,7 @@ export default function Seva() {
         itemNames: cart.map(s => s.deitySevaName),
         amount,
         orderId,
+        inAbsentia: Number(inAbsentia) || 0,
         ts: Date.now(),
         retryData: {
           amount: totalSevaAmount,
