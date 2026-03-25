@@ -242,6 +242,7 @@ export default function Seva() {
   const [showSannidhiDropdown, setShowSannidhiDropdown] = useState(false);
   const [showSevaDropdown, setShowSevaDropdown] = useState(false);
   const [showFastlineConfirm, setShowFastlineConfirm] = useState(false);
+  const [pendingFrequentSevaId, setPendingFrequentSevaId] = useState<number | null>(null);
 
   const [sevaDate, setSevaDate] = useState("");
   const [inAbsentia, setInAbsentia] = useState<string>("");
@@ -496,6 +497,16 @@ export default function Seva() {
     }
   }, [availableDates]);
 
+  useEffect(() => {
+    if (pendingFrequentSevaId && deitySevas.length > 0 && selectedSannidhi) {
+      const matchingSeva = deitySevas.find((s) => s.id === pendingFrequentSevaId);
+      if (matchingSeva) {
+        handleSelectSeva(matchingSeva);
+      }
+      setPendingFrequentSevaId(null);
+    }
+  }, [deitySevas, pendingFrequentSevaId, selectedSannidhi]);
+
   const kartas = devoteeData?.kartas || [];
   const addresses = devoteeData?.addresses || [];
 
@@ -696,11 +707,18 @@ export default function Seva() {
     if (!fsId) return;
     const fs = frequentSevas.find((f) => String(f.dsId) === fsId);
     if (!fs) return;
-    selectSevaType(SEVA_TYPES[1]);
+    setPendingFrequentSevaId(fs.dsId);
+    if (!selectedSevaType || selectedSevaType.id !== 2) {
+      selectSevaType(SEVA_TYPES[1]);
+    }
     setTimeout(() => {
       const sannidhi = sannidhis.find((s) => s.id === fs.deityId);
-      if (sannidhi) handleSelectSannidhi(sannidhi);
-    }, 500);
+      if (sannidhi) {
+        setSelectedSannidhi(sannidhi);
+        setSannidhiSearch(sannidhi.name);
+        setShowSannidhiDropdown(false);
+      }
+    }, selectedSevaType?.id === 2 ? 100 : 500);
   }
 
   const sevaBaseAmount = selectedSeva?.price || 0;
