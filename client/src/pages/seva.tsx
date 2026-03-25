@@ -1132,7 +1132,11 @@ export default function Seva() {
       const res = await fetch(`/api/centreSevas?endpoint=${encodeURIComponent(centre.endpoint)}`);
       if (!res.ok) throw new Error("Failed to fetch sevas");
       const sevas = await res.json();
-      setFlCentreSevas(sevas.map((s: any) => ({ ...s, selected: false, price: parseFloat(s.price) || 0 })));
+      const mapped = sevas.map((s: any) => ({ ...s, selected: false, price: parseFloat(s.price) || 0 }));
+      setFlCentreSevas(mapped);
+      if (mapped.length === 1) {
+        setFlSelectedSevas(new Set([mapped[0].id]));
+      }
     } catch (err) {
       console.error("Error fetching centre sevas:", err);
       setFlCentreSevas([]);
