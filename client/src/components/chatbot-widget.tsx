@@ -426,7 +426,7 @@ export default function ChatbotWidget() {
           style={{ left: btnPos.x, top: btnPos.y }}
           data-testid="button-open-chat"
         >
-          <span className="text-white text-sm font-semibold pointer-events-none">Help</span>
+          <span className="text-white text-sm font-semibold pointer-events-none">Help / Feedback</span>
         </button>
       )}
 
