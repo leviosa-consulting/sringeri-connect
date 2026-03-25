@@ -2775,12 +2775,10 @@ export default function Seva() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex gap-3 sm:justify-center">
-            <AlertDialogCancel className="flex-1" data-testid="button-fl-cancel">Cancel</AlertDialogCancel>
-            <button onClick={confirmFastline}
-              className="flex-1 inline-flex items-center justify-center rounded-md bg-primary text-white text-sm font-medium h-10 px-4 hover:bg-primary/90"
-              data-testid="button-fl-continue">
+            <AlertDialogCancel className="flex-1 h-10" data-testid="button-fl-cancel">Cancel</AlertDialogCancel>
+            <Button onClick={confirmFastline} className="flex-1 h-10" data-testid="button-fl-continue">
               Continue
-            </button>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
