@@ -58,6 +58,7 @@ import {
   Brush,
   Sparkles,
   CheckCircle2,
+  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
 
@@ -1269,6 +1270,27 @@ export default function Donation() {
       </div>
 
       <div className="px-4 mt-4 space-y-4">
+        {/iPhone|iPad|iPod/i.test(navigator.userAgent) && (
+          <a
+            href="https://donate.sringeri.net"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-3.5 shadow-sm active:scale-[0.99] transition-all"
+            data-testid="link-ios-donate"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-100 rounded-full p-2">
+                <Landmark className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-blue-900">Donate via donate.sringeri.net</p>
+                <p className="text-xs text-blue-600">Opens in Safari</p>
+              </div>
+            </div>
+            <ExternalLink className="h-4 w-4 text-blue-400" />
+          </a>
+        )}
+
         {featuredDonations.length > 0 && (
           <div>
             <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-donations-in-focus">
