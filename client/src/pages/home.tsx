@@ -65,6 +65,7 @@ interface TodayDetails {
 export default function Home() {
   const [_, setLocation] = useLocation();
   const { profile, user, avatarUrl } = useAuth();
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
   const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
   const [sringeriEvents, setSringeriEvents] = useState<SringeriEvent[]>([]);
@@ -466,7 +467,6 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-4 gap-1 bg-card rounded-xl border border-border/50 py-2">
               {ONLINE_SERVICES.map((service) => {
-                const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
                 const isDonateOnIOS = service.id === "donate" && isIOS;
                 return (
                   <ServiceIcon 
