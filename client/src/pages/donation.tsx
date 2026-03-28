@@ -354,6 +354,8 @@ export default function Donation() {
   const subCategoryRef = useRef<HTMLDivElement>(null);
   const causeListRef = useRef<HTMLDivElement>(null);
 
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
   const { data: headings = [] } = useQuery<DonationHeading[]>({
     queryKey: ["donationHeadings"],
     queryFn: async () => {
@@ -1270,7 +1272,7 @@ export default function Donation() {
       </div>
 
       <div className="px-4 mt-4 space-y-4">
-        {/iPhone|iPad|iPod/i.test(navigator.userAgent) && (
+        {isIOS && (
           <a
             href="https://donate.sringeri.net"
             target="_blank"
