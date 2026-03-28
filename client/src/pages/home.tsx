@@ -465,17 +465,23 @@ export default function Home() {
               </h2>
             </div>
             <div className="grid grid-cols-4 gap-1 bg-card rounded-xl border border-border/50 py-2">
-              {ONLINE_SERVICES.map((service) => (
-                <ServiceIcon 
-                  key={service.id}
-                  {...service}
-                  onClick={() => {
-                    if (service.id === "accommodation") setLocation("/accommodation");
-                    if (service.id === "donate") setLocation("/donation");
-                    if (service.id === "seva") setLocation("/seva");
-                  }}
-                />
-              ))}
+              {ONLINE_SERVICES.map((service) => {
+                const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+                const isDonateOnIOS = service.id === "donate" && isIOS;
+                return (
+                  <ServiceIcon 
+                    key={service.id}
+                    {...service}
+                    isExternal={isDonateOnIOS || service.isExternal}
+                    url={isDonateOnIOS ? "https://donate.sringeri.net" : service.url}
+                    onClick={() => {
+                      if (service.id === "accommodation") setLocation("/accommodation");
+                      if (service.id === "donate" && !isIOS) setLocation("/donation");
+                      if (service.id === "seva") setLocation("/seva");
+                    }}
+                  />
+                );
+              })}
             </div>
           </section>
 
