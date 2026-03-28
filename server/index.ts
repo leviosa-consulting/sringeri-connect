@@ -23,6 +23,10 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 app.use((req, res, next) => {
   const host = req.hostname || req.headers.host || "";
   const skipPaths = ["/api", "/fastline", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules"];
