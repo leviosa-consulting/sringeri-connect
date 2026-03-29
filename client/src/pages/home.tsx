@@ -466,23 +466,17 @@ export default function Home() {
               </h2>
             </div>
             <div className="grid grid-cols-4 gap-1 bg-card rounded-xl border border-border/50 py-2">
-              {ONLINE_SERVICES.map((service) => {
-                const isDonateOnIOS = service.id === "donate" && isIOS;
-                return (
+              {ONLINE_SERVICES.filter((s) => !(s.id === "donate" && isIOS)).map((service) => (
                   <ServiceIcon 
                     key={service.id}
                     {...service}
-                    isExternal={isDonateOnIOS || service.isExternal}
-                    href={isDonateOnIOS ? "https://donate.sringeri.net" : undefined}
-                    url={isDonateOnIOS ? undefined : service.url}
                     onClick={() => {
                       if (service.id === "accommodation") setLocation("/accommodation");
-                      if (service.id === "donate" && !isIOS) setLocation("/donation");
+                      if (service.id === "donate") setLocation("/donation");
                       if (service.id === "seva") setLocation("/seva");
                     }}
                   />
-                );
-              })}
+              ))}
             </div>
           </section>
 

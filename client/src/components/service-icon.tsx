@@ -7,11 +7,10 @@ interface ServiceIconProps {
   color: string;
   isExternal?: boolean;
   url?: string;
-  href?: string;
   onClick?: () => void;
 }
 
-export default function ServiceIcon({ title, icon: Icon, color, isExternal, url, href, onClick }: ServiceIconProps) {
+export default function ServiceIcon({ title, icon: Icon, color, isExternal, url, onClick }: ServiceIconProps) {
   const handleClick = () => {
     if (url) {
       window.open(url, "_blank");
@@ -20,8 +19,12 @@ export default function ServiceIcon({ title, icon: Icon, color, isExternal, url,
     }
   };
 
-  const inner = (
-    <>
+  return (
+    <div 
+      onClick={handleClick}
+      className="flex flex-col items-center gap-2 p-3 cursor-pointer group"
+      data-testid={`service-icon-${title.toLowerCase().replace(/\s+/g, '-')}`}
+    >
       <div className="relative p-4 rounded-2xl transition-all duration-300 group-hover:scale-110 group-active:scale-95 shadow-sm"
         style={{ backgroundColor: '#fcfbf7' }}
       >
@@ -33,30 +36,6 @@ export default function ServiceIcon({ title, icon: Icon, color, isExternal, url,
       <span className="text-xs font-medium text-center text-foreground leading-tight max-w-[80px]">
         {title}
       </span>
-    </>
-  );
-
-  if (href) {
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex flex-col items-center gap-2 p-3 cursor-pointer group no-underline"
-        data-testid={`service-icon-${title.toLowerCase().replace(/\s+/g, '-')}`}
-      >
-        {inner}
-      </a>
-    );
-  }
-
-  return (
-    <div 
-      onClick={handleClick}
-      className="flex flex-col items-center gap-2 p-3 cursor-pointer group"
-      data-testid={`service-icon-${title.toLowerCase().replace(/\s+/g, '-')}`}
-    >
-      {inner}
     </div>
   );
 }
