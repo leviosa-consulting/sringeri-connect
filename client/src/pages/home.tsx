@@ -473,14 +473,11 @@ export default function Home() {
                     key={service.id}
                     {...service}
                     isExternal={isDonateOnIOS || service.isExternal}
+                    href={isDonateOnIOS ? "https://donate.sringeri.net" : undefined}
                     url={isDonateOnIOS ? undefined : service.url}
                     onClick={() => {
-                      if (isDonateOnIOS) {
-                        window.location.href = "https://donate.sringeri.net";
-                        return;
-                      }
                       if (service.id === "accommodation") setLocation("/accommodation");
-                      if (service.id === "donate") setLocation("/donation");
+                      if (service.id === "donate" && !isIOS) setLocation("/donation");
                       if (service.id === "seva") setLocation("/seva");
                     }}
                   />
