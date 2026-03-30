@@ -2947,6 +2947,41 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/quiz-analytics/summary", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const summary = await storage.getQuizAnalyticsSummary();
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching quiz analytics summary:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/quiz-analytics/per-quiz", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const perQuiz = await storage.getQuizAnalyticsPerQuiz();
+      res.json(perQuiz);
+    } catch (error) {
+      console.error("Error fetching per-quiz analytics:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/quiz-analytics/attempts", async (req, res) => {
+    try {
+      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
+      const result = await storage.getQuizAnalyticsAttempts(page, limit);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching quiz attempts:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/quiz/upcoming", async (req, res) => {
     try {
       const today = getISTDate();

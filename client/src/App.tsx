@@ -19,6 +19,8 @@ import { AnalyticsProvider } from "@/contexts/analytics-context";
 import Analytics from "@/pages/analytics";
 import Knowledge from "@/pages/knowledge";
 import AdminQuizzes from "@/pages/admin-quizzes";
+import AdminHub from "@/pages/admin";
+import AdminQuizAnalytics from "@/pages/admin-quiz-analytics";
 import AdminLaunch from "@/pages/admin-launch";
 import AdminLaunchReset from "@/pages/admin-launch-reset";
 import PaymentResult from "@/pages/payment-result";
@@ -60,7 +62,9 @@ function Router() {
         <Route path="/fastline" component={Fastline} />
         <Route path="/payment-result" component={PaymentResult} />
         <Route path="/analytics" component={Analytics} />
+        <Route path="/admin" component={AdminHub} />
         <Route path="/admin/quizzes">{() => <ProtectedRoute component={AdminQuizzes} />}</Route>
+        <Route path="/admin/quiz-analytics" component={AdminQuizAnalytics} />
         <Route path="/admin/launch" component={AdminLaunch} />
         <Route path="/admin/launch/reset" component={AdminLaunchReset} />
         <Route component={NotFound} />

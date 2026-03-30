@@ -33,6 +33,9 @@ export interface IStorage {
   getUserAttemptDates(odUserId: string): Promise<string[]>;
   hasUserPerfectScore(odUserId: string): Promise<boolean>;
   getUserAttemptCount(odUserId: string): Promise<number>;
+  getQuizAnalyticsSummary(): Promise<{ totalAttempts: number; uniqueUsers: number; avgScore: number; perfectScores: number }>;
+  getQuizAnalyticsPerQuiz(): Promise<{ quizId: number; title: string; publishDate: string; attempts: number; avgScore: number; perfectScores: number }[]>;
+  getQuizAnalyticsAttempts(page: number, limit: number): Promise<{ attempts: { id: number; odUserId: string; quizTitle: string; quizPublishDate: string; score: number; totalQuestions: number; completedAt: Date }[]; total: number }>;
   getAppSetting(key: string): Promise<string | null>;
   setAppSetting(key: string, value: string): Promise<void>;
   deleteUserData(odUserId: string): Promise<void>;
@@ -91,6 +94,9 @@ export class MemStorage implements IStorage {
   async getUserAttemptDates(_odUserId: string): Promise<string[]> { return []; }
   async hasUserPerfectScore(_odUserId: string): Promise<boolean> { return false; }
   async getUserAttemptCount(_odUserId: string): Promise<number> { return 0; }
+  async getQuizAnalyticsSummary(): Promise<{ totalAttempts: number; uniqueUsers: number; avgScore: number; perfectScores: number }> { return { totalAttempts: 0, uniqueUsers: 0, avgScore: 0, perfectScores: 0 }; }
+  async getQuizAnalyticsPerQuiz(): Promise<{ quizId: number; title: string; publishDate: string; attempts: number; avgScore: number; perfectScores: number }[]> { return []; }
+  async getQuizAnalyticsAttempts(_page: number, _limit: number): Promise<{ attempts: { id: number; odUserId: string; quizTitle: string; quizPublishDate: string; score: number; totalQuestions: number; completedAt: Date }[]; total: number }> { return { attempts: [], total: 0 }; }
   async getAppSetting(_key: string): Promise<string | null> { return null; }
   async setAppSetting(_key: string, _value: string): Promise<void> {}
   async deleteUserData(_odUserId: string): Promise<void> {}
@@ -430,6 +436,70 @@ if (process.env.DATABASE_URL) {
       const [result] = await db.select({ cnt: count() }).from(quizAttempts)
         .where(eq(quizAttempts.odUserId, odUserId));
       return result?.cnt ?? 0;
+    }
+
+    async getQuizAnalyticsSummary() {
+      const [result] = await db.select({
+        totalAttempts: count(),
+        uniqueUsers: countDistinct(quizAttempts.odUserId),
+        avgScore: avg(sql`ROUND(${quizAttempts.score}::numeric / NULLIF(${quizAttempts.totalQuestions}, 0) * 100, 1)`),
+      }).from(quizAttempts);
+
+      const [perfectResult] = await db.select({ cnt: count() }).from(quizAttempts)
+        .where(sql`${quizAttempts.score} = ${quizAttempts.totalQuestions}`);
+
+      return {
+        totalAttempts: result?.totalAttempts ?? 0,
+        uniqueUsers: result?.uniqueUsers ?? 0,
+        avgScore: Math.round(Number(result?.avgScore) || 0),
+        perfectScores: perfectResult?.cnt ?? 0,
+      };
+    }
+
+    async getQuizAnalyticsPerQuiz() {
+      const results = await db.select({
+        quizId: quizzes.id,
+        title: quizzes.title,
+        publishDate: quizzes.publishDate,
+        attempts: count(quizAttempts.id),
+        avgScore: avg(sql`ROUND(${quizAttempts.score}::numeric / NULLIF(${quizAttempts.totalQuestions}, 0) * 100, 1)`),
+        perfectScores: sql<number>`SUM(CASE WHEN ${quizAttempts.score} = ${quizAttempts.totalQuestions} THEN 1 ELSE 0 END)::int`,
+      }).from(quizzes)
+        .leftJoin(quizAttempts, eq(quizzes.id, quizAttempts.quizId))
+        .groupBy(quizzes.id, quizzes.title, quizzes.publishDate)
+        .orderBy(desc(quizzes.publishDate));
+
+      return results.map(r => ({
+        quizId: r.quizId,
+        title: r.title,
+        publishDate: r.publishDate,
+        attempts: r.attempts ?? 0,
+        avgScore: Math.round(Number(r.avgScore) || 0),
+        perfectScores: r.perfectScores ?? 0,
+      }));
+    }
+
+    async getQuizAnalyticsAttempts(page: number, limitNum: number) {
+      const offset = (page - 1) * limitNum;
+
+      const [totalResult] = await db.select({ cnt: count() }).from(quizAttempts);
+      const total = totalResult?.cnt ?? 0;
+
+      const attempts = await db.select({
+        id: quizAttempts.id,
+        odUserId: quizAttempts.odUserId,
+        quizTitle: quizzes.title,
+        quizPublishDate: quizzes.publishDate,
+        score: quizAttempts.score,
+        totalQuestions: quizAttempts.totalQuestions,
+        completedAt: quizAttempts.completedAt,
+      }).from(quizAttempts)
+        .innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id))
+        .orderBy(desc(quizAttempts.completedAt))
+        .limit(limitNum)
+        .offset(offset);
+
+      return { attempts, total };
     }
 
     async getAppSetting(key: string): Promise<string | null> {
