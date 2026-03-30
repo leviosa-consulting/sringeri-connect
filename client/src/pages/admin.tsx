@@ -2,7 +2,11 @@ import { useAuth } from "@/contexts/auth-context";
 import { Loader2, BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 
-const ADMIN_UIDS = (import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+const ADMIN_UIDS = [
+  ...(import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(","),
+  ...(import.meta.env.VITE_QUIZ_ADMIN_UIDS || "").split(","),
+].map((s: string) => s.trim()).filter(Boolean);
+
 
 const adminTools = [
   {

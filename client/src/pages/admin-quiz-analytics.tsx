@@ -41,7 +41,7 @@ async function authFetch(url: string, getToken: () => Promise<string | null>) {
 }
 
 export default function AdminQuizAnalytics() {
-  const { user, getToken } = useAuth();
+  const { user, loading: authLoading, getToken } = useAuth();
   const isAdmin = user && ADMIN_UIDS.includes(user.uid);
 
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -82,6 +82,14 @@ export default function AdminQuizAnalytics() {
 
   useEffect(() => { loadData(); }, [loadData]);
   useEffect(() => { loadAttempts(); }, [loadAttempts]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" data-testid="loading-spinner" />
+      </div>
+    );
+  }
 
   if (!user || !isAdmin) {
     return (
