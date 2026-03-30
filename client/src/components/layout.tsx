@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Bell, Users, User, BookOpenCheck } from "lucide-react";
+import { Home, Bell, User, BookOpenCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DesktopNav from "./desktop-nav";
 import ChatbotWidget from "./chatbot-widget";
@@ -14,14 +14,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     window.scrollTo(0, 0);
   }, [location]);
 
-  const isAndroid = /Android/i.test(navigator.userAgent);
-
   const navItems = [
     { icon: Home, label: "Home", path: "/home" },
     { icon: Bell, label: "Updates", path: "/updates" },
-    isAndroid
-      ? { icon: BookOpenCheck, label: "Knowledge", path: "/knowledge" }
-      : { icon: Users, label: "Devotee", path: "/devotee" },
+    { icon: BookOpenCheck, label: "Knowledge", path: "/knowledge" },
     { icon: User, label: "Account", path: "/profile" },
   ];
 

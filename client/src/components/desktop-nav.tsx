@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Bell, Users, User, LogOut, BookOpenCheck } from "lucide-react";
+import { Home, Bell, User, LogOut, BookOpenCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -9,14 +9,10 @@ export default function DesktopNav() {
   const [location, setLocation] = useLocation();
   const { logout } = useAuth();
 
-  const isAndroid = /Android/i.test(navigator.userAgent);
-
   const navItems = [
     { icon: Home, label: "Home", path: "/home" },
     { icon: Bell, label: "Updates", path: "/updates" },
-    isAndroid
-      ? { icon: BookOpenCheck, label: "Knowledge Corner", path: "/knowledge" }
-      : { icon: Users, label: "Devotee Corner", path: "/devotee" },
+    { icon: BookOpenCheck, label: "Knowledge Corner", path: "/knowledge" },
     { icon: User, label: "My Account", path: "/profile" },
   ];
 
