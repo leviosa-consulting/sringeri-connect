@@ -2452,6 +2452,185 @@ export async function registerRoutes(
     }
   });
 
+  // Helper: query Paytm order status, optionally trying SPCT MID as fallback.
+  async function paytmOrderStatus(orderId: string): Promise<{
+    mid: string;
+    isSpct: boolean;
+    body: any;
+    raw: any;
+  } | null> {
+    const PAYTM_MID_VAL = process.env.PAYTM_MID;
+    const PAYTM_KEY_VAL = process.env.PAYTM_MERCHANT_KEY;
+    const PAYTM_MID_SPCT_VAL = process.env.PAYTM_MID_SPCT;
+    const PAYTM_KEY_SPCT_VAL = process.env.PAYTM_MERCHANT_KEY_SPCT;
+
+    const attempts: Array<{ mid: string; key: string; isSpct: boolean }> = [];
+    if (PAYTM_MID_VAL && PAYTM_KEY_VAL) attempts.push({ mid: PAYTM_MID_VAL, key: PAYTM_KEY_VAL, isSpct: false });
+    if (PAYTM_MID_SPCT_VAL && PAYTM_KEY_SPCT_VAL) attempts.push({ mid: PAYTM_MID_SPCT_VAL, key: PAYTM_KEY_SPCT_VAL, isSpct: true });
+
+    let lastResult: any = null;
+    let lastUsed: { mid: string; isSpct: boolean } | null = null;
+
+    for (const a of attempts) {
+      try {
+        const body = { mid: a.mid, orderId };
+        const checksum = await PaytmChecksum.generateSignature(JSON.stringify(body), a.key);
+        const verifyParams = { body, head: { signature: checksum } };
+        const r = await fetch(`https://securegw.paytm.in/v3/order/status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(verifyParams),
+        });
+        const data = await r.json();
+        lastResult = data;
+        lastUsed = { mid: a.mid, isSpct: a.isSpct };
+
+        const rs = data?.body?.resultInfo?.resultStatus;
+        const rc = data?.body?.resultInfo?.resultCode;
+        // Paytm "no record found" -> resultCode 334 (or message like "No record found").
+        // Treat as "try next MID".
+        const notFound = rc === "334" || rc === 334 || /no record/i.test(data?.body?.resultInfo?.resultMsg || "");
+        if (!notFound && rs) {
+          return { mid: a.mid, isSpct: a.isSpct, body: data.body, raw: data };
+        }
+      } catch (err) {
+        console.error("paytmOrderStatus attempt failed:", err);
+      }
+    }
+    if (lastResult && lastUsed) {
+      return { mid: lastUsed.mid, isSpct: lastUsed.isSpct, body: lastResult.body, raw: lastResult };
+    }
+    return null;
+  }
+
+  app.get("/api/admin/reconciliation/pending", async (req, res) => {
+    try {
+      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const r = await fetch(`${SRINGERI_API_URL}/api/fetchPendingTransactions`, {
+        method: "GET",
+        headers: {
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      const text = await r.text();
+      if (!r.ok) {
+        console.error("fetchPendingTransactions upstream error:", r.status, text);
+        return res.status(r.status).json({ error: "Failed to fetch pending transactions" });
+      }
+      let data;
+      try {
+        const jsonStart = text.indexOf("{");
+        const jsonStartArr = text.indexOf("[");
+        const start = jsonStart !== -1 && (jsonStartArr === -1 || jsonStart < jsonStartArr) ? jsonStart : jsonStartArr;
+        data = start !== -1 ? JSON.parse(text.substring(start)) : JSON.parse(text);
+      } catch (e) {
+        console.error("fetchPendingTransactions parse error:", e, text.slice(0, 200));
+        return res.status(500).json({ error: "Invalid upstream response" });
+      }
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching pending transactions:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/reconciliation/check-status", async (req, res) => {
+    try {
+      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const { orderId } = req.body || {};
+      if (!orderId || typeof orderId !== "string") {
+        return res.status(400).json({ error: "orderId is required" });
+      }
+      const result = await paytmOrderStatus(orderId);
+      if (!result) {
+        return res.status(502).json({ error: "Paytm status check failed" });
+      }
+      const b = result.body || {};
+      const ri = b.resultInfo || {};
+      res.json({
+        orderId,
+        mid: result.mid,
+        isSpct: result.isSpct,
+        status: ri.resultStatus || "UNKNOWN",
+        resultCode: ri.resultCode,
+        resultMsg: ri.resultMsg,
+        txnId: b.txnId,
+        bankTxnId: b.bankTxnId,
+        txnAmount: b.txnAmount,
+        txnDate: b.txnDate,
+        paymentMode: b.paymentMode,
+        bankName: b.bankName,
+        currency: b.currency,
+      });
+    } catch (error) {
+      console.error("Error in check-status:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/reconciliation/ack", async (req, res) => {
+    try {
+      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const { orderId } = req.body || {};
+      if (!orderId || typeof orderId !== "string") {
+        return res.status(400).json({ error: "orderId is required" });
+      }
+      const result = await paytmOrderStatus(orderId);
+      if (!result) {
+        return res.status(502).json({ error: "Paytm status check failed" });
+      }
+      const b = result.body || {};
+      const ri = b.resultInfo || {};
+      if (ri.resultStatus !== "TXN_SUCCESS") {
+        return res.status(409).json({
+          error: "Transaction not successful",
+          status: ri.resultStatus || "UNKNOWN",
+          resultMsg: ri.resultMsg,
+        });
+      }
+
+      const ackBody: Record<string, string> = {
+        ORDERID: orderId,
+        STATUS: "TXN_SUCCESS",
+        RESPCODE: String(ri.resultCode ?? "01"),
+        RESPMSG: ri.resultMsg || "Txn Success",
+      };
+      if (b.txnId) ackBody.TXNID = String(b.txnId);
+      if (b.bankTxnId) ackBody.BANKTXNID = String(b.bankTxnId);
+      if (b.txnAmount) ackBody.TXNAMOUNT = String(b.txnAmount);
+      if (b.txnDate) ackBody.TXNDATE = String(b.txnDate);
+      if (b.paymentMode) ackBody.PAYMENTMODE = String(b.paymentMode);
+      if (b.bankName) ackBody.BANKNAME = String(b.bankName);
+      if (b.currency) ackBody.CURRENCY = String(b.currency);
+
+      console.log("Reconciliation ack body:", JSON.stringify(ackBody));
+      const ackRes = await fetch(`${SRINGERI_API_URL}/api/paymentAck`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(ackBody),
+      });
+      const ackText = await ackRes.text();
+      console.log("Reconciliation ack response:", ackRes.status, ackText);
+      if (!ackRes.ok) {
+        return res.status(ackRes.status).json({ error: "Failed to acknowledge payment", upstream: ackText });
+      }
+      let ackData: any = null;
+      try {
+        const j = ackText.indexOf("{");
+        ackData = j !== -1 ? JSON.parse(ackText.substring(j)) : JSON.parse(ackText);
+      } catch {
+        ackData = { raw: ackText };
+      }
+      res.json({ orderId, acked: true, ackResponse: ackData, paytm: { status: ri.resultStatus, txnId: b.txnId, txnAmount: b.txnAmount } });
+    } catch (error) {
+      console.error("Error in reconciliation ack:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/paytm-callback", async (req, res) => {
     try {
       const paytmResponse = req.body;

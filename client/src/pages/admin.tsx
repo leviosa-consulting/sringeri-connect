@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft } from "lucide-react";
+import { Loader2, BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw } from "lucide-react";
 import { Link } from "wouter";
 
 const ADMIN_UIDS = [
@@ -29,6 +29,13 @@ const adminTools = [
     icon: Brain,
     path: "/admin/quiz-analytics",
     color: "bg-purple-50 text-purple-600",
+  },
+  {
+    title: "Transaction Reconciliation",
+    description: "Verify pending Paytm payments and send acknowledgements to complete receipts",
+    icon: RefreshCw,
+    path: "/admin/reconciliation",
+    color: "bg-amber-50 text-amber-600",
   },
   {
     title: "Launch Control",
