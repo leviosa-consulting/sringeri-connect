@@ -2617,7 +2617,7 @@ export async function registerRoutes(
       if (b.bankName) ackBody.BANKNAME = String(b.bankName);
       if (b.currency) ackBody.CURRENCY = String(b.currency);
 
-      console.log("Reconciliation ack body:", JSON.stringify(ackBody));
+      console.log("Reconciliation ack for order:", orderId);
       const ackRes = await fetch(`${SRINGERI_API_URL}/api/paymentAck`, {
         method: "POST",
         headers: {
@@ -2627,7 +2627,7 @@ export async function registerRoutes(
         body: JSON.stringify(ackBody),
       });
       const ackText = await ackRes.text();
-      console.log("Reconciliation ack response:", ackRes.status, ackText);
+      console.log("Reconciliation ack response status:", ackRes.status);
       if (!ackRes.ok) {
         return res.status(ackRes.status).json({ error: "Failed to acknowledge payment", upstream: ackText });
       }

@@ -128,10 +128,20 @@ export default function AdminReconciliation() {
         next = { status: "failed", message: data.resultMsg || status, detail: data };
       }
       setRow(orderId, next);
+      if (!bulkRunning) {
+        toast({
+          title: `Order ${orderId.slice(-8)}: ${next.status === "success" ? "Paytm success" : next.status === "pending" ? "Pending on Paytm" : "Failed"}`,
+          description: next.message,
+          variant: next.status === "failed" ? "destructive" : "default",
+        });
+      }
       return next;
     } catch (err: any) {
       const s: RowState = { status: "failed", message: err?.message || "Check failed" };
       setRow(orderId, s);
+      if (!bulkRunning) {
+        toast({ title: "Status check failed", description: s.message, variant: "destructive" });
+      }
       return s;
     }
   }
@@ -154,10 +164,16 @@ export default function AdminReconciliation() {
       }
       const s: RowState = { status: "acked", message: "Acknowledgement sent", detail: data };
       setRow(orderId, s);
+      if (!bulkRunning) {
+        toast({ title: `Order ${orderId.slice(-8)}: reconciled`, description: "Acknowledgement sent successfully" });
+      }
       return s;
     } catch (err: any) {
       const s: RowState = { status: "ack_failed", message: err?.message || "Ack failed" };
       setRow(orderId, s);
+      if (!bulkRunning) {
+        toast({ title: "Acknowledgement failed", description: s.message, variant: "destructive" });
+      }
       return s;
     }
   }
