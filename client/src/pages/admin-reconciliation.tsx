@@ -13,6 +13,8 @@ const ADMIN_UIDS = [
 interface PendingTxn {
   orderId?: string;
   orderID?: string;
+  paymentRef?: string;
+  addedAt?: string;
   txnAmount?: string | number;
   amount?: string | number;
   txnDate?: string;
@@ -35,7 +37,7 @@ interface RowState {
 }
 
 function getOrderId(t: PendingTxn): string {
-  return String(t.orderId || t.orderID || t.order_id || "");
+  return String(t.paymentRef || t.orderId || t.orderID || t.order_id || "");
 }
 
 function getAmount(t: PendingTxn): string {
@@ -44,7 +46,7 @@ function getAmount(t: PendingTxn): string {
 }
 
 function getDate(t: PendingTxn): string {
-  return String(t.txnDate || t.date || t.bookingDate || t.donationDate || "—");
+  return String(t.addedAt || t.txnDate || t.date || t.bookingDate || t.donationDate || "—");
 }
 
 function getType(t: PendingTxn): string {
