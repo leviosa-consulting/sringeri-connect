@@ -2503,9 +2503,23 @@ export async function registerRoutes(
     return null;
   }
 
+  const RECON_ADMIN_UIDS = [
+    ...(process.env.ANALYTICS_ADMIN_UIDS || "").split(","),
+    ...(process.env.QUIZ_ADMIN_UIDS || "").split(","),
+  ].map(s => s.trim()).filter(Boolean);
+
+  async function isReconciliationAdmin(req: any): Promise<boolean> {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return false;
+    const token = authHeader.slice(7);
+    const uid = await verifyFirebaseTokenEarly(token);
+    if (!uid) return false;
+    return RECON_ADMIN_UIDS.includes(uid);
+  }
+
   app.get("/api/admin/reconciliation/pending", async (req, res) => {
     try {
-      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
       const r = await fetch(`${SRINGERI_API_URL}/api/fetchPendingTransactions`, {
         method: "GET",
         headers: {
@@ -2536,7 +2550,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/reconciliation/check-status", async (req, res) => {
     try {
-      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
       const { orderId } = req.body || {};
       if (!orderId || typeof orderId !== "string") {
         return res.status(400).json({ error: "orderId is required" });
@@ -2570,7 +2584,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/reconciliation/ack", async (req, res) => {
     try {
-      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
       const { orderId } = req.body || {};
       if (!orderId || typeof orderId !== "string") {
         return res.status(400).json({ error: "orderId is required" });
