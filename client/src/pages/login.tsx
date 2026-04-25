@@ -144,8 +144,8 @@ export default function Login() {
     try {
       await sendPasswordReset(trimmed);
       toast({
-        title: "Reset link sent",
-        description: "Check your inbox for instructions to reset your password.",
+        title: "Reset link sent — check your inbox",
+        description: "Follow the link in the email to reset your password.",
       });
       setResetOpen(false);
     } catch (error: any) {
