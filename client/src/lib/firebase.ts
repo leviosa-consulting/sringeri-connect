@@ -9,6 +9,7 @@ import {
   OAuthProvider,
   signOut, 
   onAuthStateChanged, 
+  sendPasswordResetEmail,
   User,
   updateProfile
 } from "firebase/auth";
@@ -203,6 +204,10 @@ export function loginWithApple(callbacks?: NativeAuthCallback): Promise<any> {
 
 export async function logout() {
   return signOut(auth);
+}
+
+export async function sendPasswordReset(email: string) {
+  return sendPasswordResetEmail(auth, email);
 }
 
 export function subscribeToAuthState(callback: (user: User | null) => void) {

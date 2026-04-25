@@ -2,10 +2,19 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { sendPasswordReset } from "@/lib/firebase";
 
 export default function Login() {
   const [_, setLocation] = useLocation();
@@ -17,6 +26,9 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
   const { login, signUp, signInWithGoogle, signInWithApple, user } = useAuth();
   const { toast } = useToast();
 
@@ -117,6 +129,47 @@ export default function Login() {
     }
   };
 
+  const handleSendReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = resetEmail.trim();
+    if (!trimmed) {
+      toast({
+        title: "Email required",
+        description: "Please enter the email associated with your account.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await sendPasswordReset(trimmed);
+      toast({
+        title: "Reset link sent",
+        description: "Check your inbox for instructions to reset your password.",
+      });
+      setResetOpen(false);
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      let message = "Could not send reset email. Please try again.";
+      if (error?.code === "auth/invalid-email") {
+        message = "Please enter a valid email address.";
+      } else if (error?.code === "auth/user-not-found") {
+        message = "No account found for that email.";
+      } else if (error?.code === "auth/too-many-requests") {
+        message = "Too many attempts. Please wait a few minutes and try again.";
+      } else if (error?.code === "auth/missing-email") {
+        message = "Please enter your email address.";
+      }
+      toast({
+        title: "Reset Failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const anyLoading = loading || googleLoading || appleLoading;
 
   return (
@@ -211,6 +264,21 @@ export default function Login() {
               required
               data-testid="input-password"
             />
+            {!isSignUp && (
+              <div className="flex justify-end -mt-2">
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline font-medium"
+                  onClick={() => {
+                    setResetEmail(email);
+                    setResetOpen(true);
+                  }}
+                  data-testid="button-forgot-password"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
             {isSignUp && (
               <Input 
                 type="password" 
@@ -253,6 +321,48 @@ export default function Login() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent className="sm:max-w-sm" data-testid="dialog-forgot-password">
+          <DialogHeader>
+            <DialogTitle>Reset your password</DialogTitle>
+            <DialogDescription>
+              Enter the email associated with your account and we'll send you a link to reset your password.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSendReset} className="space-y-4">
+            <Input
+              type="email"
+              placeholder="Email Address"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              required
+              autoFocus
+              data-testid="input-reset-email"
+            />
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setResetOpen(false)}
+                disabled={resetLoading}
+                data-testid="button-reset-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-primary hover:bg-primary/90 text-white"
+                disabled={resetLoading}
+                data-testid="button-reset-send"
+              >
+                {resetLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Send reset link
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
