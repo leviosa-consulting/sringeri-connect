@@ -34,26 +34,25 @@ export async function registerRoutes(
     }
   }
 
-  const DEMO_USER_EMAIL = (process.env.DEMO_USER_EMAIL || "demo@dssps.app").toLowerCase();
-  let demoUserUidCache: string | null = null;
-  let demoUserUidNextRetryAt = 0;
-  const DEMO_UID_MISS_RETRY_MS = 60_000;
-  async function getDemoUserUid(): Promise<string | null> {
-    if (demoUserUidCache) return demoUserUidCache;
-    if (Date.now() < demoUserUidNextRetryAt) return null;
+  async function verifyFirebaseTokenWithEmail(idToken: string): Promise<{ uid: string; email: string | null } | null> {
     try {
-      const userRecord = await adminAuthEarly.getUserByEmail(DEMO_USER_EMAIL);
-      demoUserUidCache = userRecord.uid;
-      return demoUserUidCache;
+      const decoded = await adminAuthEarly.verifyIdToken(idToken);
+      return { uid: decoded.uid, email: decoded.email ?? null };
     } catch {
-      demoUserUidNextRetryAt = Date.now() + DEMO_UID_MISS_RETRY_MS;
       return null;
     }
   }
-  async function isDemoUid(uid: string | null | undefined): Promise<boolean> {
-    if (!uid) return false;
-    const demoUid = await getDemoUserUid();
-    return !!demoUid && demoUid === uid;
+
+  async function getFirebaseUidAndEmail(req: any): Promise<{ uid: string; email: string | null } | null> {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+    const token = authHeader.slice(7);
+    return verifyFirebaseTokenWithEmail(token);
+  }
+
+  const DEMO_USER_EMAIL = (process.env.DEMO_USER_EMAIL || "demo@dssps.app").toLowerCase();
+  function isDemoEmail(email: string | null | undefined): boolean {
+    return !!email && email.toLowerCase() === DEMO_USER_EMAIL;
   }
 
   const sringeriNetConfig = {
@@ -3220,10 +3219,11 @@ export async function registerRoutes(
 
   app.get("/api/quiz/group/:groupName", async (req, res) => {
     try {
-      const uid = await getFirebaseUid(req);
-      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const auth = await getFirebaseUidAndEmail(req);
+      if (!auth) return res.status(401).json({ error: "Authentication required" });
+      const { uid, email } = auth;
       const groupName = decodeURIComponent(req.params.groupName);
-      const isDemo = await isDemoUid(uid);
+      const isDemo = isDemoEmail(email);
       const allQuizzes = await storage.listQuizzes();
       const groupQuizzes = allQuizzes
         .filter(q => q.isActive && q.groupName === groupName)
@@ -3321,13 +3321,14 @@ export async function registerRoutes(
 
   app.get("/api/quiz/by-id/:id", async (req, res) => {
     try {
-      const uid = await getFirebaseUid(req);
-      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const auth = await getFirebaseUidAndEmail(req);
+      if (!auth) return res.status(401).json({ error: "Authentication required" });
+      const { uid, email } = auth;
       const quizId = Number(req.params.id);
       const quiz = await storage.getQuizById(quizId);
       if (!quiz || !quiz.isActive) return res.status(404).json({ error: "Quiz not found" });
 
-      const isDemo = await isDemoUid(uid);
+      const isDemo = isDemoEmail(email);
       const lockCheck = await checkGroupLock(quiz, uid, isDemo);
       if (lockCheck.locked) {
         return res.json({
@@ -3380,9 +3381,10 @@ export async function registerRoutes(
 
   app.get("/api/quiz/past", async (req, res) => {
     try {
-      const uid = await getFirebaseUid(req);
-      if (!uid) return res.status(401).json({ error: "Authentication required" });
-      const isDemo = await isDemoUid(uid);
+      const auth = await getFirebaseUidAndEmail(req);
+      if (!auth) return res.status(401).json({ error: "Authentication required" });
+      const { uid, email } = auth;
+      const isDemo = isDemoEmail(email);
       const today = getISTDate();
       const allQuizzes = await storage.listQuizzes();
       const pastQuizzes = allQuizzes.filter(q => q.isActive && q.publishDate < today);
@@ -3417,8 +3419,9 @@ export async function registerRoutes(
 
   app.get("/api/quiz/today", async (req, res) => {
     try {
-      const uid = await getFirebaseUid(req);
-      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const auth = await getFirebaseUidAndEmail(req);
+      if (!auth) return res.status(401).json({ error: "Authentication required" });
+      const { uid, email } = auth;
       const today = getISTDate();
       let quiz = await storage.getQuizByDate(today);
       if (!quiz) {
@@ -3430,7 +3433,7 @@ export async function registerRoutes(
       }
       if (!quiz) return res.json(null);
 
-      const isDemo = await isDemoUid(uid);
+      const isDemo = isDemoEmail(email);
       const lockCheck = await checkGroupLock(quiz, uid, isDemo);
       if (lockCheck.locked) {
         return res.json({
@@ -3483,8 +3486,9 @@ export async function registerRoutes(
 
   app.post("/api/quiz/:id/submit", async (req, res) => {
     try {
-      const uid = await getFirebaseUid(req);
-      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const auth = await getFirebaseUidAndEmail(req);
+      if (!auth) return res.status(401).json({ error: "Authentication required" });
+      const { uid, email } = auth;
       const quizId = Number(req.params.id);
       const { answers } = req.body;
       if (!answers || typeof answers !== "object") return res.status(400).json({ error: "answers required" });
@@ -3492,7 +3496,7 @@ export async function registerRoutes(
       const quiz = await storage.getQuizById(quizId);
       if (!quiz || !quiz.isActive) return res.status(403).json({ error: "Quiz not available for submission" });
 
-      const isDemo = await isDemoUid(uid);
+      const isDemo = isDemoEmail(email);
       const lockCheck = await checkGroupLock(quiz, uid, isDemo);
       if (lockCheck.locked) {
         return res.status(403).json({ error: "locked", reason: lockCheck.reason });
