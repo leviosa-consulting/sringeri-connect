@@ -34,6 +34,28 @@ export async function registerRoutes(
     }
   }
 
+  const DEMO_USER_EMAIL = (process.env.DEMO_USER_EMAIL || "demo@dssps.app").toLowerCase();
+  let demoUserUidCache: string | null = null;
+  let demoUserUidNextRetryAt = 0;
+  const DEMO_UID_MISS_RETRY_MS = 60_000;
+  async function getDemoUserUid(): Promise<string | null> {
+    if (demoUserUidCache) return demoUserUidCache;
+    if (Date.now() < demoUserUidNextRetryAt) return null;
+    try {
+      const userRecord = await adminAuthEarly.getUserByEmail(DEMO_USER_EMAIL);
+      demoUserUidCache = userRecord.uid;
+      return demoUserUidCache;
+    } catch {
+      demoUserUidNextRetryAt = Date.now() + DEMO_UID_MISS_RETRY_MS;
+      return null;
+    }
+  }
+  async function isDemoUid(uid: string | null | undefined): Promise<boolean> {
+    if (!uid) return false;
+    const demoUid = await getDemoUserUid();
+    return !!demoUid && demoUid === uid;
+  }
+
   const sringeriNetConfig = {
     apiKey: process.env.SRINGERI_NET_FIREBASE_API_KEY,
     authDomain: process.env.SRINGERI_NET_FIREBASE_AUTH_DOMAIN,
@@ -3201,6 +3223,7 @@ export async function registerRoutes(
       const uid = await getFirebaseUid(req);
       if (!uid) return res.status(401).json({ error: "Authentication required" });
       const groupName = decodeURIComponent(req.params.groupName);
+      const isDemo = await isDemoUid(uid);
       const allQuizzes = await storage.listQuizzes();
       const groupQuizzes = allQuizzes
         .filter(q => q.isActive && q.groupName === groupName)
@@ -3211,8 +3234,8 @@ export async function registerRoutes(
       for (const q of groupQuizzes) {
         const questions = await storage.getQuestionsByQuizId(q.id);
         const attempt = await storage.getAttemptByUserAndQuiz(uid, q.id);
-        const lockCheck = await checkGroupLock(q, uid);
-        const isFuture = q.publishDate > today;
+        const lockCheck = await checkGroupLock(q, uid, isDemo);
+        const isFuture = !isDemo && q.publishDate > today;
         results.push({
           id: q.id,
           title: q.title,
@@ -3279,7 +3302,8 @@ export async function registerRoutes(
     }
   });
 
-  async function checkGroupLock(quiz: any, uid: string): Promise<{ locked: boolean; reason?: string; prerequisiteEpisodeId?: number; prerequisiteEpisodeNumber?: number }> {
+  async function checkGroupLock(quiz: any, uid: string, isDemo: boolean = false): Promise<{ locked: boolean; reason?: string; prerequisiteEpisodeId?: number; prerequisiteEpisodeNumber?: number }> {
+    if (isDemo) return { locked: false };
     if (!quiz.groupName || !quiz.episodeNumber || quiz.episodeNumber <= 1) {
       return { locked: false };
     }
@@ -3303,7 +3327,8 @@ export async function registerRoutes(
       const quiz = await storage.getQuizById(quizId);
       if (!quiz || !quiz.isActive) return res.status(404).json({ error: "Quiz not found" });
 
-      const lockCheck = await checkGroupLock(quiz, uid);
+      const isDemo = await isDemoUid(uid);
+      const lockCheck = await checkGroupLock(quiz, uid, isDemo);
       if (lockCheck.locked) {
         return res.json({
           id: quiz.id,
@@ -3357,6 +3382,7 @@ export async function registerRoutes(
     try {
       const uid = await getFirebaseUid(req);
       if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const isDemo = await isDemoUid(uid);
       const today = getISTDate();
       const allQuizzes = await storage.listQuizzes();
       const pastQuizzes = allQuizzes.filter(q => q.isActive && q.publishDate < today);
@@ -3364,7 +3390,7 @@ export async function registerRoutes(
       for (const q of pastQuizzes) {
         const questions = await storage.getQuestionsByQuizId(q.id);
         const attempt = await storage.getAttemptByUserAndQuiz(uid, q.id);
-        const lockCheck = await checkGroupLock(q, uid);
+        const lockCheck = await checkGroupLock(q, uid, isDemo);
         results.push({
           id: q.id,
           title: q.title,
@@ -3404,7 +3430,8 @@ export async function registerRoutes(
       }
       if (!quiz) return res.json(null);
 
-      const lockCheck = await checkGroupLock(quiz, uid);
+      const isDemo = await isDemoUid(uid);
+      const lockCheck = await checkGroupLock(quiz, uid, isDemo);
       if (lockCheck.locked) {
         return res.json({
           id: quiz.id,
@@ -3465,7 +3492,8 @@ export async function registerRoutes(
       const quiz = await storage.getQuizById(quizId);
       if (!quiz || !quiz.isActive) return res.status(403).json({ error: "Quiz not available for submission" });
 
-      const lockCheck = await checkGroupLock(quiz, uid);
+      const isDemo = await isDemoUid(uid);
+      const lockCheck = await checkGroupLock(quiz, uid, isDemo);
       if (lockCheck.locked) {
         return res.status(403).json({ error: "locked", reason: lockCheck.reason });
       }
