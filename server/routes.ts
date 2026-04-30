@@ -586,6 +586,66 @@ export async function registerRoutes(
     url: `https://www.youtube.com/watch?v=${v.videoId}`,
   }));
 
+  const scrapeYtInitialData = async (url: string, label: string, timeoutMs = 10000): Promise<any[]> => {
+    const out: any[] = [];
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      let pageRes;
+      try {
+        pageRes = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+      if (!pageRes.ok) {
+        console.log(`[YouTube] ${label} returned HTTP ${pageRes.status}`);
+        return out;
+      }
+      const html = await pageRes.text();
+      const dataMatch = html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/);
+      if (!dataMatch) {
+        console.log(`[YouTube] ${label}: no ytInitialData found in response`);
+        return out;
+      }
+      const data = JSON.parse(dataMatch[1]);
+      const found: any[] = [];
+      const seen = new Set<string>();
+      const findVideos = (obj: any): void => {
+        if (!obj || typeof obj !== 'object') return;
+        if (obj.videoId && obj.title && !seen.has(obj.videoId)) {
+          seen.add(obj.videoId);
+          const title = obj.title?.runs?.[0]?.text || obj.title?.simpleText || "";
+          const pub = obj.publishedTimeText?.simpleText || "";
+          found.push({ videoId: obj.videoId, title, published: pub });
+          return;
+        }
+        for (const v of Object.values(obj)) findVideos(v);
+      };
+      findVideos(data);
+      for (const v of found.slice(0, 10)) {
+        out.push({
+          videoId: v.videoId,
+          title: v.title,
+          published: v.published,
+          date: v.published || null,
+          thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
+          url: `https://www.youtube.com/watch?v=${v.videoId}`,
+        });
+      }
+      if (out.length > 0) {
+        console.log(`[YouTube] ${label} succeeded: ${out.length} videos found`);
+      } else {
+        console.log(`[YouTube] ${label} returned data but parsed 0 videos`);
+      }
+    } catch (err) {
+      console.log(`[YouTube] ${label} failed: ${String(err)}`);
+    }
+    return out;
+  };
+
   app.get("/api/youtube-videos", async (req, res) => {
     try {
       if (ytCache.videos.length > 0 && Date.now() - ytCache.timestamp < YT_CACHE_TTL) {
@@ -593,63 +653,13 @@ export async function registerRoutes(
       }
 
       const channelId = "UCC7AKcYvtFdlubqwW6Ave2Q";
+      const uploadsPlaylistId = "UU" + channelId.slice(2);
       let videos: any[] = [];
 
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
-        let pageRes;
-        try {
-          pageRes = await fetch(`https://www.youtube.com/@SharadaPeetham/videos`, {
-            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
-            signal: controller.signal,
-          });
-        } finally {
-          clearTimeout(timeout);
-        }
-        if (pageRes.ok) {
-          const html = await pageRes.text();
-          const dataMatch = html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/);
-          if (dataMatch) {
-            const data = JSON.parse(dataMatch[1]);
-            const found: any[] = [];
-            const seen = new Set<string>();
-            const findVideos = (obj: any): void => {
-              if (!obj || typeof obj !== 'object') return;
-              if (obj.videoId && obj.title && !seen.has(obj.videoId)) {
-                seen.add(obj.videoId);
-                const title = obj.title?.runs?.[0]?.text || obj.title?.simpleText || "";
-                const pub = obj.publishedTimeText?.simpleText || "";
-                found.push({ videoId: obj.videoId, title, published: pub });
-                return;
-              }
-              for (const v of Object.values(obj)) findVideos(v);
-            };
-            findVideos(data);
-            for (const v of found.slice(0, 10)) {
-              videos.push({
-                videoId: v.videoId,
-                title: v.title,
-                published: v.published,
-                date: v.published || null,
-                thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
-                url: `https://www.youtube.com/watch?v=${v.videoId}`,
-              });
-            }
-            if (videos.length > 0) {
-              console.log(`[YouTube] Channel page scrape succeeded: ${videos.length} videos found`);
-            } else {
-              console.log("[YouTube] Channel page scrape returned data but parsed 0 videos");
-            }
-          } else {
-            console.log("[YouTube] Channel page scrape: no ytInitialData found in response");
-          }
-        } else {
-          console.log(`[YouTube] Channel page scrape returned HTTP ${pageRes.status}`);
-        }
-      } catch (scrapeErr) {
-        console.log(`[YouTube] Channel page scrape failed: ${String(scrapeErr)}`);
-      }
+      videos = await scrapeYtInitialData(
+        `https://www.youtube.com/@SharadaPeetham/videos`,
+        "Channel page scrape",
+      );
 
       if (videos.length === 0) {
         const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
@@ -692,6 +702,13 @@ export async function registerRoutes(
         } catch (rssErr) {
           console.log(`[YouTube] RSS feed also failed: ${String(rssErr)}`);
         }
+      }
+
+      if (videos.length === 0) {
+        videos = await scrapeYtInitialData(
+          `https://www.youtube.com/playlist?list=${uploadsPlaylistId}`,
+          "Uploads playlist scrape",
+        );
       }
 
       if (videos.length > 0) {
