@@ -255,8 +255,8 @@ export default function Login() {
             <div className="space-y-2">
               <Button
                 type="button"
-                variant="ghost"
-                className="w-full h-12 font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-dashed border-muted-foreground/30"
+                variant="outline"
+                className="w-full h-12 font-medium border-2 border-primary/40 text-primary hover:bg-primary/5 hover:border-primary/60"
                 onClick={handleGuestSignIn}
                 disabled={anyLoading}
                 data-testid="button-guest-signin"
