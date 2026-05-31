@@ -429,7 +429,7 @@ export default function Profile() {
     }
   };
 
-  const openKartaAdd = () => {
+  const openKartaAdd = async () => {
     setKartaName("");
     setKartaNameK("");
     setKartaCity("");
@@ -438,6 +438,18 @@ export default function Profile() {
     setKartaNakshatraId("");
     setKartaRashiId("");
     setAddingKarta(true);
+    if (nakshatras.length === 0 || rashis.length === 0) {
+      try {
+        const [nRes, rRes] = await Promise.all([
+          nakshatras.length === 0 ? fetch("/api/nakshatras") : Promise.resolve(null),
+          rashis.length === 0 ? fetch("/api/rashis") : Promise.resolve(null),
+        ]);
+        if (nRes && nRes.ok) setNakshatras(await nRes.json());
+        if (rRes && rRes.ok) setRashis(await rRes.json());
+      } catch {
+        toast({ title: "Failed to load options", description: "Could not load nakshatra/rashi options.", variant: "destructive" });
+      }
+    }
   };
 
   const handleAddKarta = async () => {
