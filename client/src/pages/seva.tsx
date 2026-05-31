@@ -324,8 +324,10 @@ export default function Seva() {
   const sevaRef = useRef<HTMLDivElement>(null);
   const nameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gotraTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nameAbortRef = useRef<AbortController | null>(null);
   const cityAbortRef = useRef<AbortController | null>(null);
+  const gotraAbortRef = useRef<AbortController | null>(null);
 
   const transliterate = useCallback(async (text: string, setter: (v: string) => void, abortRef: React.MutableRefObject<AbortController | null>) => {
     if (abortRef.current) abortRef.current.abort();
@@ -356,6 +358,13 @@ export default function Seva() {
     cityTimerRef.current = setTimeout(() => transliterate(kartaCity, setKannadaCity, cityAbortRef), 400);
     return () => { if (cityTimerRef.current) clearTimeout(cityTimerRef.current); };
   }, [kartaCity, transliterate, selectedSevaType]);
+
+  useEffect(() => {
+    if (!selectedSevaType) return;
+    if (gotraTimerRef.current) clearTimeout(gotraTimerRef.current);
+    gotraTimerRef.current = setTimeout(() => transliterate(kartaGotra, setKartaGotraK, gotraAbortRef), 400);
+    return () => { if (gotraTimerRef.current) clearTimeout(gotraTimerRef.current); };
+  }, [kartaGotra, transliterate, selectedSevaType]);
 
   const { data: sannidhis = [], isLoading: sannidhisLoading } = useQuery<Sannidhi[]>({
     queryKey: ["deities", selectedSevaType?.id],
@@ -1802,6 +1811,7 @@ export default function Seva() {
                     className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                     placeholder="Enter gotra"
                     data-testid="input-karta-gotra" />
+                  {kartaGotraK && <span className="text-xs font-medium text-orange-500">{kartaGotraK}</span>}
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">City {inAbsentia === "0" || !postageId ? "*" : ""}</label>
