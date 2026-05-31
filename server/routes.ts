@@ -2998,10 +2998,11 @@ export async function registerRoutes(
         failData?.status === 0 ||
         failData?.status === false ||
         failData?.success === false ||
-        (typeof failData?.status === "string" && /fail|error/i.test(failData.status)) ||
+        failData?.status_code === 0 ||
+        (typeof failData?.status === "string" && /fail|error|nothing updated/i.test(failData.status)) ||
         (failData?.error != null && failData?.message == null && failData?.status == null);
       if (bodyIndicatesError) {
-        const msg = failData?.message || failData?.error || failData?.msg || failData?.raw || "Sringeri API rejected the request";
+        const msg = failData?.message || failData?.error || failData?.msg || failData?.status || failData?.raw || "Sringeri API rejected the request";
         console.log("Mark failed: Sringeri returned body-level error:", msg);
         return res.status(422).json({ error: String(msg), upstream: failData });
       }

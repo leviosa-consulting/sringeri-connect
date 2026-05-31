@@ -85,7 +85,7 @@ function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed }: {
 }) {
   if (orderId === "—") return <td className="px-3 py-3" />;
 
-  const { status, message } = rowState;
+  const { status, message, detail } = rowState;
 
   return (
     <td className="px-3 py-3 whitespace-nowrap">
