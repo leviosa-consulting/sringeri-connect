@@ -2342,26 +2342,26 @@ export default function Seva() {
                   <div className="flex justify-center py-4"><RangoliLoader size={32} /></div>
                 ) : (
                   <>
-                    <div className="flex gap-1 bg-muted rounded-lg p-1" data-testid="seva-month-tabs">
-                      {calendarMonths.map((mo, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setActiveCalendarMonthIdx(idx)}
-                          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
-                            activeCalendarMonthIdx === idx
-                              ? "bg-card text-foreground shadow-sm"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                          data-testid={`button-seva-month-${idx}`}
-                        >
-                          {mo.name.split(" ")[0]?.substring(0, 3)} {mo.name.split(" ")[1]}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div>
+                    {/* Mobile: tabbed single-month view */}
+                    <div className="sm:hidden">
+                      <div className="flex gap-1 bg-muted rounded-lg p-1 mb-3" data-testid="seva-month-tabs">
+                        {calendarMonths.map((mo, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveCalendarMonthIdx(idx)}
+                            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                              activeCalendarMonthIdx === idx
+                                ? "bg-card text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                            data-testid={`button-seva-month-${idx}`}
+                          >
+                            {mo.name.split(" ")[0]?.substring(0, 3)} {mo.name.split(" ")[1]}
+                          </button>
+                        ))}
+                      </div>
                       <div className="grid grid-cols-7 gap-1 mb-2">
-                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
                           <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
                         ))}
                       </div>
@@ -2386,6 +2386,41 @@ export default function Seva() {
                           </button>
                         ))}
                       </div>
+                    </div>
+
+                    {/* Desktop: all months side by side */}
+                    <div className="hidden sm:grid sm:grid-cols-3 sm:gap-4">
+                      {calendarMonths.map((mo, monthIdx) => (
+                        <div key={monthIdx}>
+                          <p className="text-xs font-semibold text-center text-muted-foreground mb-2">{mo.name}</p>
+                          <div className="grid grid-cols-7 gap-0.5 mb-1">
+                            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+                              <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-0.5">{d}</div>
+                            ))}
+                          </div>
+                          <div className="grid grid-cols-7 gap-0.5">
+                            {mo.days.map((day, di) => (
+                              <button key={di}
+                                onClick={() => selectCalendarDate(monthIdx, di)}
+                                disabled={day.disabled || day.available <= 0}
+                                className={`relative py-2 rounded-md text-xs transition-all text-center ${
+                                  day.date === "" ? "" :
+                                  day.selected ? "bg-primary text-white font-bold" :
+                                  day.disabled ? "text-gray-300" :
+                                  day.available > 0 ? "bg-white border border-border hover:bg-primary/10 cursor-pointer" :
+                                  "text-gray-300 cursor-not-allowed"
+                                }`}
+                                data-testid={day.dbDate ? `button-date-${day.dbDate}` : undefined}
+                              >
+                                {day.date || ""}
+                                {day.date !== "" && !day.disabled && day.available > 0 && !day.selected && (
+                                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-green-500" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="flex items-center justify-center gap-4 pt-2 border-t">
