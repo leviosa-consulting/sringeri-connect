@@ -1,25 +1,43 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Bell, User, BookOpenCheck } from "lucide-react";
+import { Home, Bell, User, BookOpenCheck, Flame, Heart, Hotel } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DesktopNav from "./desktop-nav";
+import ServicesDesktopNav from "./services-desktop-nav";
 import ChatbotWidget from "./chatbot-widget";
 import { useMedia } from "react-use";
+import { useSubdomainMode, SERVICE_ROUTES, type ServiceMode } from "@/contexts/subdomain-mode-context";
+
+const SERVICES_NAV_ITEMS: { mode: ServiceMode; icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; label: string }[] = [
+  { mode: "seva", icon: Flame, label: "Seva" },
+  { mode: "donate", icon: Heart, label: "Donate" },
+  { mode: "yatri", icon: Hotel, label: "Yatri" },
+  { mode: null, icon: User, label: "Account" },
+];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const isDesktop = useMedia('(min-width: 1024px)', false);
+  const { isServicesMode } = useSubdomainMode();
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location]);
 
-  const navItems = [
+  const defaultNavItems = [
     { icon: Home, label: "Home", path: "/home" },
     { icon: Bell, label: "Updates", path: "/updates" },
     { icon: BookOpenCheck, label: "Knowledge", path: "/knowledge" },
     { icon: User, label: "Account", path: "/profile" },
   ];
+
+  const servicesNavItems = SERVICES_NAV_ITEMS.map((item) => ({
+    icon: item.icon,
+    label: item.label,
+    path: item.mode ? SERVICE_ROUTES[item.mode] : "/profile",
+  }));
+
+  const navItems = isServicesMode ? servicesNavItems : defaultNavItems;
 
   if (location === "/" || location === "/fastline") return <>{children}</>;
 
@@ -28,7 +46,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       
       {/* Conditionally Render Navigation */}
       {isDesktop ? (
-        <DesktopNav />
+        isServicesMode ? <ServicesDesktopNav /> : <DesktopNav />
       ) : (
         /* Mobile Top Bar (Logo Only) - since Nav is at bottom */
         <div className="lg:hidden h-20 bg-background/80 backdrop-blur border-b sticky top-0 z-40 flex items-center justify-center px-4">

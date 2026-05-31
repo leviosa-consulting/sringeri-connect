@@ -16,6 +16,7 @@ import Fastline from "@/pages/fastline";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { FontSizeProvider } from "@/contexts/font-size-context";
 import { AnalyticsProvider } from "@/contexts/analytics-context";
+import { SubdomainModeProvider } from "@/contexts/subdomain-mode-context";
 import Analytics from "@/pages/analytics";
 import Knowledge from "@/pages/knowledge";
 import AdminQuizzes from "@/pages/admin-quizzes";
@@ -105,12 +106,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <FontSizeProvider>
-        <AuthProvider>
-          <AnalyticsProvider>
-            <Toaster />
-            <LaunchGate />
-          </AnalyticsProvider>
-        </AuthProvider>
+        <SubdomainModeProvider>
+          <AuthProvider>
+            <AnalyticsProvider>
+              <Toaster />
+              <LaunchGate />
+            </AnalyticsProvider>
+          </AuthProvider>
+        </SubdomainModeProvider>
       </FontSizeProvider>
     </QueryClientProvider>
   );

@@ -16,9 +16,11 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { sendPasswordReset } from "@/lib/firebase";
+import { useSubdomainMode } from "@/contexts/subdomain-mode-context";
 
 export default function Login() {
   const [_, setLocation] = useLocation();
+  const { homeRoute } = useSubdomainMode();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
@@ -38,7 +40,7 @@ export default function Login() {
   }
 
   if (user) {
-    return <Redirect to="/home" />;
+    return <Redirect to={homeRoute} />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,7 +75,7 @@ export default function Login() {
       } else {
         await login(email, password);
       }
-      setLocation("/home");
+      setLocation(homeRoute);
     } catch (error: any) {
       console.error("Auth error:", error);
       let message = "Something went wrong. Please try again.";
@@ -98,7 +100,7 @@ export default function Login() {
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
-      setLocation("/home");
+      setLocation(homeRoute);
     } catch (error: any) {
       console.error("Google sign-in error:", error);
       toast({
@@ -115,7 +117,7 @@ export default function Login() {
     setAppleLoading(true);
     try {
       await signInWithApple();
-      setLocation("/home");
+      setLocation(homeRoute);
     } catch (error: any) {
       if (error?.message?.includes('cancelled')) {
         console.log("Apple sign-in cancelled by user");
