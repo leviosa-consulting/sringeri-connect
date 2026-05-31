@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { useLocation, Redirect } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -29,14 +29,20 @@ export default function Login() {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
-  const { login, signUp, signInWithGoogle, signInWithApple, user } = useAuth();
+  const { login, signUp, signInWithGoogle, signInWithApple, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user) {
-      setLocation("/home");
-    }
-  }, [user, setLocation]);
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Redirect to="/home" />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
