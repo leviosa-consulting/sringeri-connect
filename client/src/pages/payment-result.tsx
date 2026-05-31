@@ -197,12 +197,22 @@ export default function PaymentResult() {
 
   const hasRetryData = !!pendingPayment?.retryData;
 
-  const getReturnPath = () => {
-    if (flowType === "fastline") return "/fastline";
-    if (flowType === "seva") return "/seva";
-    if (flowType === "donation") return "/donation";
-    if (flowType === "accommodation") return "/accommodation";
+  const getHomePath = () => {
+    const host = window.location.hostname;
+    if (host.startsWith("seva.")) return "/seva";
+    if (host.startsWith("donate.")) return "/donate";
+    if (host.startsWith("yatri.") || host.startsWith("yatra.")) return "/accommodation";
+    if (host.startsWith("fastline.")) return "/fastline";
     return "/home";
+  };
+
+  const getReturnPath = () => {
+    const host = window.location.hostname;
+    if (flowType === "fastline") return host.startsWith("fastline.") ? "/fastline" : "/seva";
+    if (flowType === "seva") return "/seva";
+    if (flowType === "donation") return "/donate";
+    if (flowType === "accommodation") return "/accommodation";
+    return getHomePath();
   };
 
   const getFlowLabel = () => {
@@ -228,7 +238,7 @@ export default function PaymentResult() {
           <CardContent className="pt-6 text-center">
             <XCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-sm text-muted-foreground">No payment information found.</p>
-            <Button className="mt-4" onClick={() => setLocation("/home")} data-testid="button-go-home">
+            <Button className="mt-4" onClick={() => setLocation(getHomePath())} data-testid="button-go-home">
               <Home className="h-4 w-4 mr-2" />Go Home
             </Button>
           </CardContent>
@@ -429,7 +439,7 @@ export default function PaymentResult() {
               <Button
                 variant={!isSuccess && hasRetryData ? "outline" : "default"}
                 className={`flex-1 ${!isSuccess && hasRetryData ? "" : "bg-[#FF6600] hover:bg-[#e55b00]"}`}
-                onClick={() => setLocation("/home")}
+                onClick={() => setLocation(getHomePath())}
                 data-testid="button-go-home"
               >
                 <Home className="h-4 w-4 mr-1" />Home
