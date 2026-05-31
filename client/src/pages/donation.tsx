@@ -63,6 +63,17 @@ import {
   CheckCircle2,
   type LucideIcon,
 } from "lucide-react";
+import annadanamIcon from "@assets/01-annadanam_1780254525422.png";
+import vedaPatashalaIcon from "@assets/02-veda-patashala_1780254525421.png";
+import educationIcon from "@assets/03-education_1780254525421.png";
+import sringeriHospitalIcon from "@assets/04-sringeri-hospital_1780254525421.png";
+import mobileHospitalIcon from "@assets/05-mobile-hospital_1780254525420.png";
+import monumentsIcon from "@assets/06-monuments-preservation_1780254525420.png";
+import guruKanikeIcon from "@assets/07-guru-kanike_1780254525420.png";
+import gajaShalaIcon from "@assets/08-gaja-shala_1780254525420.png";
+import goSamrakshanamIcon from "@assets/09-go-samrakshanam_1780254525419.png";
+import vocationSupportIcon from "@assets/10-vocation-support_1780254525420.png";
+import environmentIcon from "@assets/12-environment_1780254525421.png";
 
 interface DonationHeading {
   id: number;
@@ -176,6 +187,110 @@ const MONTHS = [
 
 function formatNumber(value: number): string {
   return value ? value.toLocaleString("en-IN") : "0";
+}
+
+const CUSTOM_ICON_KEYWORDS: [string, string][] = [
+  ["annadanam", annadanamIcon],
+  ["annadana", annadanamIcon],
+  ["prasad", annadanamIcon],
+  ["bhojan", annadanamIcon],
+  ["bhojana", annadanamIcon],
+  ["meal", annadanamIcon],
+  ["food", annadanamIcon],
+  ["kitchen", annadanamIcon],
+  ["anna", annadanamIcon],
+  ["veda", vedaPatashalaIcon],
+  ["patashala", vedaPatashalaIcon],
+  ["pathshala", vedaPatashalaIcon],
+  ["shastra", vedaPatashalaIcon],
+  ["vedic", vedaPatashalaIcon],
+  ["grantha", vedaPatashalaIcon],
+  ["book", vedaPatashalaIcon],
+  ["library", vedaPatashalaIcon],
+  ["education", educationIcon],
+  ["vidya", educationIcon],
+  ["school", educationIcon],
+  ["student", educationIcon],
+  ["scholarship", educationIcon],
+  ["college", educationIcon],
+  ["mobile hospital", mobileHospitalIcon],
+  ["mobile dispensary", mobileHospitalIcon],
+  ["health", mobileHospitalIcon],
+  ["ambulance", mobileHospitalIcon],
+  ["hospital", sringeriHospitalIcon],
+  ["clinic", sringeriHospitalIcon],
+  ["medical", sringeriHospitalIcon],
+  ["dispensary", sringeriHospitalIcon],
+  ["infirmary", sringeriHospitalIcon],
+  ["monument", monumentsIcon],
+  ["preservation", monumentsIcon],
+  ["heritage", monumentsIcon],
+  ["peetham", monumentsIcon],
+  ["mutt", monumentsIcon],
+  ["math", monumentsIcon],
+  ["mandir", monumentsIcon],
+  ["temple", monumentsIcon],
+  ["sringeri", monumentsIcon],
+  ["kanike", guruKanikeIcon],
+  ["guru kanike", guruKanikeIcon],
+  ["prarthana", guruKanikeIcon],
+  ["gaja", gajaShalaIcon],
+  ["elephant", gajaShalaIcon],
+  ["samrakshanam", goSamrakshanamIcon],
+  ["goshala", goSamrakshanamIcon],
+  ["gaushala", goSamrakshanamIcon],
+  ["gomata", goSamrakshanamIcon],
+  ["vocation", vocationSupportIcon],
+  ["skill", vocationSupportIcon],
+  ["livelihood", vocationSupportIcon],
+  ["employment", vocationSupportIcon],
+  ["artisan", vocationSupportIcon],
+  ["training", vocationSupportIcon],
+  ["environment", environmentIcon],
+  ["ecology", environmentIcon],
+  ["nature", environmentIcon],
+  ["tree", environmentIcon],
+  ["plant", environmentIcon],
+  ["garden", environmentIcon],
+  ["vanasampada", environmentIcon],
+];
+
+const ORANGE_FILTER = "brightness(0) saturate(100%) invert(43%) sepia(97%) saturate(2000%) hue-rotate(1deg) brightness(100%)";
+const WHITE_FILTER = "brightness(0) invert(1)";
+
+function getCustomIconSrc(name: string): string | null {
+  const lower = name.toLowerCase();
+  for (const [keyword, src] of CUSTOM_ICON_KEYWORDS) {
+    if (lower.includes(keyword)) return src;
+  }
+  return null;
+}
+
+function DonationIcon({
+  name,
+  sizeClass = "h-7 w-7",
+  isSelected = false,
+  colorClass,
+}: {
+  name: string;
+  sizeClass?: string;
+  isSelected?: boolean;
+  colorClass?: string;
+}) {
+  const customSrc = getCustomIconSrc(name);
+  if (customSrc) {
+    return (
+      <img
+        src={customSrc}
+        className={sizeClass}
+        style={{ filter: isSelected ? WHITE_FILTER : ORANGE_FILTER }}
+        alt=""
+        draggable={false}
+      />
+    );
+  }
+  const LIcon = getIconForName(name);
+  return <LIcon className={`${sizeClass} ${colorClass ?? (isSelected ? "text-white" : "text-primary")}`} />;
 }
 
 const ICON_KEYWORDS: [string, LucideIcon][] = [
@@ -1286,7 +1401,6 @@ export default function Donation() {
             </h3>
             <div className="space-y-2">
               {featuredDonations.map((featured, idx) => {
-                const Icon = getIconForName(featured.subcategory.name);
                 return (
                   <div key={featured.subcategory.id} className="relative">
                     <div
@@ -1299,7 +1413,7 @@ export default function Donation() {
                         data-testid={`button-featured-${featured.subcategory.id}`}
                       >
                         <div className="bg-amber-100 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
-                          <Icon className="h-5 w-5 text-amber-700" />
+                          <DonationIcon name={featured.subcategory.name} sizeClass="h-5 w-5" colorClass="text-amber-700" />
                         </div>
                         <span className="text-sm font-semibold text-foreground flex-1 leading-tight">{featured.subcategory.name}</span>
                       </button>
@@ -1330,7 +1444,6 @@ export default function Donation() {
           <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-center">Choose Donation Center</h3>
           <div className="grid grid-cols-3 gap-3">
             {headings.map((heading) => {
-              const Icon = getIconForName(heading.name);
               const isSelected = selectedHeading?.id === heading.id;
               return (
                 <button
@@ -1344,7 +1457,7 @@ export default function Donation() {
                   data-testid={`button-heading-${heading.id}`}
                 >
                   <div className="flex-1 flex items-center">
-                    <Icon className={`h-7 w-7 ${isSelected ? "text-white" : "text-primary"}`} />
+                    <DonationIcon name={heading.name} sizeClass="h-7 w-7" isSelected={isSelected} />
                   </div>
                   <span className="text-[11px] font-medium text-center leading-tight line-clamp-2 mt-2">{heading.name}</span>
                 </button>
@@ -1362,7 +1475,6 @@ export default function Donation() {
             <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-category">Choose Category</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {filteredCategories.map((cat) => {
-                const CatIcon = getIconForName(cat.name);
                 const isSelected = selectedCategory?.id === cat.id;
                 return (
                   <button
@@ -1376,7 +1488,7 @@ export default function Donation() {
                     data-testid={`button-category-${cat.id}`}
                   >
                     <div className="flex-1 flex items-center">
-                      <CatIcon className={`h-6 w-6 ${isSelected ? "text-white" : "text-primary"}`} />
+                      <DonationIcon name={cat.name} sizeClass="h-6 w-6" isSelected={isSelected} />
                     </div>
                     <span className="text-[11px] font-medium text-center leading-tight line-clamp-2 mt-2">{cat.name}</span>
                   </button>
@@ -1396,13 +1508,13 @@ export default function Donation() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {subcategories.map((sub) => {
-                  const SubIcon = getIconForName(sub.name);
+                  const isSubSelected = selectedSubCategory?.id === sub.id;
                   return (
                   <button
                     key={sub.id}
                     onClick={() => handleSelectSubCategory(sub)}
                     className={`w-full text-left rounded-lg p-3 transition-all ${
-                      selectedSubCategory?.id === sub.id
+                      isSubSelected
                         ? "bg-primary text-white shadow-md"
                         : "bg-white border border-border hover:border-primary/50"
                     }`}
@@ -1410,19 +1522,19 @@ export default function Donation() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <SubIcon className={`h-4 w-4 shrink-0 ${selectedSubCategory?.id === sub.id ? "text-white/80" : "text-primary/60"}`} />
+                        <DonationIcon name={sub.name} sizeClass="h-4 w-4 shrink-0" isSelected={isSubSelected} colorClass={isSubSelected ? "text-white/80" : "text-primary/60"} />
                         <span className="text-sm font-medium leading-snug">
                           {sub.is80G === 0 ? `${sub.name} (non-80G)` : sub.name}
                         </span>
                       </div>
-                      {selectedSubCategory?.id === sub.id && (
+                      {isSubSelected && (
                         <Check className="h-4 w-4 shrink-0" />
                       )}
                     </div>
                     {sub.desc && (
                       <div className="mt-1">
                         <p
-                          className={`text-xs ${selectedSubCategory?.id === sub.id ? "text-white/80" : "text-muted-foreground"} ${expandedDescs.has(sub.id) ? "" : "line-clamp-1"}`}
+                          className={`text-xs ${isSubSelected ? "text-white/80" : "text-muted-foreground"} ${expandedDescs.has(sub.id) ? "" : "line-clamp-1"}`}
                         >
                           {sub.desc}
                         </p>
@@ -1437,7 +1549,7 @@ export default function Donation() {
                                 return next;
                               });
                             }}
-                            className={`text-[11px] font-medium mt-0.5 ${selectedSubCategory?.id === sub.id ? "text-white/90 underline" : "text-primary underline"}`}
+                            className={`text-[11px] font-medium mt-0.5 ${isSubSelected ? "text-white/90 underline" : "text-primary underline"}`}
                             data-testid={`button-desc-toggle-${sub.id}`}
                           >
                             {expandedDescs.has(sub.id) ? "Show less" : "More"}
