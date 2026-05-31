@@ -951,6 +951,20 @@ export default function Seva() {
       }
     }
 
+    // Derive only the recurrence fields applicable to the active type × calendar combination.
+    // All others are explicitly "" to prevent stale state leaking into the cart payload.
+    const isLunar = isRecurring && (recurrenceType === 3 || recurrenceType === 4) && (calendarType === 2 || calendarType === 3);
+    const isGregorianPeriodic = isRecurring && (recurrenceType === 3 || recurrenceType === 4) && calendarType === 1;
+    const isYearly = isRecurring && recurrenceType === 4;
+    const effectiveWeekdayId       = isRecurring && recurrenceType === 2 ? (weekdayId || "") : "";
+    const effectiveSpecificDate    = isGregorianPeriodic ? (specificDateNum || "") : "";
+    const effectiveMonthId         = isYearly && calendarType === 1 ? (monthId || "") : "";
+    const effectiveChandraMasaId   = isYearly && calendarType === 2 ? (fromChandraMasaId || "") : "";
+    const effectiveSouraMasaId     = isYearly && calendarType === 3 ? (fromSouraMasaId || "") : "";
+    // Tithi and nakshatra are mutually exclusive — tithi takes priority if both are somehow set.
+    const effectiveTithiId         = isLunar ? (fromTithiId || "") : "";
+    const effectiveNakshatraId     = isLunar && !fromTithiId ? (fromNakshatraId || "") : "";
+
     const newSeva: CartSeva = {
       sannidhiId: selectedSannidhi?.id || 0,
       sannidhiName: selectedSannidhi?.name || "",
@@ -979,14 +993,14 @@ export default function Seva() {
       fromDate,
       toDate: effectiveToDate,
       noEnd,
-      weekdayId: isRecurring && recurrenceType === 2 ? (weekdayId || "") : "",
-      weekdayRepeatId: isRecurring && recurrenceType === 2 ? (weekdayRepeatId || "") : "",
-      specificDate: isRecurring && (recurrenceType === 3 || recurrenceType === 4) && calendarType === 1 ? (specificDateNum || "") : "",
-      monthId: isRecurring && recurrenceType === 4 && calendarType === 1 ? (monthId || "") : "",
-      fromChandraMasaId: isRecurring && recurrenceType === 4 && calendarType === 2 ? (fromChandraMasaId || "") : "",
-      fromTithiId: isRecurring && (recurrenceType === 3 || recurrenceType === 4) && (calendarType === 2 || calendarType === 3) ? (fromTithiId || "") : "",
-      fromNakshatraId: isRecurring && (recurrenceType === 3 || recurrenceType === 4) && (calendarType === 2 || calendarType === 3) ? (fromTithiId ? "" : (fromNakshatraId || "")) : "",
-      fromSouraMasaId: isRecurring && recurrenceType === 4 && calendarType === 3 ? (fromSouraMasaId || "") : "",
+      weekdayId: effectiveWeekdayId,
+      weekdayRepeatId: "",
+      specificDate: effectiveSpecificDate,
+      monthId: effectiveMonthId,
+      fromChandraMasaId: effectiveChandraMasaId,
+      fromTithiId: effectiveTithiId,
+      fromNakshatraId: effectiveNakshatraId,
+      fromSouraMasaId: effectiveSouraMasaId,
       remarks: effectiveRemarks,
       mode: isRecurring ? 3 : 2,
       sevaCount,
