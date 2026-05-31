@@ -497,6 +497,20 @@ export default function Donation() {
     }
   }, [subcategories]);
 
+  function getDaysInMonth(mId: string): number {
+    const m = parseInt(mId);
+    if (m === 2) return 28;
+    if ([4, 6, 9, 11].includes(m)) return 30;
+    return 31;
+  }
+
+  useEffect(() => {
+    if (monthId && specificDate) {
+      const max = getDaysInMonth(monthId);
+      if (parseInt(specificDate) > max) setSpecificDate("");
+    }
+  }, [monthId]);
+
   const kartas = devoteeData?.kartas || [];
   const addresses = devoteeData?.addresses || [];
 
@@ -1466,108 +1480,138 @@ export default function Donation() {
                 )}
 
                 {selectedSubCategory.hasDonationDate === 1 && (
-                  <div className="space-y-3 pt-2 border-t border-border">
-                    <label className="text-xs text-muted-foreground block">Donation Date (Optional)</label>
-                    <div className="flex flex-wrap gap-2">
-                      {calendarTypes.map((ct) => (
-                        <button
-                          key={ct.id}
-                          onClick={() => {
-                            setCalendarType(String(ct.id));
-                            setMonthId(""); setSpecificDate("");
-                            setChandraMasaId(""); setSouraMasaId("");
-                            setTithiId(""); setNakshatraId("");
-                          }}
-                          className={`px-3 py-1.5 rounded text-xs ${
-                            calendarType === String(ct.id)
-                              ? "bg-primary text-white"
-                              : "bg-white border border-border"
-                          }`}
-                          data-testid={`button-cal-type-${ct.id}`}
-                        >
-                          {ct.name}
-                        </button>
-                      ))}
+                  <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+                        <Sun className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-primary">Donation Date</p>
+                        <p className="text-xs text-muted-foreground">Choose a calendar system and date</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-foreground/70 mb-2 uppercase tracking-wide">Calendar Type</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {calendarTypes.map((ct) => (
+                          <button
+                            key={ct.id}
+                            onClick={() => {
+                              setCalendarType(String(ct.id));
+                              setMonthId(""); setSpecificDate("");
+                              setChandraMasaId(""); setSouraMasaId("");
+                              setTithiId(""); setNakshatraId("");
+                            }}
+                            className={`py-2.5 rounded-lg text-sm font-medium transition-all ${
+                              calendarType === String(ct.id)
+                                ? "bg-primary text-white shadow-md"
+                                : "bg-white border border-border hover:border-primary/50"
+                            }`}
+                            data-testid={`button-cal-type-${ct.id}`}
+                          >
+                            {ct.name}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {calendarType === "1" && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <select
-                          value={monthId}
-                          onChange={(e) => setMonthId(e.target.value)}
-                          className="border border-border rounded-md px-3 py-2 text-sm bg-white"
-                          data-testid="select-month"
-                        >
-                          <option value="">Month</option>
-                          {MONTHS.map((m) => (
-                            <option key={m.id} value={String(m.id)}>{m.name}</option>
-                          ))}
-                        </select>
-                        <input
-                          type="number"
-                          min="1"
-                          max="31"
-                          value={specificDate}
-                          onChange={(e) => setSpecificDate(e.target.value)}
-                          placeholder="Date (1-31)"
-                          className="border border-border rounded-md px-3 py-2 text-sm bg-white"
-                          data-testid="input-specific-date"
-                        />
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs font-medium text-foreground/70 mb-1.5 uppercase tracking-wide">Month</p>
+                          <select
+                            value={monthId}
+                            onChange={(e) => setMonthId(e.target.value)}
+                            className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                            data-testid="select-month"
+                          >
+                            <option value="">Select month</option>
+                            {MONTHS.map((m) => (
+                              <option key={m.id} value={String(m.id)}>{m.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {monthId && (
+                          <div>
+                            <p className="text-xs font-medium text-foreground/70 mb-1.5 uppercase tracking-wide">Date</p>
+                            <select
+                              value={specificDate}
+                              onChange={(e) => setSpecificDate(e.target.value)}
+                              className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                              data-testid="select-specific-date"
+                            >
+                              <option value="">Select date</option>
+                              {Array.from({ length: getDaysInMonth(monthId) }, (_, i) => i + 1).map((d) => (
+                                <option key={d} value={String(d)}>{d}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                     )}
 
                     {calendarType === "2" && (
-                      <select
-                        value={chandraMasaId}
-                        onChange={(e) => setChandraMasaId(e.target.value)}
-                        className="w-full border border-border rounded-md px-3 py-2 text-sm bg-white"
-                        data-testid="select-chandra-masa"
-                      >
-                        <option value="">Select Chandra Masa</option>
-                        {chandraMasas.map((cm: any) => (
-                          <option key={cm.id} value={cm.id}>{cm.name}</option>
-                        ))}
-                      </select>
+                      <div>
+                        <p className="text-xs font-medium text-foreground/70 mb-1.5 uppercase tracking-wide">Chandra Masa</p>
+                        <select
+                          value={chandraMasaId}
+                          onChange={(e) => setChandraMasaId(e.target.value)}
+                          className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                          data-testid="select-chandra-masa"
+                        >
+                          <option value="">Select Chandra Masa</option>
+                          {chandraMasas.map((cm: any) => (
+                            <option key={cm.id} value={cm.id}>{cm.name}</option>
+                          ))}
+                        </select>
+                      </div>
                     )}
 
                     {calendarType === "3" && (
-                      <select
-                        value={souraMasaId}
-                        onChange={(e) => setSouraMasaId(e.target.value)}
-                        className="w-full border border-border rounded-md px-3 py-2 text-sm bg-white"
-                        data-testid="select-soura-masa"
-                      >
-                        <option value="">Select Soura Masa</option>
-                        {souraMasas.map((sm: any) => (
-                          <option key={sm.id} value={sm.id}>{sm.name}</option>
-                        ))}
-                      </select>
+                      <div>
+                        <p className="text-xs font-medium text-foreground/70 mb-1.5 uppercase tracking-wide">Soura Masa</p>
+                        <select
+                          value={souraMasaId}
+                          onChange={(e) => setSouraMasaId(e.target.value)}
+                          className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                          data-testid="select-soura-masa"
+                        >
+                          <option value="">Select Soura Masa</option>
+                          {souraMasas.map((sm: any) => (
+                            <option key={sm.id} value={sm.id}>{sm.name}</option>
+                          ))}
+                        </select>
+                      </div>
                     )}
 
                     {(calendarType === "2" || calendarType === "3") && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <select
-                          value={tithiId}
-                          onChange={(e) => { setTithiId(e.target.value); if (e.target.value) setNakshatraId(""); }}
-                          className="border border-border rounded-md px-3 py-2 text-sm bg-white"
-                          data-testid="select-tithi"
-                        >
-                          <option value="">Tithi</option>
-                          {tithis.map((t: any) => (
-                            <option key={t.id} value={t.id}>{t.name}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={nakshatraId}
-                          onChange={(e) => { setNakshatraId(e.target.value); if (e.target.value) setTithiId(""); }}
-                          className="border border-border rounded-md px-3 py-2 text-sm bg-white"
-                          data-testid="select-nakshatra"
-                        >
-                          <option value="">Nakshatra</option>
-                          {nakshatras.map((n: any) => (
-                            <option key={n.id} value={n.id}>{n.name}</option>
-                          ))}
-                        </select>
+                      <div>
+                        <p className="text-xs font-medium text-foreground/70 mb-2 uppercase tracking-wide">Tithi or Nakshatra</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <select
+                            value={tithiId}
+                            onChange={(e) => { setTithiId(e.target.value); if (e.target.value) setNakshatraId(""); }}
+                            className="border border-border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                            data-testid="select-tithi"
+                          >
+                            <option value="">Tithi</option>
+                            {tithis.map((t: any) => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={nakshatraId}
+                            onChange={(e) => { setNakshatraId(e.target.value); if (e.target.value) setTithiId(""); }}
+                            className="border border-border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                            data-testid="select-nakshatra"
+                          >
+                            <option value="">Nakshatra</option>
+                            {nakshatras.map((n: any) => (
+                              <option key={n.id} value={n.id}>{n.name}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     )}
                   </div>
