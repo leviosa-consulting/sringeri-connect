@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { useLocation } from "wouter";
+import { useSubdomainMode } from "@/contexts/subdomain-mode-context";
 import {
   ArrowLeft,
   ArrowRight,
@@ -85,6 +86,7 @@ const MONTH_COUNT = 3;
 export default function Accommodation() {
   const { user } = useAuth();
   const [_, setLocation] = useLocation();
+  const { isServicesMode } = useSubdomainMode();
 
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -409,14 +411,16 @@ export default function Accommodation() {
                 >
                   Book Another Room
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setLocation("/home")}
-                  data-testid="button-ack-home"
-                >
-                  Go to Home
-                </Button>
+                {!isServicesMode && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setLocation("/home")}
+                    data-testid="button-ack-home"
+                  >
+                    Go to Home
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -432,10 +436,12 @@ export default function Accommodation() {
         <div className="bg-primary pt-8 pb-6 px-6 text-primary-foreground relative overflow-hidden">
           <div className="absolute inset-0 bg-black/10" />
           <div className="relative z-10">
-            <button onClick={() => setLocation("/home")} className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3" data-testid="button-back-home">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </button>
+            {!isServicesMode && (
+              <button onClick={() => setLocation("/home")} className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3" data-testid="button-back-home">
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </button>
+            )}
             <div className="flex items-center gap-3">
               <Hotel className="h-7 w-7" />
               <div>

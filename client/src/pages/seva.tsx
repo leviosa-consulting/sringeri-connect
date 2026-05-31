@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { useLocation } from "wouter";
+import { useSubdomainMode } from "@/contexts/subdomain-mode-context";
 import {
   ArrowLeft,
   ArrowRight,
@@ -229,6 +230,7 @@ function formatDate(dateString: string): string {
 export default function Seva() {
   const { user, devoteeData } = useAuth();
   const [, navigate] = useLocation();
+  const { isServicesMode } = useSubdomainMode();
 
   const [selectedSevaType, setSelectedSevaType] = useState<SevaType | null>(null);
   const [step, setStep] = useState<"home" | "select" | "karta" | "address" | "review" | "payee">("home");
@@ -2763,10 +2765,12 @@ export default function Seva() {
       <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10">
-          <button onClick={() => navigate("/home")}
-            className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3" data-testid="button-back-home">
-            <ArrowLeft className="h-4 w-4" /> Home
-          </button>
+          {!isServicesMode && (
+            <button onClick={() => navigate("/home")}
+              className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3" data-testid="button-back-home">
+              <ArrowLeft className="h-4 w-4" /> Home
+            </button>
+          )}
           <div className="flex items-center gap-3">
             <BookCopy className="h-7 w-7" />
             <div>

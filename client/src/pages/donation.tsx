@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { useLocation } from "wouter";
+import { useSubdomainMode } from "@/contexts/subdomain-mode-context";
 import {
   ArrowLeft,
   Check,
@@ -295,6 +296,7 @@ function getIconForName(name: string): LucideIcon {
 export default function Donation() {
   const { user, devoteeData } = useAuth();
   const [, navigate] = useLocation();
+  const { isServicesMode } = useSubdomainMode();
 
   const [step, setStep] = useState<"select" | "review" | "payee">("select");
   const [selectedHeading, setSelectedHeading] = useState<DonationHeading | null>(null);
@@ -800,11 +802,13 @@ export default function Donation() {
                   data-testid="button-ack-new-donation">
                   Make Another Donation
                 </button>
-                <button onClick={() => navigate("/home")}
-                  className="uppercase font-medium rounded-md border border-[#3d2000] text-[#3d2000] px-6 py-3 text-sm hover:bg-[#F7F2EC] transition-colors"
-                  data-testid="button-ack-go-home">
-                  Go Home
-                </button>
+                {!isServicesMode && (
+                  <button onClick={() => navigate("/home")}
+                    className="uppercase font-medium rounded-md border border-[#3d2000] text-[#3d2000] px-6 py-3 text-sm hover:bg-[#F7F2EC] transition-colors"
+                    data-testid="button-ack-go-home">
+                    Go Home
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1251,14 +1255,16 @@ export default function Donation() {
       <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10">
-          <button
-            onClick={() => navigate("/home")}
-            className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
-            data-testid="button-back-home"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
+          {!isServicesMode && (
+            <button
+              onClick={() => navigate("/home")}
+              className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
+              data-testid="button-back-home"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+          )}
           <div className="flex items-center gap-3">
             <HandHeart className="h-7 w-7" />
             <div>
