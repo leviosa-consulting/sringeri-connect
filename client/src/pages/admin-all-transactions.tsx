@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
 import { RangoliLoader } from "@/components/rangoli-loader";
 import { useAuth } from "@/contexts/auth-context";
-import { ArrowLeft, RefreshCw, AlertCircle, Search, ListFilter, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { ArrowLeft, RefreshCw, AlertCircle, Search, ListFilter, CheckCircle2, Clock, XCircle, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const ADMIN_UIDS = [
   ...(import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(","),
@@ -12,6 +13,25 @@ const ADMIN_UIDS = [
 
 interface Transaction {
   [key: string]: any;
+}
+
+type RowStatus =
+  | "idle"
+  | "checking"
+  | "success"
+  | "pending"
+  | "failed"
+  | "acking"
+  | "acked"
+  | "ack_failed"
+  | "marking"
+  | "marked"
+  | "mark_failed";
+
+interface RowState {
+  status: RowStatus;
+  message?: string;
+  detail?: any;
 }
 
 function today(): string {
@@ -56,8 +76,132 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed }: {
+  orderId: string;
+  rowState: RowState;
+  onCheck: () => void;
+  onAck: () => void;
+  onMarkFailed: () => void;
+}) {
+  if (orderId === "—") return <td className="px-3 py-3" />;
+
+  const { status, message } = rowState;
+
+  return (
+    <td className="px-3 py-3 whitespace-nowrap">
+      <div className="flex flex-col gap-1 items-start">
+        {(status === "idle") && (
+          <button
+            onClick={onCheck}
+            className="text-xs px-2.5 py-1 rounded bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-colors"
+            data-testid={`button-check-${orderId}`}
+          >
+            Check Status
+          </button>
+        )}
+
+        {status === "checking" && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Checking…
+          </span>
+        )}
+
+        {status === "pending" && (
+          <div className="flex flex-col gap-1">
+            <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
+              <Clock className="h-3 w-3" /> Still Pending
+            </span>
+            <button
+              onClick={onCheck}
+              className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/70 transition-colors"
+            >
+              Re-check
+            </button>
+          </div>
+        )}
+
+        {status === "success" && (
+          <div className="flex flex-col gap-1">
+            <span className="inline-flex items-center gap-1 text-xs text-green-700 font-medium">
+              <CheckCircle2 className="h-3 w-3" /> Paytm: Success
+            </span>
+            <button
+              onClick={onAck}
+              className="text-xs px-2.5 py-1 rounded bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors"
+              data-testid={`button-ack-${orderId}`}
+            >
+              Reconcile
+            </button>
+          </div>
+        )}
+
+        {status === "failed" && (
+          <div className="flex flex-col gap-1">
+            <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
+              <XCircle className="h-3 w-3" /> Paytm: Failed
+            </span>
+            {message && <span className="text-[10px] text-muted-foreground max-w-[120px] truncate" title={message}>{message}</span>}
+            <button
+              onClick={onMarkFailed}
+              className="text-xs px-2.5 py-1 rounded bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors"
+              data-testid={`button-mark-failed-${orderId}`}
+            >
+              Mark Failed
+            </button>
+          </div>
+        )}
+
+        {status === "acking" && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Reconciling…
+          </span>
+        )}
+
+        {status === "acked" && (
+          <span className="inline-flex items-center gap-1 text-xs text-green-700 font-semibold">
+            <CheckCircle2 className="h-3 w-3" /> Reconciled ✓
+          </span>
+        )}
+
+        {status === "ack_failed" && (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-red-600 font-medium">ACK failed</span>
+            {message && <span className="text-[10px] text-muted-foreground max-w-[120px] truncate" title={message}>{message}</span>}
+            <button onClick={onAck} className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/70">
+              Retry
+            </button>
+          </div>
+        )}
+
+        {status === "marking" && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Marking…
+          </span>
+        )}
+
+        {status === "marked" && (
+          <span className="inline-flex items-center gap-1 text-xs text-red-700 font-semibold">
+            <XCircle className="h-3 w-3" /> Marked Failed ✓
+          </span>
+        )}
+
+        {status === "mark_failed" && (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-red-600 font-medium">Update failed</span>
+            {message && <span className="text-[10px] text-muted-foreground max-w-[120px] truncate" title={message}>{message}</span>}
+            <button onClick={onMarkFailed} className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/70">
+              Retry
+            </button>
+          </div>
+        )}
+      </div>
+    </td>
+  );
+}
+
 export default function AdminAllTransactions() {
   const { user, loading: authLoading, getToken } = useAuth();
+  const { toast } = useToast();
   const isAdmin = user && ADMIN_UIDS.includes(user.uid);
 
   const [fromDate, setFromDate] = useState(today());
@@ -67,12 +211,20 @@ export default function AdminAllTransactions() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [filter, setFilter] = useState("");
+  const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
+
+  const setRow = (orderId: string, state: RowState) =>
+    setRowStates(prev => ({ ...prev, [orderId]: state }));
+
+  const getRow = (orderId: string): RowState =>
+    rowStates[orderId] ?? { status: "idle" };
 
   const fetchTransactions = useCallback(async () => {
     if (!isAdmin || !getToken) return;
     setLoading(true);
     setLoadError(null);
     setFilter("");
+    setRowStates({});
     try {
       const token = await getToken();
       if (!token) throw new Error("Not authenticated");
@@ -96,6 +248,98 @@ export default function AdminAllTransactions() {
       setSearched(true);
     }
   }, [isAdmin, getToken, fromDate, toDate]);
+
+  async function checkStatus(orderId: string) {
+    setRow(orderId, { status: "checking" });
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      const res = await fetch("/api/admin/reconciliation/check-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const s: RowState = { status: "failed", message: data?.error || `HTTP ${res.status}` };
+        setRow(orderId, s);
+        toast({ title: `Check failed`, description: data?.error || `HTTP ${res.status}`, variant: "destructive" });
+        return;
+      }
+      const paytmStatus = String(data?.status || "UNKNOWN");
+      let next: RowState;
+      if (paytmStatus === "TXN_SUCCESS") {
+        next = { status: "success", message: data.resultMsg, detail: data };
+        toast({ title: `Order …${orderId.slice(-8)}: Success on Paytm`, description: data.resultMsg || "Ready to reconcile" });
+      } else if (paytmStatus === "PENDING") {
+        next = { status: "pending", message: data.resultMsg, detail: data };
+        toast({ title: `Order …${orderId.slice(-8)}: Still Pending`, description: data.resultMsg || "Try again later", variant: "default" });
+      } else {
+        next = { status: "failed", message: data.resultMsg || paytmStatus, detail: data };
+        toast({ title: `Order …${orderId.slice(-8)}: Failed on Paytm`, description: data.resultMsg || paytmStatus, variant: "destructive" });
+      }
+      setRow(orderId, next);
+    } catch (err: any) {
+      const s: RowState = { status: "failed", message: err?.message || "Check failed" };
+      setRow(orderId, s);
+      toast({ title: "Status check error", description: s.message, variant: "destructive" });
+    }
+  }
+
+  async function sendAck(orderId: string) {
+    setRow(orderId, { status: "acking" });
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      const res = await fetch("/api/admin/reconciliation/ack", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const s: RowState = { status: "ack_failed", message: data?.error || `HTTP ${res.status}` };
+        setRow(orderId, s);
+        toast({ title: "Reconcile failed", description: data?.error || `HTTP ${res.status}`, variant: "destructive" });
+        return;
+      }
+      setRow(orderId, { status: "acked", message: "Acknowledged", detail: data });
+      toast({ title: `Order …${orderId.slice(-8)}: Reconciled`, description: "Payment acknowledged successfully." });
+    } catch (err: any) {
+      const s: RowState = { status: "ack_failed", message: err?.message || "ACK failed" };
+      setRow(orderId, s);
+      toast({ title: "Reconcile error", description: s.message, variant: "destructive" });
+    }
+  }
+
+  async function markFailed(orderId: string) {
+    setRow(orderId, { status: "marking" });
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      const res = await fetch("/api/admin/reconciliation/mark-failed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = data?.error || `HTTP ${res.status}`;
+        const s: RowState = data?.status === "PENDING"
+          ? { status: "pending", message: "Still pending on Paytm — cannot mark failed" }
+          : { status: "mark_failed", message: msg };
+        setRow(orderId, s);
+        toast({ title: "Mark failed error", description: msg, variant: "destructive" });
+        return;
+      }
+      setRow(orderId, { status: "marked", detail: data });
+      toast({ title: `Order …${orderId.slice(-8)}: Marked as Failed`, description: "Transaction updated successfully." });
+    } catch (err: any) {
+      const s: RowState = { status: "mark_failed", message: err?.message || "Update failed" };
+      setRow(orderId, s);
+      toast({ title: "Mark failed error", description: s.message, variant: "destructive" });
+    }
+  }
 
   const filtered = filter.trim()
     ? transactions.filter(t =>
@@ -135,18 +379,16 @@ export default function AdminAllTransactions() {
 
   return (
     <div className="px-4 py-6 pb-24 lg:pb-8 space-y-5 max-w-6xl mx-auto" data-testid="admin-all-transactions-page">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/admin" className="p-2 rounded-lg hover:bg-muted transition-colors" data-testid="link-back-admin">
           <ArrowLeft className="h-5 w-5 text-muted-foreground" />
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-foreground">All Transactions</h1>
-          <p className="text-sm text-muted-foreground">View all transactions across all statuses for a date range</p>
+          <p className="text-sm text-muted-foreground">View and reconcile transactions across all statuses for a date range</p>
         </div>
       </div>
 
-      {/* Date range + fetch */}
       <div className="bg-card rounded-xl border border-border/50 p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div>
@@ -188,7 +430,6 @@ export default function AdminAllTransactions() {
         </div>
       </div>
 
-      {/* Body */}
       {loading ? (
         <div className="py-16 flex justify-center">
           <RangoliLoader size={48} />
@@ -207,7 +448,6 @@ export default function AdminAllTransactions() {
         </div>
       ) : searched && transactions.length > 0 ? (
         <>
-          {/* Summary chips */}
           <div className="flex gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
               <CheckCircle2 className="h-3 w-3" /> Success: {countByStatus("1")}
@@ -223,7 +463,6 @@ export default function AdminAllTransactions() {
             </span>
           </div>
 
-          {/* Filter */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <input
@@ -236,7 +475,6 @@ export default function AdminAllTransactions() {
             />
           </div>
 
-          {/* Table */}
           <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm" data-testid="table-all-transactions">
@@ -250,12 +488,14 @@ export default function AdminAllTransactions() {
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground">Amount</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">Date</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                    <th className="text-left px-3 py-3 font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((t, idx) => {
                     const orderId = getField(t, "paymentRef", "orderId", "orderID", "order_id", "txnId");
                     const status = getField(t, "status", "txnStatus", "paymentStatus", "state");
+                    const rowState = getRow(orderId);
                     return (
                       <tr
                         key={orderId !== "—" ? orderId : idx}
@@ -282,6 +522,13 @@ export default function AdminAllTransactions() {
                         <td className="px-4 py-3">
                           <StatusBadge status={status} />
                         </td>
+                        <ActionCell
+                          orderId={orderId}
+                          rowState={rowState}
+                          onCheck={() => checkStatus(orderId)}
+                          onAck={() => sendAck(orderId)}
+                          onMarkFailed={() => markFailed(orderId)}
+                        />
                       </tr>
                     );
                   })}

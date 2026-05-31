@@ -2942,6 +2942,63 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/reconciliation/mark-failed", async (req, res) => {
+    try {
+      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const { orderId } = req.body || {};
+      if (!orderId || typeof orderId !== "string") {
+        return res.status(400).json({ error: "orderId is required" });
+      }
+      const result = await paytmOrderStatus(orderId);
+      if (!result) {
+        return res.status(502).json({ error: "Paytm status check failed" });
+      }
+      const b = result.body || {};
+      const ri = b.resultInfo || {};
+      if (ri.resultStatus === "PENDING") {
+        return res.status(409).json({ error: "Transaction is still pending on Paytm", status: "PENDING" });
+      }
+      const failBody: Record<string, string> = {
+        ORDERID: orderId,
+        STATUS: ri.resultStatus || "TXN_FAILURE",
+        RESPCODE: String(ri.resultCode ?? ""),
+        RESPMSG: ri.resultMsg || "Transaction Failed",
+      };
+      if (b.txnId) failBody.TXNID = String(b.txnId);
+      if (b.bankTxnId) failBody.BANKTXNID = String(b.bankTxnId);
+      if (b.txnAmount) failBody.TXNAMOUNT = String(b.txnAmount);
+      if (b.txnDate) failBody.TXNDATE = String(b.txnDate);
+      if (b.paymentMode) failBody.PAYMENTMODE = String(b.paymentMode);
+      if (b.bankName) failBody.BANKNAME = String(b.bankName);
+      if (b.currency) failBody.CURRENCY = String(b.currency);
+      console.log("Mark failed for order:", orderId);
+      const failRes = await fetch(`${SRINGERI_API_URL}/api/updateFailedTransaction`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(failBody),
+      });
+      const failText = await failRes.text();
+      console.log("Mark failed response:", failRes.status, failText.slice(0, 200));
+      if (!failRes.ok) {
+        return res.status(failRes.status).json({ error: "Failed to mark transaction as failed", upstream: failText });
+      }
+      let failData: any = null;
+      try {
+        const j = failText.indexOf("{");
+        failData = j !== -1 ? JSON.parse(failText.substring(j)) : JSON.parse(failText);
+      } catch {
+        failData = { raw: failText };
+      }
+      res.json({ orderId, marked: true, failResponse: failData, paytm: { status: ri.resultStatus, txnId: b.txnId } });
+    } catch (error) {
+      console.error("Error in mark-failed:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/paytm-callback", async (req, res) => {
     try {
       const paytmResponse = req.body;
