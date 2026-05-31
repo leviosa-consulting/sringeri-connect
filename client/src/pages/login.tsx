@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { sendPasswordReset } from "@/lib/firebase";
@@ -36,6 +36,7 @@ export default function Login() {
   const { login, signUp, signInWithGoogle, signInWithApple, signInAsGuest, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [guestLoading, setGuestLoading] = useState(false);
+  const [emailExpanded, setEmailExpanded] = useState(false);
 
   if (authLoading) {
     return <PageLoader />;
@@ -250,6 +251,27 @@ export default function Login() {
             Continue with Google
           </Button>
 
+          {isServicesMode && (
+            <div className="space-y-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full h-12 font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-dashed border-muted-foreground/30"
+                onClick={handleGuestSignIn}
+                disabled={anyLoading}
+                data-testid="button-guest-signin"
+              >
+                {guestLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Continue as Guest
+              </Button>
+              <p className="text-center text-xs text-muted-foreground/80 px-2">
+                No details will be stored in history for future reference.
+              </p>
+            </div>
+          )}
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
@@ -259,114 +281,97 @@ export default function Login() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            onClick={() => setEmailExpanded(!emailExpanded)}
+            data-testid="button-toggle-email"
+          >
+            Sign in with Email
+            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${emailExpanded ? "rotate-180" : ""}`} />
+          </button>
+
+          {emailExpanded && (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp && (
+                <Input 
+                  type="text" 
+                  placeholder="Full Name" 
+                  className="bg-white/50 border-primary/20 focus:border-primary focus:ring-primary/20"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  data-testid="input-name"
+                />
+              )}
               <Input 
-                type="text" 
-                placeholder="Full Name" 
+                type="email" 
+                placeholder="Email Address" 
                 className="bg-white/50 border-primary/20 focus:border-primary focus:ring-primary/20"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                data-testid="input-name"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                data-testid="input-email"
               />
-            )}
-            <Input 
-              type="email" 
-              placeholder="Email Address" 
-              className="bg-white/50 border-primary/20 focus:border-primary focus:ring-primary/20"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              data-testid="input-email"
-            />
-            <Input 
-              type="password" 
-              placeholder="Password" 
-              className="bg-white/50 border-primary/20 focus:border-primary focus:ring-primary/20"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              data-testid="input-password"
-            />
-            {!isSignUp && (
-              <div className="flex justify-end -mt-2">
-                <button
-                  type="button"
-                  className="text-xs text-primary hover:underline font-medium"
-                  onClick={() => {
-                    setResetEmail(email);
-                    setResetOpen(true);
-                  }}
-                  data-testid="button-forgot-password"
-                >
-                  Forgot password?
-                </button>
-              </div>
-            )}
-            {isSignUp && (
               <Input 
                 type="password" 
-                placeholder="Confirm Password" 
+                placeholder="Password" 
                 className="bg-white/50 border-primary/20 focus:border-primary focus:ring-primary/20"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
-                data-testid="input-confirm-password"
+                data-testid="input-password"
               />
-            )}
-            
-            <Button 
-              type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-6"
-              disabled={anyLoading}
-              data-testid="button-submit"
-            >
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isSignUp ? "Create Account" : "Sign In")}
-            </Button>
-          </form>
-
-          <div className="text-center">
-            <button 
-              type="button"
-              className="text-sm text-primary hover:underline font-medium"
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setPassword("");
-                setConfirmPassword("");
-              }}
-              data-testid="button-toggle-mode"
-            >
-              {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
-            </button>
-          </div>
-
-          {isServicesMode && (
-            <div className="space-y-2">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
+              {!isSignUp && (
+                <div className="flex justify-end -mt-2">
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline font-medium"
+                    onClick={() => {
+                      setResetEmail(email);
+                      setResetOpen(true);
+                    }}
+                    data-testid="button-forgot-password"
+                  >
+                    Forgot password?
+                  </button>
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-muted-foreground">Or</span>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full h-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-dashed border-muted-foreground/30"
-                onClick={handleGuestSignIn}
+              )}
+              {isSignUp && (
+                <Input 
+                  type="password" 
+                  placeholder="Confirm Password" 
+                  className="bg-white/50 border-primary/20 focus:border-primary focus:ring-primary/20"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  data-testid="input-confirm-password"
+                />
+              )}
+              
+              <Button 
+                type="submit" 
+                className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-6"
                 disabled={anyLoading}
-                data-testid="button-guest-signin"
+                data-testid="button-submit"
               >
-                {guestLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                Sign in as Guest
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isSignUp ? "Create Account" : "Sign In")}
               </Button>
-              <p className="text-center text-xs text-muted-foreground/80 px-2">
-                No details will be stored in history for future reference.
-              </p>
-            </div>
+
+              <div className="text-center">
+                <button 
+                  type="button"
+                  className="text-sm text-primary hover:underline font-medium"
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setPassword("");
+                    setConfirmPassword("");
+                  }}
+                  data-testid="button-toggle-mode"
+                >
+                  {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+                </button>
+              </div>
+            </form>
           )}
           
           <div className="text-center text-xs text-muted-foreground">
