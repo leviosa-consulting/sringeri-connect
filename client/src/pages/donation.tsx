@@ -258,8 +258,11 @@ const CUSTOM_ICON_KEYWORDS: [string, string][] = [
 const ORANGE_FILTER = "brightness(0) saturate(100%) invert(43%) sepia(97%) saturate(2000%) hue-rotate(1deg) brightness(100%)";
 const WHITE_FILTER = "brightness(0) invert(1)";
 
+const CUSTOM_ICON_SKIP_KEYWORDS = ["ashakta", "shishu", "sishu", "infant", "special child", "kalaangana"];
+
 function getCustomIconSrc(name: string): string | null {
   const lower = name.toLowerCase();
+  if (CUSTOM_ICON_SKIP_KEYWORDS.some((k) => lower.includes(k))) return null;
   for (const [keyword, src] of CUSTOM_ICON_KEYWORDS) {
     if (lower.includes(keyword)) return src;
   }
