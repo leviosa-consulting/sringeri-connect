@@ -1307,6 +1307,25 @@ export default function Seva() {
     if (!fromDate || (!noEnd && !toDate)) {
       return;
     }
+    // For Gregorian monthly/yearly, require a specific date to be chosen
+    if ((recurrenceType === 3 || recurrenceType === 4) && calendarType === 1 && !specificDateNum) {
+      return;
+    }
+    // For Gregorian yearly, also require a month
+    if (recurrenceType === 4 && calendarType === 1 && !monthId) {
+      return;
+    }
+    // For lunar monthly/yearly, require tithi or nakshatra to be selected
+    if ((recurrenceType === 3 || recurrenceType === 4) && (calendarType === 2 || calendarType === 3) && !fromTithiId && !fromNakshatraId) {
+      return;
+    }
+    // For lunar yearly, also require the relevant masa
+    if (recurrenceType === 4 && calendarType === 2 && !fromChandraMasaId) {
+      return;
+    }
+    if (recurrenceType === 4 && calendarType === 3 && !fromSouraMasaId) {
+      return;
+    }
     setSevaCountLoading(true);
     setSevaCountFetched(false);
     let cancelled = false;
