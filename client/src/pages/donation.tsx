@@ -357,7 +357,7 @@ export default function Donation() {
   const subCategoryRef = useRef<HTMLDivElement>(null);
   const causeListRef = useRef<HTMLDivElement>(null);
 
-  const { data: headings = [] } = useQuery<DonationHeading[]>({
+  const { data: headings = [], isLoading: headingsLoading } = useQuery<DonationHeading[]>({
     queryKey: ["donationHeadings"],
     queryFn: async () => {
       const res = await fetch("/api/donationHeading");
@@ -366,7 +366,7 @@ export default function Donation() {
     },
   });
 
-  const { data: categories = [] } = useQuery<DonationCategory[]>({
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery<DonationCategory[]>({
     queryKey: ["donationCategories"],
     queryFn: async () => {
       const res = await fetch("/api/donationCategory");
@@ -375,7 +375,7 @@ export default function Donation() {
     },
   });
 
-  const { data: featuredDonations = [] } = useQuery<FeaturedDonationItem[]>({
+  const { data: featuredDonations = [], isLoading: featuredLoading } = useQuery<FeaturedDonationItem[]>({
     queryKey: ["featuredDonations"],
     queryFn: async () => {
       const res = await fetch("/api/featuredDonations");
@@ -383,6 +383,8 @@ export default function Donation() {
       return res.json();
     },
   });
+
+  const donationDataLoading = headingsLoading || categoriesLoading || featuredLoading;
 
   const filteredCategories = categories.filter(
     (c) => c.donationHeadingId === selectedHeading?.id
@@ -1270,7 +1272,13 @@ export default function Donation() {
       </div>
 
       <div className="px-4 mt-4 space-y-4">
-        {featuredDonations.length > 0 && (
+        {donationDataLoading && (
+          <div className="flex flex-col items-center justify-center py-20" data-testid="loading-donation-data">
+            <RangoliLoader size={56} />
+            <p className="text-sm text-muted-foreground mt-4">Loading donation options…</p>
+          </div>
+        )}
+        {!donationDataLoading && featuredDonations.length > 0 && (
           <div>
             <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-donations-in-focus">
               <Star className="h-4 w-4 inline-block mr-1 text-amber-500" />
@@ -1317,6 +1325,7 @@ export default function Donation() {
           </div>
         )}
 
+        {!donationDataLoading && (
         <div>
           <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-center">Choose Donation Center</h3>
           <div className="grid grid-cols-3 gap-3">
@@ -1346,6 +1355,7 @@ export default function Donation() {
             <p className="text-xs text-muted-foreground mt-3 px-1">{selectedHeading.shortDescription}</p>
           )}
         </div>
+        )}
 
         {selectedHeading && filteredCategories.length > 0 && (
           <div>
