@@ -589,8 +589,8 @@ export default function Accommodation() {
               </div>
             ) : (
               <>
-                {/* Month Tabs */}
-                <div className="flex gap-1 bg-muted rounded-lg p-1" data-testid="month-tabs">
+                {/* Month Tabs — mobile only */}
+                <div className="flex gap-1 bg-muted rounded-lg p-1 sm:hidden" data-testid="month-tabs">
                   {months.map((m, idx) => (
                     <button
                       key={idx}
@@ -607,23 +607,17 @@ export default function Accommodation() {
                   ))}
                 </div>
 
-                {/* Calendar Grid */}
-                <Card>
+                {/* Mobile: single active month */}
+                <Card className="sm:hidden">
                   <CardContent className="p-4">
                     <h3 className="text-center font-serif font-semibold text-sm mb-3">
                       {months[activeMonthIdx]?.name} {months[activeMonthIdx]?.year}
                     </h3>
-
-                    {/* Weekday Headers */}
                     <div className="grid grid-cols-7 gap-1 mb-2">
                       {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                        <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
-                          {d}
-                        </div>
+                        <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
                       ))}
                     </div>
-
-                    {/* Date Cells */}
                     <div className="grid grid-cols-7 gap-1">
                       {months[activeMonthIdx]?.days.map((day, idx) => (
                         <div
@@ -642,8 +636,6 @@ export default function Accommodation() {
                         </div>
                       ))}
                     </div>
-
-                    {/* Legend */}
                     <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t">
                       <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-green-500" />
@@ -660,6 +652,58 @@ export default function Accommodation() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Desktop: all 3 months side by side */}
+                <div className="hidden sm:grid sm:grid-cols-3 sm:gap-3">
+                  {months.map((m, mIdx) => (
+                    <Card key={mIdx}>
+                      <CardContent className="p-3">
+                        <h3 className="text-center font-serif font-semibold text-sm mb-3">
+                          {m.name} {m.year}
+                        </h3>
+                        <div className="grid grid-cols-7 gap-0.5 mb-1">
+                          {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+                            <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-1">{d}</div>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-7 gap-0.5">
+                          {m.days.map((day, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => day.date && handleSelectDate(day)}
+                              className={`relative text-center py-2 rounded-md text-xs transition-all ${getDayCellClass(day)}`}
+                              data-testid={day.date ? `date-cell-${day.dbDate}` : undefined}
+                            >
+                              {day.date || ""}
+                              {day.date !== "" && !day.disabled && day.available > 0 && (
+                                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-green-500" />
+                              )}
+                              {day.date !== "" && !day.disabled && day.available === 0 && (
+                                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[7px] font-bold text-red-500 leading-none">Full</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Desktop legend */}
+                <div className="hidden sm:flex items-center justify-center gap-4 pt-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                    <span className="text-[10px] text-muted-foreground">Available</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[8px] font-bold text-red-500">Full</span>
+                    <span className="text-[10px] text-muted-foreground">Unavailable</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-primary" />
+                    <span className="text-[10px] text-muted-foreground">Selected</span>
+                  </div>
+                </div>
 
                 {/* Selected Date Info & Room Selection */}
                 {selectedDate && (
