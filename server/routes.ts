@@ -655,7 +655,11 @@ export async function registerRoutes(
       let pageRes;
       try {
         pageRes = await fetch(url, {
-          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          },
           signal: controller.signal,
         });
       } finally {
@@ -666,16 +670,50 @@ export async function registerRoutes(
         return out;
       }
       const html = await pageRes.text();
-      const dataMatch = html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/);
-      if (!dataMatch) {
+      let dataJson: string | null = null;
+      const patterns = [
+        /var ytInitialData\s*=\s*(\{[\s\S]*?\});\s*<\/script>/,
+        /ytInitialData\s*=\s*(\{[\s\S]*?\});\s*(?:var |let |const |window\.)/,
+        /window\["ytInitialData"\]\s*=\s*(\{[\s\S]*?\});/,
+      ];
+      for (const pattern of patterns) {
+        const m = html.match(pattern);
+        if (m) { dataJson = m[1]; break; }
+      }
+      if (!dataJson) {
+        const startIdx = html.indexOf('var ytInitialData = ');
+        if (startIdx !== -1) {
+          const jsonStart = html.indexOf('{', startIdx);
+          if (jsonStart !== -1) {
+            let depth = 0, i = jsonStart, inStr = false, escape = false;
+            for (; i < html.length; i++) {
+              const ch = html[i];
+              if (escape) { escape = false; continue; }
+              if (ch === '\\' && inStr) { escape = true; continue; }
+              if (ch === '"') { inStr = !inStr; continue; }
+              if (!inStr) {
+                if (ch === '{') depth++;
+                else if (ch === '}') { depth--; if (depth === 0) { dataJson = html.slice(jsonStart, i + 1); break; } }
+              }
+            }
+          }
+        }
+      }
+      if (!dataJson) {
         console.log(`[YouTube] ${label}: no ytInitialData found in response`);
         return out;
       }
-      const data = JSON.parse(dataMatch[1]);
+      let data: any;
+      try {
+        data = JSON.parse(dataJson);
+      } catch {
+        console.log(`[YouTube] ${label}: failed to parse ytInitialData JSON`);
+        return out;
+      }
       const found: any[] = [];
       const seen = new Set<string>();
-      const findVideos = (obj: any): void => {
-        if (!obj || typeof obj !== 'object') return;
+      const findVideos = (obj: any, depth = 0): void => {
+        if (!obj || typeof obj !== 'object' || depth > 30) return;
         if (obj.videoId && obj.title && !seen.has(obj.videoId)) {
           seen.add(obj.videoId);
           const title = obj.title?.runs?.[0]?.text || obj.title?.simpleText || "";
@@ -683,7 +721,7 @@ export async function registerRoutes(
           found.push({ videoId: obj.videoId, title, published: pub });
           return;
         }
-        for (const v of Object.values(obj)) findVideos(v);
+        for (const v of Object.values(obj)) findVideos(v, depth + 1);
       };
       findVideos(data);
       for (const v of found.slice(0, 10)) {
@@ -705,6 +743,53 @@ export async function registerRoutes(
       console.log(`[YouTube] ${label} failed: ${String(err)}`);
     }
     return out;
+  };
+
+  const fetchFromInvidious = async (channelId: string): Promise<any[]> => {
+    const instances = [
+      "https://inv.nadeko.net",
+      "https://invidious.privacyredirect.com",
+      "https://invidious.nerdvpn.de",
+      "https://yt.cdaut.de",
+    ];
+    for (const base of instances) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        let res;
+        try {
+          res = await fetch(`${base}/api/v1/channels/${channelId}/videos?page=1`, {
+            headers: { "Accept": "application/json" },
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+        if (!res.ok) {
+          console.log(`[YouTube] Invidious ${base} returned HTTP ${res.status}`);
+          continue;
+        }
+        const json = await res.json();
+        const items: any[] = json.videos || json.latestVideos || [];
+        if (items.length === 0) {
+          console.log(`[YouTube] Invidious ${base} returned 0 videos`);
+          continue;
+        }
+        const out = items.slice(0, 10).map((v: any) => ({
+          videoId: v.videoId,
+          title: v.title || "",
+          published: v.published ? new Date(v.published * 1000).toISOString() : "",
+          date: v.published ? new Date(v.published * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+          thumbnail: v.videoThumbnails?.[0]?.url || `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
+          url: `https://www.youtube.com/watch?v=${v.videoId}`,
+        }));
+        console.log(`[YouTube] Invidious ${base} succeeded: ${out.length} videos found`);
+        return out;
+      } catch (err) {
+        console.log(`[YouTube] Invidious ${base} failed: ${String(err)}`);
+      }
+    }
+    return [];
   };
 
   app.get("/api/youtube-videos", async (req, res) => {
@@ -770,6 +855,10 @@ export async function registerRoutes(
           `https://www.youtube.com/playlist?list=${uploadsPlaylistId}`,
           "Uploads playlist scrape",
         );
+      }
+
+      if (videos.length === 0) {
+        videos = await fetchFromInvidious(channelId);
       }
 
       if (videos.length > 0) {

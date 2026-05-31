@@ -1360,21 +1360,25 @@ export default function Donation() {
         {selectedHeading && filteredCategories.length > 0 && (
           <div>
             <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-category">Choose Category</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {filteredCategories.map((cat) => {
+                const CatIcon = getIconForName(cat.name);
                 const isSelected = selectedCategory?.id === cat.id;
                 return (
                   <button
                     key={cat.id}
                     onClick={() => handleSelectCategory(cat)}
-                    className={`flex items-center justify-center rounded-xl p-4 transition-all min-h-[56px] ${
+                    className={`flex flex-col items-center rounded-xl p-3 pt-4 pb-3 transition-all min-h-[90px] ${
                       isSelected
                         ? "bg-primary text-white shadow-lg ring-2 ring-primary/30"
                         : "bg-white border border-border text-foreground hover:border-primary/50 hover:shadow-md"
                     }`}
                     data-testid={`button-category-${cat.id}`}
                   >
-                    <span className="text-sm font-medium text-center leading-snug">{cat.name}</span>
+                    <div className="flex-1 flex items-center">
+                      <CatIcon className={`h-6 w-6 ${isSelected ? "text-white" : "text-primary"}`} />
+                    </div>
+                    <span className="text-[11px] font-medium text-center leading-tight line-clamp-2 mt-2">{cat.name}</span>
                   </button>
                 );
               })}
@@ -1390,8 +1394,10 @@ export default function Donation() {
                 <RangoliLoader size={36} />
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-2">
-                {subcategories.map((sub) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {subcategories.map((sub) => {
+                  const SubIcon = getIconForName(sub.name);
+                  return (
                   <button
                     key={sub.id}
                     onClick={() => handleSelectSubCategory(sub)}
@@ -1402,12 +1408,15 @@ export default function Donation() {
                     }`}
                     data-testid={`button-subcategory-${sub.id}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        {sub.is80G === 0 ? `${sub.name} (non-80G)` : sub.name}
-                      </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <SubIcon className={`h-4 w-4 shrink-0 ${selectedSubCategory?.id === sub.id ? "text-white/80" : "text-primary/60"}`} />
+                        <span className="text-sm font-medium leading-snug">
+                          {sub.is80G === 0 ? `${sub.name} (non-80G)` : sub.name}
+                        </span>
+                      </div>
                       {selectedSubCategory?.id === sub.id && (
-                        <Check className="h-4 w-4" />
+                        <Check className="h-4 w-4 shrink-0" />
                       )}
                     </div>
                     {sub.desc && (
@@ -1437,7 +1446,8 @@ export default function Donation() {
                       </div>
                     )}
                   </button>
-                ))}
+                );
+                })}
               </div>
             )}
           </div>
