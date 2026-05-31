@@ -1572,7 +1572,7 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Invalid or expired token" });
       }
 
-      const allowedFields = ["addresseeName", "addressLine1", "addressLine2", "landmark", "city", "state", "country", "pincode", "status", "alternatePhone", "devoteeId"];
+      const allowedFields = ["addresseeName", "addressLine1", "addressLine2", "landmark", "city", "state", "country", "pincode", "status", "alternatePhone"];
       const filtered: Record<string, string | number> = {};
       for (const key of allowedFields) {
         if (req.body[key] !== undefined) {
@@ -1580,9 +1580,8 @@ export async function registerRoutes(
         }
       }
 
-      if (!filtered.devoteeId) {
-        return res.status(400).json({ error: "devoteeId is required" });
-      }
+      // Always use the server-verified UID — never trust client-supplied devoteeId
+      filtered.devoteeId = verifiedUid;
 
       const response = await fetch(`${SRINGERI_API_URL}/api/devoteeAddress`, {
         method: "POST",

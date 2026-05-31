@@ -446,7 +446,6 @@ export default function Profile() {
     try {
       const token = await user.getIdToken();
       const body = {
-        devoteeId: user.uid,
         addresseeName: addrName,
         addressLine1: addrLine1,
         addressLine2: addrLine2,
