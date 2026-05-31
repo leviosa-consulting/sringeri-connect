@@ -2782,6 +2782,38 @@ export async function registerRoutes(
     return RECON_ADMIN_UIDS.includes(uid);
   }
 
+  app.get("/api/admin/allTransactions/:fromDate/:toDate", async (req, res) => {
+    try {
+      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const { fromDate, toDate } = req.params;
+      const r = await fetch(`${SRINGERI_API_URL}/api/fetchAllTransactions/${fromDate}/${toDate}`, {
+        method: "GET",
+        headers: {
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      const text = await r.text();
+      if (!r.ok) {
+        console.error("fetchAllTransactions upstream error:", r.status, text);
+        return res.status(r.status).json({ error: "Failed to fetch transactions" });
+      }
+      let data;
+      try {
+        const jsonStart = text.indexOf("{");
+        const jsonStartArr = text.indexOf("[");
+        const start = jsonStart !== -1 && (jsonStartArr === -1 || jsonStart < jsonStartArr) ? jsonStart : jsonStartArr;
+        data = start !== -1 ? JSON.parse(text.substring(start)) : JSON.parse(text);
+      } catch (e) {
+        console.error("fetchAllTransactions parse error:", e, text.slice(0, 200));
+        return res.status(500).json({ error: "Invalid upstream response" });
+      }
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching all transactions:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/admin/reconciliation/pending", async (req, res) => {
     try {
       if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });

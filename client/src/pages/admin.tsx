@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/auth-context";
 import { RangoliLoader } from "@/components/rangoli-loader";
-import { Loader2, BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw } from "lucide-react";
+import { Loader2, BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw, ScrollText } from "lucide-react";
 import { Link } from "wouter";
 
 const ADMIN_UIDS = [
@@ -37,6 +37,13 @@ const adminTools = [
     icon: RefreshCw,
     path: "/admin/reconciliation",
     color: "bg-amber-50 text-amber-600",
+  },
+  {
+    title: "All Transactions",
+    description: "View all transactions — successful, pending, and failed — for any date range",
+    icon: ScrollText,
+    path: "/admin/all-transactions",
+    color: "bg-teal-50 text-teal-600",
   },
   {
     title: "Launch Control",

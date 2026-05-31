@@ -23,6 +23,7 @@ import AdminQuizzes from "@/pages/admin-quizzes";
 import AdminHub from "@/pages/admin";
 import AdminQuizAnalytics from "@/pages/admin-quiz-analytics";
 import AdminReconciliation from "@/pages/admin-reconciliation";
+import AdminAllTransactions from "@/pages/admin-all-transactions";
 import AdminLaunch from "@/pages/admin-launch";
 import AdminLaunchReset from "@/pages/admin-launch-reset";
 import PaymentResult from "@/pages/payment-result";
@@ -66,6 +67,7 @@ function Router() {
         <Route path="/admin/quizzes">{() => <ProtectedRoute component={AdminQuizzes} />}</Route>
         <Route path="/admin/quiz-analytics" component={AdminQuizAnalytics} />
         <Route path="/admin/reconciliation" component={AdminReconciliation} />
+        <Route path="/admin/all-transactions" component={AdminAllTransactions} />
         <Route path="/admin/launch" component={AdminLaunch} />
         <Route path="/admin/launch/reset" component={AdminLaunchReset} />
         <Route path="/terms" component={Terms} />
