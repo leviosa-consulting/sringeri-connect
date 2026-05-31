@@ -29,17 +29,8 @@ app.get("/api/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-app.use((req, res, next) => {
-  const host = req.hostname || req.headers.host || "";
-  const skipPaths = ["/api", "/fastline", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules"];
-  if (host.startsWith("fastline.") && !skipPaths.some(p => req.path.startsWith(p))) {
-    return res.redirect(301, "/fastline");
-  }
-  next();
-});
-
-// Maintenance gate: seva / donate / yatra subdomains show an upgrade page until 2:00 AM IST Jun 1 2026
-const MAINTENANCE_SUBDOMAINS = ["seva.", "donate.", "yatra."];
+// Maintenance gate: seva / donate / yatra / yatri / fastline subdomains show an upgrade page until 2:00 AM IST Jun 1 2026
+const MAINTENANCE_SUBDOMAINS = ["seva.", "donate.", "yatra.", "yatri.", "fastline."];
 const MAINTENANCE_ENDS_UTC = new Date("2026-05-31T20:30:00.000Z"); // 2:00 AM IST = 20:30 UTC prev day
 const MAINTENANCE_SKIP_PATHS = ["/api", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules"];
 const MAINTENANCE_HTML = `<!DOCTYPE html>
@@ -115,6 +106,16 @@ app.use((req, res, next) => {
 
   res.status(503).setHeader("Content-Type", "text/html; charset=utf-8");
   return res.end(MAINTENANCE_HTML);
+});
+
+// Fastline subdomain redirect — runs after maintenance gate so bypass works
+app.use((req, res, next) => {
+  const host = req.hostname || req.headers.host || "";
+  const skipPaths = ["/api", "/fastline", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules"];
+  if (host.startsWith("fastline.") && !skipPaths.some(p => req.path.startsWith(p))) {
+    return res.redirect(301, "/fastline");
+  }
+  next();
 });
 
 export function log(message: string, source = "express") {
