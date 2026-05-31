@@ -1061,6 +1061,12 @@ export default function Seva() {
 
       const { txnToken, orderId, mid, amount } = await initRes.json();
 
+      if (!txnToken || !orderId || !mid) {
+        setErrorMessage("We could not complete the payment at this moment. Please try after sometime.");
+        setSubmitting(false);
+        return;
+      }
+
       const now = new Date();
       const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
 
@@ -1206,6 +1212,12 @@ export default function Seva() {
       }
 
       const { txnToken, orderId, mid, amount } = await initRes.json();
+
+      if (!txnToken || !orderId || !mid) {
+        setErrorMessage("We could not complete the payment at this moment. Please try after sometime.");
+        setSubmitting(false);
+        return;
+      }
 
       const now = new Date();
       const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;

@@ -1048,6 +1048,11 @@ export async function registerRoutes(
         return res.status(502).json({ error: "Reservation registration failed", details: "Could not register reservation with the server. Please try again." });
       }
 
+      if (!sringeriResText.trim()) {
+        console.error("Sringeri onlineReservationPtm returned empty body");
+        return res.status(502).json({ error: "Reservation registration failed", details: "Server returned an empty response. Please try again." });
+      }
+
       let sringeriData: any = null;
       try {
         const jsonStart = sringeriResText.indexOf("{");
@@ -1056,7 +1061,10 @@ export async function registerRoutes(
         } else {
           sringeriData = JSON.parse(sringeriResText);
         }
-      } catch {}
+      } catch (parseError) {
+        console.error("Sringeri onlineReservationPtm response not valid JSON:", sringeriResText);
+        return res.status(502).json({ error: "Reservation registration failed", details: "Invalid response from server. Please try again." });
+      }
 
       if (sringeriData && (sringeriData.error || sringeriData.status === "Failed" || sringeriData.status === "Error")) {
         console.error("Sringeri onlineReservationPtm returned error in body:", JSON.stringify(sringeriData));
@@ -1775,6 +1783,11 @@ export async function registerRoutes(
         return res.status(502).json({ error: "Donation registration failed", details: "Could not register donation with the server. Please try again." });
       }
 
+      if (!sringeriResText.trim()) {
+        console.error("Sringeri makeDonation returned empty body");
+        return res.status(502).json({ error: "Donation registration failed", details: "Server returned an empty response. Please try again." });
+      }
+
       let sringeriData: any = null;
       try {
         const jsonStart = sringeriResText.indexOf("{");
@@ -1783,7 +1796,10 @@ export async function registerRoutes(
         } else {
           sringeriData = JSON.parse(sringeriResText);
         }
-      } catch {}
+      } catch (parseError) {
+        console.error("Sringeri makeDonation response not valid JSON:", sringeriResText);
+        return res.status(502).json({ error: "Donation registration failed", details: "Invalid response from server. Please try again." });
+      }
 
       if (sringeriData && (sringeriData.error || sringeriData.status === "Failed" || sringeriData.status === "Error")) {
         console.error("Sringeri makeDonation returned error in body:", JSON.stringify(sringeriData));
