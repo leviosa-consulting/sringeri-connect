@@ -630,6 +630,8 @@ export default function Donation() {
     resetSelection();
     setSelectedCategory(null);
     setShowCart(true);
+    setStep("review");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const removeDonation = (index: number) => {
