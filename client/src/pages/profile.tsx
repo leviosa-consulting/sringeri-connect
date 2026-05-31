@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera, Trash2, Pencil, Check, UserX } from "lucide-react";
+import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera, Trash2, Pencil, Check, UserX, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
@@ -101,6 +101,7 @@ export default function Profile() {
   const [kartaDeleting, setKartaDeleting] = useState(false);
 
   const [editingAddress, setEditingAddress] = useState<{ id: number } | null>(null);
+  const [addingAddress, setAddingAddress] = useState(false);
   const [addressSaving, setAddressSaving] = useState(false);
   const [addressDeleting, setAddressDeleting] = useState(false);
   const [addrName, setAddrName] = useState("");
@@ -423,6 +424,56 @@ export default function Profile() {
       toast({ title: "Delete Failed", description: message, variant: "destructive" });
     } finally {
       setAddressDeleting(false);
+    }
+  };
+
+  const openAddressAdd = () => {
+    setAddrName("");
+    setAddrLine1("");
+    setAddrLine2("");
+    setAddrLandmark("");
+    setAddrCity("");
+    setAddrState("");
+    setAddrCountry("");
+    setAddrPincode("");
+    setAddrPhone("");
+    setAddingAddress(true);
+  };
+
+  const handleAddAddress = async () => {
+    if (!user) return;
+    setAddressSaving(true);
+    try {
+      const token = await user.getIdToken();
+      const body = {
+        devoteeId: user.uid,
+        addresseeName: addrName,
+        addressLine1: addrLine1,
+        addressLine2: addrLine2,
+        landmark: addrLandmark,
+        city: addrCity,
+        state: addrState,
+        country: addrCountry,
+        pincode: addrPincode,
+        alternatePhone: addrPhone,
+      };
+      const res = await fetch("/api/devoteeAddress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Failed to add address");
+      }
+      toast({ title: "Address Added", description: "New address has been saved." });
+      setAddingAddress(false);
+      await refreshDevoteeData();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not add address.";
+      toast({ title: "Add Failed", description: message, variant: "destructive" });
+    } finally {
+      setAddressSaving(false);
     }
   };
 
@@ -996,6 +1047,15 @@ export default function Profile() {
                         <CardTitle className="text-base font-serif flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-green-600" />
                           <span className="flex-1">Saved Addresses ({devoteeData?.addresses?.length || 0})</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0"
+                            onClick={(e) => { e.stopPropagation(); openAddressAdd(); }}
+                            data-testid="button-add-address-header"
+                          >
+                            <Plus className="h-4 w-4 text-primary" />
+                          </Button>
                           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${addressesOpen ? 'rotate-180' : ''}`} />
                         </CardTitle>
                       </CardHeader>
@@ -1039,7 +1099,12 @@ export default function Profile() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-addresses">No addresses saved</p>
+                          <div className="flex flex-col items-center gap-3 py-4">
+                            <p className="text-sm text-muted-foreground" data-testid="text-no-addresses">No addresses saved</p>
+                            <Button variant="outline" size="sm" onClick={openAddressAdd} data-testid="button-add-address-empty">
+                              <Plus className="h-3.5 w-3.5 mr-1" /> Add Address
+                            </Button>
+                          </div>
                         )}
                       </CardContent>
                     </CollapsibleContent>
@@ -1256,6 +1321,58 @@ export default function Profile() {
                   {addressSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save"}
                 </Button>
               </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={addingAddress} onOpenChange={(open) => { if (!open) setAddingAddress(false); }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-serif">Add Address</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto">
+              <div>
+                <Label htmlFor="new-addr-name" className="text-xs">Addressee Name</Label>
+                <Input id="new-addr-name" value={addrName} onChange={(e) => setAddrName(e.target.value)} className="mt-1" data-testid="input-new-addr-name" />
+              </div>
+              <div>
+                <Label htmlFor="new-addr-line1" className="text-xs">Address Line 1</Label>
+                <Input id="new-addr-line1" value={addrLine1} onChange={(e) => setAddrLine1(e.target.value)} className="mt-1" data-testid="input-new-addr-line1" />
+              </div>
+              <div>
+                <Label htmlFor="new-addr-line2" className="text-xs">Address Line 2</Label>
+                <Input id="new-addr-line2" value={addrLine2} onChange={(e) => setAddrLine2(e.target.value)} className="mt-1" data-testid="input-new-addr-line2" />
+              </div>
+              <div>
+                <Label htmlFor="new-addr-landmark" className="text-xs">Landmark</Label>
+                <Input id="new-addr-landmark" value={addrLandmark} onChange={(e) => setAddrLandmark(e.target.value)} className="mt-1" data-testid="input-new-addr-landmark" />
+              </div>
+              <div>
+                <Label htmlFor="new-addr-city" className="text-xs">City</Label>
+                <Input id="new-addr-city" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} className="mt-1" data-testid="input-new-addr-city" />
+              </div>
+              <div>
+                <Label htmlFor="new-addr-state" className="text-xs">State</Label>
+                <Input id="new-addr-state" value={addrState} onChange={(e) => setAddrState(e.target.value)} className="mt-1" data-testid="input-new-addr-state" />
+              </div>
+              <div>
+                <Label htmlFor="new-addr-country" className="text-xs">Country</Label>
+                <Input id="new-addr-country" value={addrCountry} onChange={(e) => setAddrCountry(e.target.value)} className="mt-1" data-testid="input-new-addr-country" />
+              </div>
+              <div>
+                <Label htmlFor="new-addr-pincode" className="text-xs">Pincode</Label>
+                <Input id="new-addr-pincode" value={addrPincode} onChange={(e) => setAddrPincode(e.target.value)} className="mt-1" data-testid="input-new-addr-pincode" />
+              </div>
+              <div>
+                <Label htmlFor="new-addr-phone" className="text-xs">Alternate Phone</Label>
+                <Input id="new-addr-phone" value={addrPhone} onChange={(e) => setAddrPhone(e.target.value)} className="mt-1" data-testid="input-new-addr-phone" />
+              </div>
+            </div>
+            <DialogFooter className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setAddingAddress(false)} data-testid="button-cancel-address-add">Cancel</Button>
+              <Button size="sm" onClick={handleAddAddress} disabled={addressSaving} data-testid="button-save-new-address">
+                {addressSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Add Address"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
