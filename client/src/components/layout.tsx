@@ -19,7 +19,7 @@ const SERVICES_NAV_ITEMS: { mode: ServiceMode; icon: React.ComponentType<{ class
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const isDesktop = useMedia('(min-width: 1024px)', false);
-  const { isServicesMode } = useSubdomainMode();
+  const { isServicesMode, homeRoute } = useSubdomainMode();
 
   useEffect(() => {
     window.scrollTo(0, 0);
