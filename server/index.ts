@@ -113,7 +113,7 @@ app.use((req, res, next) => {
 // seva.* / donate.* / yatri.* / yatra.* → respective page when /home is hit by mistake
 app.use((req, res, next) => {
   const host = req.hostname || req.headers.host || "";
-  const skipPaths = ["/api", "/fastline", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules"];
+  const skipPaths = ["/api", "/fastline", "/payment-result", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules"];
 
   if (host.startsWith("fastline.") && !skipPaths.some(p => req.path.startsWith(p))) {
     return res.redirect(301, "/fastline");
