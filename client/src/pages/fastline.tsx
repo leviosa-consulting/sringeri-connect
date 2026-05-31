@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { RangoliLoader } from "@/components/rangoli-loader";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
@@ -103,6 +103,26 @@ export default function Fastline() {
       return res.json();
     },
   });
+
+  const handleKartaNakshatraChange = (idStr: string) => {
+    setKartaNakshatraId(idStr);
+    if (!idStr) {
+      setKartaRashiId("");
+      return;
+    }
+    const nak = nakshatras.find((n: any) => String(n.id) === idStr);
+    if (nak && nak.rashiIds) {
+      setKartaRashiId(nak.rashiIds.split(",")[0].trim());
+    }
+  };
+
+  const filteredKartaRashis = useMemo(() => {
+    if (!kartaNakshatraId) return rashis;
+    const nak = nakshatras.find((n: any) => String(n.id) === kartaNakshatraId);
+    if (!nak || !nak.rashiIds) return rashis;
+    const allowedIds = nak.rashiIds.split(",").map((s: string) => s.trim());
+    return rashis.filter((r) => allowedIds.includes(String(r.id)));
+  }, [kartaNakshatraId, nakshatras, rashis]);
 
   async function selectCentre(centre: any) {
     setFlCentre(centre);
@@ -424,7 +444,7 @@ export default function Fastline() {
 
             {flCentre && flCentre.id !== 1 && (
               <div className="mt-6">
-                <select value={kartaNakshatraId} onChange={(e) => setKartaNakshatraId(e.target.value)}
+                <select value={kartaNakshatraId} onChange={(e) => handleKartaNakshatraChange(e.target.value)}
                   className="w-full text-sm text-primary bg-transparent border-0 border-b border-primary/30 focus:border-primary px-1 py-2.5 focus:outline-none focus:ring-0 appearance-none"
                   data-testid="select-fl-nakshatra">
                   <option value="">Select a Nakshatra</option>
@@ -435,7 +455,7 @@ export default function Fastline() {
                   className="w-full text-sm text-primary bg-transparent border-0 border-b border-primary/30 focus:border-primary px-1 py-2.5 mt-4 focus:outline-none focus:ring-0 appearance-none"
                   data-testid="select-fl-rashi">
                   <option value="">Select a Rashi</option>
-                  {rashis.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  {filteredKartaRashis.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </div>
             )}

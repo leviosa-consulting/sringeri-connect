@@ -452,6 +452,26 @@ export default function Seva() {
     },
   });
 
+  const handleKartaNakshatraChange = (idStr: string) => {
+    setKartaNakshatraId(idStr);
+    if (!idStr) {
+      setKartaRashiId("");
+      return;
+    }
+    const nak = nakshatras.find((n: any) => String(n.id) === idStr);
+    if (nak && nak.rashiIds) {
+      setKartaRashiId(nak.rashiIds.split(",")[0].trim());
+    }
+  };
+
+  const filteredKartaRashis = useMemo(() => {
+    if (!kartaNakshatraId) return rashis;
+    const nak = nakshatras.find((n: any) => String(n.id) === kartaNakshatraId);
+    if (!nak || !nak.rashiIds) return rashis;
+    const allowedIds = nak.rashiIds.split(",").map((s: string) => s.trim());
+    return rashis.filter((r) => allowedIds.includes(String(r.id)));
+  }, [kartaNakshatraId, nakshatras, rashis]);
+
   const { data: tithis = [] } = useQuery<any[]>({
     queryKey: ["tithis"],
     queryFn: async () => {
@@ -1708,8 +1728,16 @@ export default function Seva() {
                         if (karta.nameK) {
                           setKannadaName(karta.nameK);
                         }
-                        setKartaNakshatraId(String(karta.nakshatraId || ""));
-                        setKartaRashiId(String(karta.rashiId || ""));
+                        const nakshatraIdStr = String(karta.nakshatraId || "");
+                        setKartaNakshatraId(nakshatraIdStr);
+                        if (karta.rashiId) {
+                          setKartaRashiId(String(karta.rashiId));
+                        } else if (nakshatraIdStr) {
+                          const nak = nakshatras.find((n: any) => String(n.id) === nakshatraIdStr);
+                          if (nak && nak.rashiIds) setKartaRashiId(nak.rashiIds.split(",")[0].trim());
+                        } else {
+                          setKartaRashiId("");
+                        }
                         setKartaGotra(karta.gotra || "");
                         setKartaGotraK(karta.gotraK || "");
                         setKartaCity(karta.city || "");
@@ -1738,7 +1766,7 @@ export default function Seva() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Nakshatra</label>
-                    <select value={kartaNakshatraId} onChange={(e) => setKartaNakshatraId(e.target.value)}
+                    <select value={kartaNakshatraId} onChange={(e) => handleKartaNakshatraChange(e.target.value)}
                       className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
                       data-testid="select-karta-nakshatra">
                       <option value="">Select</option>
@@ -1753,7 +1781,7 @@ export default function Seva() {
                       className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
                       data-testid="select-karta-rashi">
                       <option value="">Select</option>
-                      {rashis.map((r) => (
+                      {filteredKartaRashis.map((r) => (
                         <option key={r.id} value={r.id}>{r.name}</option>
                       ))}
                     </select>
@@ -1937,8 +1965,16 @@ export default function Seva() {
                       if (karta.nameK) {
                         setKannadaName(karta.nameK);
                       }
-                      setKartaNakshatraId(String(karta.nakshatraId || ""));
-                      setKartaRashiId(String(karta.rashiId || ""));
+                      const nakshatraIdStr = String(karta.nakshatraId || "");
+                      setKartaNakshatraId(nakshatraIdStr);
+                      if (karta.rashiId) {
+                        setKartaRashiId(String(karta.rashiId));
+                      } else if (nakshatraIdStr) {
+                        const nak = nakshatras.find((n: any) => String(n.id) === nakshatraIdStr);
+                        if (nak && nak.rashiIds) setKartaRashiId(nak.rashiIds.split(",")[0].trim());
+                      } else {
+                        setKartaRashiId("");
+                      }
                       setKartaCity(karta.city || "");
                       setShowFlKartaList(false);
                     }}
@@ -2003,7 +2039,7 @@ export default function Seva() {
 
             {flCentre && flCentre.id !== 1 && (
               <div className="mt-6">
-                <select value={kartaNakshatraId} onChange={(e) => setKartaNakshatraId(e.target.value)}
+                <select value={kartaNakshatraId} onChange={(e) => handleKartaNakshatraChange(e.target.value)}
                   className="w-full text-sm text-primary bg-transparent border-0 border-b border-primary/30 focus:border-primary px-1 py-2.5 focus:outline-none focus:ring-0 appearance-none"
                   data-testid="select-fl-nakshatra">
                   <option value="">Select a Nakshatra</option>
@@ -2014,7 +2050,7 @@ export default function Seva() {
                   className="w-full text-sm text-primary bg-transparent border-0 border-b border-primary/30 focus:border-primary px-1 py-2.5 mt-4 focus:outline-none focus:ring-0 appearance-none"
                   data-testid="select-fl-rashi">
                   <option value="">Select a Rashi</option>
-                  {rashis.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  {filteredKartaRashis.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </div>
             )}
