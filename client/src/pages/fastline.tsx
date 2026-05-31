@@ -159,6 +159,18 @@ export default function Fastline() {
       setValidationErrors(["Please enter your name."]);
       return;
     }
+    if (!kartaMobile.trim()) {
+      setValidationErrors(["Please enter your mobile number."]);
+      return;
+    }
+    if (countryCode === "+91" && !/^\d{10}$/.test(kartaMobile)) {
+      setValidationErrors(["Please enter a valid 10-digit mobile number."]);
+      return;
+    }
+    if (!kartaCity.trim()) {
+      setValidationErrors(["Please enter your city."]);
+      return;
+    }
 
     const selectedSevasCheck = flCentreSevas.filter((s) => flSelectedSevas.has(s.id));
     const variableWithNoAmount = selectedSevasCheck.find(

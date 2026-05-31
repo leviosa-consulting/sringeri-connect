@@ -1201,6 +1201,10 @@ export default function Seva() {
       setValidationErrors(["Please enter a valid mobile number."]);
       return;
     }
+    if (!kartaCity.trim()) {
+      setValidationErrors(["Please enter your city."]);
+      return;
+    }
 
     const selectedSevasCheck = flCentreSevas.filter((s) => flSelectedSevas.has(s.id));
     const variableWithNoAmount = selectedSevasCheck.find(
