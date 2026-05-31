@@ -2620,6 +2620,9 @@ export default function Seva() {
 
           {selectedSeva && selectedSevaType?.id === 3 && !sevaCountLoading && sevaCountFetched && sevaCount > 0 && (
             <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+              {generateRemarks() ? (
+                <p className="text-xs text-green-700 font-semibold mb-1">{generateRemarks()}</p>
+              ) : null}
               <p className="text-xs text-green-700 font-medium">This seva will be performed {sevaCount} {sevaCount === 1 ? "time" : "times"}</p>
               <p className="text-xs text-green-600 mt-1">Total: ₹{formatNumber(sevaBaseAmount)} × {sevaCount} = ₹{formatNumber(computedSevaAmount)}</p>
             </div>
