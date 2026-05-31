@@ -778,6 +778,13 @@ export default function Accommodation() {
         {/* STEP 2: Occupant Details */}
         {currentStep === 2 && (
           <>
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3" data-testid="notice-occupant-limit">
+              <Users className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800 leading-snug">
+                <span className="font-semibold">Maximum of 4 persons allowed per room.</span>{" "}
+                Details of 2 occupants are required to complete the booking.
+              </p>
+            </div>
             <Card>
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-4">
