@@ -1,10 +1,12 @@
-import { useMemo, useState, useEffect } from "react";
-import { Country, State, City } from "country-state-city";
+import { useMemo, useState } from "react";
+import { Country, State } from "country-state-city";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-const OTHER = "__other__";
+import { Button } from "@/components/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface CscFieldsProps {
   country: string;
@@ -16,6 +18,82 @@ interface CscFieldsProps {
   variant?: "dialog" | "form";
   idPrefix?: string;
   showRequired?: boolean;
+}
+
+function SearchableCombobox({
+  value,
+  options,
+  placeholder,
+  disabled = false,
+  onSelect,
+  testId,
+  variant,
+}: {
+  value: string;
+  options: { label: string }[];
+  placeholder: string;
+  disabled?: boolean;
+  onSelect: (v: string) => void;
+  testId?: string;
+  variant: "dialog" | "form";
+}) {
+  const [open, setOpen] = useState(false);
+
+  const buttonCls =
+    variant === "form"
+      ? "w-full justify-between border border-border rounded-md px-3 h-[42px] text-sm bg-white font-normal hover:bg-white"
+      : "w-full justify-between mt-1 font-normal";
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className={buttonCls}
+          data-testid={testId}
+          type="button"
+        >
+          <span className={cn("truncate text-left flex-1", !value && "text-muted-foreground")}>
+            {value || placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] p-0"
+        align="start"
+        side="bottom"
+        sideOffset={4}
+      >
+        <Command>
+          <CommandInput placeholder="Search…" className="h-9" />
+          <CommandList className="max-h-56">
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup>
+              {options.map((o) => (
+                <CommandItem
+                  key={o.label}
+                  value={o.label}
+                  onSelect={() => {
+                    onSelect(o.label);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn("mr-2 h-4 w-4 shrink-0", value === o.label ? "opacity-100" : "opacity-0")}
+                  />
+                  {o.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export default function CountryStateCityFields({
@@ -31,228 +109,104 @@ export default function CountryStateCityFields({
 }: CscFieldsProps) {
   const req = showRequired ? " *" : "";
 
-  const allCountries = useMemo(() => Country.getAllCountries(), []);
+  const countryOptions = useMemo(
+    () => Country.getAllCountries().map((c) => ({ label: c.name, isoCode: c.isoCode })),
+    []
+  );
 
   const countryCode = useMemo(
-    () => allCountries.find((c) => c.name === country)?.isoCode ?? "",
-    [allCountries, country]
+    () => countryOptions.find((c) => c.label === country)?.isoCode ?? "",
+    [countryOptions, country]
   );
 
-  const allStates = useMemo(
-    () => (countryCode ? State.getStatesOfCountry(countryCode) : []),
+  const stateOptions = useMemo(
+    () => (countryCode ? State.getStatesOfCountry(countryCode).map((s) => ({ label: s.name })) : []),
     [countryCode]
   );
-
-  const stateCode = useMemo(
-    () => allStates.find((s) => s.name === state)?.isoCode ?? "",
-    [allStates, state]
-  );
-
-  const allCities = useMemo(
-    () => (countryCode && stateCode ? City.getCitiesOfState(countryCode, stateCode) : []),
-    [countryCode, stateCode]
-  );
-
-  const cityNames = useMemo(() => allCities.map((c) => c.name), [allCities]);
-
-  const isManualEntry = city !== "" && cityNames.length > 0 && !cityNames.includes(city);
-  const [showManual, setShowManual] = useState(isManualEntry);
-
-  useEffect(() => {
-    if (isManualEntry) setShowManual(true);
-  }, [isManualEntry]);
 
   const handleCountryChange = (name: string) => {
     onCountryChange(name);
     onStateChange("");
-    onCityChange("");
-    setShowManual(false);
   };
 
-  const handleStateChange = (name: string) => {
-    onStateChange(name);
-    onCityChange("");
-    setShowManual(false);
-  };
-
-  const handleCitySelect = (val: string) => {
-    if (val === OTHER) {
-      setShowManual(true);
-      onCityChange("");
-    } else {
-      setShowManual(false);
-      onCityChange(val);
-    }
-  };
-
-  const citySelectValue = showManual
-    ? OTHER
-    : cityNames.includes(city)
-    ? city
-    : city
-    ? OTHER
-    : "";
+  const inputCls =
+    "w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary";
 
   if (variant === "dialog") {
     return (
       <>
         <div>
           <Label className="text-xs">Country{req}</Label>
-          <Select value={country} onValueChange={handleCountryChange}>
-            <SelectTrigger className="mt-1" data-testid={`${idPrefix}select-country`}>
-              <SelectValue placeholder="Select Country" />
-            </SelectTrigger>
-            <SelectContent className="max-h-64">
-              {allCountries.map((c) => (
-                <SelectItem key={c.isoCode} value={c.name}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableCombobox
+            value={country}
+            options={countryOptions}
+            placeholder="Select Country"
+            onSelect={handleCountryChange}
+            testId={`${idPrefix}select-country`}
+            variant="dialog"
+          />
         </div>
         <div>
           <Label className="text-xs">State{req}</Label>
-          <Select
+          <SearchableCombobox
             value={state}
-            onValueChange={handleStateChange}
+            options={stateOptions}
+            placeholder={countryCode ? "Select State" : "Select country first"}
             disabled={!countryCode}
-          >
-            <SelectTrigger className="mt-1" data-testid={`${idPrefix}select-state`}>
-              <SelectValue
-                placeholder={countryCode ? "Select State" : "Select country first"}
-              />
-            </SelectTrigger>
-            <SelectContent className="max-h-64">
-              {allStates.map((s) => (
-                <SelectItem key={s.isoCode} value={s.name}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onSelect={onStateChange}
+            testId={`${idPrefix}select-state`}
+            variant="dialog"
+          />
         </div>
         <div>
           <Label className="text-xs">City{req}</Label>
-          {allCities.length > 0 ? (
-            <>
-              <Select value={citySelectValue} onValueChange={handleCitySelect}>
-                <SelectTrigger className="mt-1" data-testid={`${idPrefix}select-city`}>
-                  <SelectValue placeholder="Select City" />
-                </SelectTrigger>
-                <SelectContent className="max-h-64">
-                  {allCities.map((c) => (
-                    <SelectItem key={c.name} value={c.name}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value={OTHER}>Other (type manually)</SelectItem>
-                </SelectContent>
-              </Select>
-              {showManual && (
-                <Input
-                  className="mt-1"
-                  placeholder="Enter city name"
-                  value={city}
-                  onChange={(e) => onCityChange(e.target.value)}
-                  data-testid={`${idPrefix}input-city-manual`}
-                />
-              )}
-            </>
-          ) : (
-            <Input
-              className="mt-1"
-              placeholder="Enter city name"
-              value={city}
-              onChange={(e) => onCityChange(e.target.value)}
-              data-testid={`${idPrefix}input-city`}
-            />
-          )}
+          <Input
+            className="mt-1"
+            placeholder="Enter city"
+            value={city}
+            onChange={(e) => onCityChange(e.target.value)}
+            data-testid={`${idPrefix}input-city`}
+          />
         </div>
       </>
     );
   }
 
-  const inputCls =
-    "w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary";
-  const labelCls = "text-xs text-muted-foreground mb-1 block";
-
   return (
     <>
       <div>
-        <label className={labelCls}>Country{req}</label>
-        <select
+        <label className="text-xs text-muted-foreground mb-1 block">Country{req}</label>
+        <SearchableCombobox
           value={country}
-          onChange={(e) => handleCountryChange(e.target.value)}
-          className={`${inputCls} appearance-none`}
-          data-testid={`${idPrefix}select-country`}
-        >
-          <option value="">Select Country</option>
-          {allCountries.map((c) => (
-            <option key={c.isoCode} value={c.name}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          options={countryOptions}
+          placeholder="Select Country"
+          onSelect={handleCountryChange}
+          testId={`${idPrefix}select-country`}
+          variant="form"
+        />
       </div>
       <div>
-        <label className={labelCls}>State{req}</label>
-        <select
+        <label className="text-xs text-muted-foreground mb-1 block">State{req}</label>
+        <SearchableCombobox
           value={state}
-          onChange={(e) => handleStateChange(e.target.value)}
-          className={`${inputCls} appearance-none`}
+          options={stateOptions}
+          placeholder={countryCode ? "Select State" : "Select country first"}
           disabled={!countryCode}
-          data-testid={`${idPrefix}select-state`}
-        >
-          <option value="">
-            {countryCode ? "Select State" : "Select country first"}
-          </option>
-          {allStates.map((s) => (
-            <option key={s.isoCode} value={s.name}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+          onSelect={onStateChange}
+          testId={`${idPrefix}select-state`}
+          variant="form"
+        />
       </div>
       <div>
-        <label className={labelCls}>City{req}</label>
-        {allCities.length > 0 ? (
-          <>
-            <select
-              value={citySelectValue}
-              onChange={(e) => handleCitySelect(e.target.value)}
-              className={`${inputCls} appearance-none`}
-              data-testid={`${idPrefix}select-city`}
-            >
-              <option value="">Select City</option>
-              {allCities.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-              <option value={OTHER}>Other (type manually)</option>
-            </select>
-            {showManual && (
-              <input
-                type="text"
-                className={`${inputCls} mt-2`}
-                placeholder="Enter city name"
-                value={city}
-                onChange={(e) => onCityChange(e.target.value)}
-                data-testid={`${idPrefix}input-city-manual`}
-              />
-            )}
-          </>
-        ) : (
-          <input
-            type="text"
-            className={inputCls}
-            placeholder="Enter city name"
-            value={city}
-            onChange={(e) => onCityChange(e.target.value)}
-            data-testid={`${idPrefix}input-city`}
-          />
-        )}
+        <label className="text-xs text-muted-foreground mb-1 block">City{req}</label>
+        <input
+          type="text"
+          className={inputCls}
+          placeholder="Enter city"
+          value={city}
+          onChange={(e) => onCityChange(e.target.value)}
+          data-testid={`${idPrefix}input-city`}
+        />
       </div>
     </>
   );
