@@ -3230,6 +3230,22 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/support-messages", async (req, res) => {
+    try {
+      if (!(await isAdmin(req))) return res.status(403).json({ error: "Admin access required" });
+      const type = req.query.type as string | undefined;
+      const status = req.query.status as string | undefined;
+      const messages = await storage.listAllSupportMessages(
+        type && ["support", "feedback"].includes(type) ? type : undefined,
+        status && ["open", "replied"].includes(status) ? status : undefined,
+      );
+      res.json(messages);
+    } catch (error) {
+      console.error("Error listing all support messages:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.patch("/api/support-messages/:id/reply", async (req, res) => {
     try {
       if (!(await isAdmin(req))) {

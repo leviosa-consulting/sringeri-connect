@@ -41,6 +41,7 @@ export interface IStorage {
   deleteUserData(odUserId: string): Promise<void>;
   createSupportMessage(msg: InsertSupportMessage): Promise<SupportMessage>;
   listUserSupportMessages(odUserId: string, type: string): Promise<SupportMessage[]>;
+  listAllSupportMessages(type?: string, status?: string): Promise<SupportMessage[]>;
   getSupportMessage(id: number): Promise<SupportMessage | undefined>;
   replySupportMessage(id: number, reply: string): Promise<SupportMessage>;
 }
@@ -108,6 +109,9 @@ export class MemStorage implements IStorage {
     return record;
   }
   async listUserSupportMessages(odUserId: string, type: string): Promise<SupportMessage[]> { return this.supportMsgs.filter(m => m.odUserId === odUserId && m.type === type).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); }
+  async listAllSupportMessages(type?: string, status?: string): Promise<SupportMessage[]> {
+    return this.supportMsgs.filter(m => (!type || m.type === type) && (!status || m.status === status)).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
   async getSupportMessage(id: number): Promise<SupportMessage | undefined> { return this.supportMsgs.find(m => m.id === id); }
   async replySupportMessage(id: number, reply: string): Promise<SupportMessage> {
     const msg = this.supportMsgs.find(m => m.id === id);
@@ -530,6 +534,15 @@ if (process.env.DATABASE_URL) {
     async listUserSupportMessages(odUserId: string, type: string): Promise<SupportMessage[]> {
       return db.select().from(supportMessages)
         .where(and(eq(supportMessages.odUserId, odUserId), eq(supportMessages.type, type)))
+        .orderBy(desc(supportMessages.createdAt));
+    }
+
+    async listAllSupportMessages(type?: string, status?: string): Promise<SupportMessage[]> {
+      const conditions = [];
+      if (type) conditions.push(eq(supportMessages.type, type));
+      if (status) conditions.push(eq(supportMessages.status, status));
+      return db.select().from(supportMessages)
+        .where(conditions.length ? and(...conditions) : undefined)
         .orderBy(desc(supportMessages.createdAt));
     }
 
