@@ -187,8 +187,6 @@ const SEVA_TYPES: SevaType[] = [
 const SEVA_CENTRES = [
   { id: 1, name: "Sringeri" },
   { id: 2, name: "Bengaluru" },
-  { id: 3, name: "Coimbatore" },
-  { id: 4, name: "Gurugram" },
 ];
 
 const WEEKDAYS = [
