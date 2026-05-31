@@ -180,15 +180,28 @@ function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed }: {
         )}
 
         {status === "marked" && (
-          <span className="inline-flex items-center gap-1 text-xs text-red-700 font-semibold">
-            <XCircle className="h-3 w-3" /> Marked Failed ✓
-          </span>
+          <div className="flex flex-col gap-1">
+            <span className="inline-flex items-center gap-1 text-xs text-red-700 font-semibold">
+              <XCircle className="h-3 w-3" /> Marked Failed ✓
+            </span>
+            {detail?.failResponse && (
+              <span className="text-[10px] text-muted-foreground break-all whitespace-pre-wrap max-w-[180px]">
+                {typeof detail.failResponse === "string"
+                  ? detail.failResponse
+                  : JSON.stringify(detail.failResponse)}
+              </span>
+            )}
+          </div>
         )}
 
         {status === "mark_failed" && (
           <div className="flex flex-col gap-1">
             <span className="text-xs text-red-600 font-medium">Update failed</span>
-            {message && <span className="text-[10px] text-muted-foreground max-w-[120px] truncate" title={message}>{message}</span>}
+            {message && (
+              <span className="text-[10px] text-muted-foreground break-all whitespace-pre-wrap max-w-[180px]">
+                {message}
+              </span>
+            )}
             <button onClick={onMarkFailed} className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/70">
               Retry
             </button>

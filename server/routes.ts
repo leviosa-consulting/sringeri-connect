@@ -2971,7 +2971,7 @@ export async function registerRoutes(
       if (b.paymentMode) failBody.PAYMENTMODE = String(b.paymentMode);
       if (b.bankName) failBody.BANKNAME = String(b.bankName);
       if (b.currency) failBody.CURRENCY = String(b.currency);
-      console.log("Mark failed for order:", orderId);
+      console.log("Mark failed for order:", orderId, "body:", JSON.stringify(failBody));
       const failRes = await fetch(`${SRINGERI_API_URL}/api/updateFailedTransaction`, {
         method: "POST",
         headers: {
@@ -2981,7 +2981,8 @@ export async function registerRoutes(
         body: JSON.stringify(failBody),
       });
       const failText = await failRes.text();
-      console.log("Mark failed response:", failRes.status, failText.slice(0, 200));
+      console.log("Mark failed response HTTP status:", failRes.status);
+      console.log("Mark failed response body:", failText);
       if (!failRes.ok) {
         return res.status(failRes.status).json({ error: "Failed to mark transaction as failed", upstream: failText });
       }
@@ -2991,6 +2992,18 @@ export async function registerRoutes(
         failData = j !== -1 ? JSON.parse(failText.substring(j)) : JSON.parse(failText);
       } catch {
         failData = { raw: failText };
+      }
+      // Detect error responses that come with HTTP 200 (common in this API)
+      const bodyIndicatesError =
+        failData?.status === 0 ||
+        failData?.status === false ||
+        failData?.success === false ||
+        (typeof failData?.status === "string" && /fail|error/i.test(failData.status)) ||
+        (failData?.error != null && failData?.message == null && failData?.status == null);
+      if (bodyIndicatesError) {
+        const msg = failData?.message || failData?.error || failData?.msg || failData?.raw || "Sringeri API rejected the request";
+        console.log("Mark failed: Sringeri returned body-level error:", msg);
+        return res.status(422).json({ error: String(msg), upstream: failData });
       }
       res.json({ orderId, marked: true, failResponse: failData, paytm: { status: ri.resultStatus, txnId: b.txnId } });
     } catch (error) {
