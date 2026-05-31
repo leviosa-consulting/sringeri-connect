@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { Loader2, Calendar, Megaphone, Play, Filter } from "lucide-react";
 
 interface UpdateItem {
@@ -148,7 +149,7 @@ export default function Updates() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <RangoliLoader size={40} />
       </div>
     );
   }

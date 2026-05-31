@@ -1,4 +1,5 @@
 import { useLocation, Redirect } from "wouter";
+import { PageLoader } from "@/components/rangoli-loader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
@@ -33,11 +34,7 @@ export default function Login() {
   const { toast } = useToast();
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (user) {

@@ -26,17 +26,13 @@ import AdminLaunch from "@/pages/admin-launch";
 import AdminLaunchReset from "@/pages/admin-launch-reset";
 import PaymentResult from "@/pages/payment-result";
 import ComingSoon from "@/pages/coming-soon";
-import { Loader2 } from "lucide-react";
+import { PageLoader } from "@/components/rangoli-loader";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!user) {
@@ -87,11 +83,7 @@ function LaunchGate() {
   });
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F7F2EC]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoader bg="bg-[#F7F2EC]" />;
   }
 
   if (data?.isLaunched) {

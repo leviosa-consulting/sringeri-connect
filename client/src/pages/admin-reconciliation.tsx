@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { useAuth } from "@/contexts/auth-context";
 import { Loader2, ArrowLeft, RefreshCw, CheckCircle2, AlertCircle, Clock, PlayCircle } from "lucide-react";
 import { Link } from "wouter";
@@ -212,7 +213,7 @@ export default function AdminReconciliation() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" data-testid="loading-spinner" />
+        <RangoliLoader size={64} data-testid="loading-spinner" />
       </div>
     );
   }
@@ -266,7 +267,7 @@ export default function AdminReconciliation() {
 
       {loading ? (
         <div className="py-12 flex justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <RangoliLoader size={48} />
         </div>
       ) : loadError ? (
         <div className="bg-card rounded-xl border border-border/50 p-6 text-center" data-testid="text-load-error">

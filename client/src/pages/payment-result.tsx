@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -215,7 +216,7 @@ export default function PaymentResult() {
   if (!processed && !orderId && !status) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F7F2EC]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#FF6600]" />
+        <RangoliLoader size={64} />
       </div>
     );
   }

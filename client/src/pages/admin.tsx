@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/auth-context";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { Loader2, BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw } from "lucide-react";
 import { Link } from "wouter";
 
@@ -53,7 +54,7 @@ export default function Admin() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" data-testid="loading-spinner" />
+        <RangoliLoader size={64} data-testid="loading-spinner" />
       </div>
     );
   }

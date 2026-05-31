@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { useAuth } from "@/contexts/auth-context";
 import { useParams, useLocation } from "wouter";
 import { BookOpenCheck, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check, Library, Flame, Lock, CalendarDays, GraduationCap } from "lucide-react";
@@ -398,7 +399,7 @@ export default function Knowledge() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <RangoliLoader size={64} />
       </div>
     );
   }
@@ -798,7 +799,7 @@ export default function Knowledge() {
               </div>
               {groupLoading ? (
                 <div className="flex justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <RangoliLoader size={40} />
                 </div>
               ) : (
                 groupEpisodes.map((ep, idx) => (
@@ -913,7 +914,7 @@ export default function Knowledge() {
 
               {pastLoading ? (
                 <div className="flex justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <RangoliLoader size={40} />
                 </div>
               ) : pastQuizzes.length === 0 ? (
                 !upcomingQuizzes.length && (
@@ -1017,7 +1018,7 @@ export default function Knowledge() {
               </div>
               {groupLoading ? (
                 <div className="flex justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <RangoliLoader size={40} />
                 </div>
               ) : (
                 groupEpisodes.map((ep, idx) => (
@@ -1097,7 +1098,7 @@ export default function Knowledge() {
             </div>
           ) : coursesLoading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <RangoliLoader size={40} />
             </div>
           ) : courses.length === 0 ? (
             <div className="text-center py-16 space-y-3">

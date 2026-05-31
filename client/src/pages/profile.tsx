@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -599,7 +600,7 @@ export default function Profile() {
           <TabsContent value="history" className="space-y-3 mt-4">
             {devoteeLoading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <RangoliLoader size={48} />
               </div>
             ) : (
               <>
@@ -866,7 +867,7 @@ export default function Profile() {
           <TabsContent value="saved" className="space-y-4 mt-4">
             {devoteeLoading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <RangoliLoader size={48} />
               </div>
             ) : (
               <>

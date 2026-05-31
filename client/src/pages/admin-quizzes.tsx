@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { useAuth } from "@/contexts/auth-context";
 import { Plus, Trash2, Save, ArrowLeft, Edit, GripVertical, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -446,7 +447,7 @@ export default function AdminQuizzes() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <RangoliLoader size={36} />
         </div>
       ) : quizzes.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">

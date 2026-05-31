@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1976,7 +1977,7 @@ export default function Seva() {
             <div className="mt-6">
               <p className="text-sm text-primary ml-1 mb-3">Choose a Location</p>
               {centres.length === 0 ? (
-                <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                <div className="flex justify-center py-4"><RangoliLoader size={32} /></div>
               ) : (
                 <div className="grid grid-cols-1 gap-3">
                   {centres.map((c: any) => (
@@ -2016,7 +2017,7 @@ export default function Seva() {
               <div className="mt-6">
                 <p className="text-sm text-primary ml-1 mb-2">Select seva</p>
                 {flCentreSevasLoading ? (
-                  <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                  <div className="flex justify-center py-4"><RangoliLoader size={32} /></div>
                 ) : flCentreSevas.length === 0 ? (
                   <p className="text-sm text-muted-foreground ml-1">No sevas available for today.</p>
                 ) : (
@@ -2189,7 +2190,7 @@ export default function Seva() {
                 {showSannidhiDropdown && (
                   <div className="absolute z-20 w-full bg-white border border-border rounded-md mt-1 max-h-48 overflow-y-auto shadow-lg">
                     {sannidhisLoading ? (
-                      <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                      <div className="flex justify-center py-4"><RangoliLoader size={32} /></div>
                     ) : filteredSannidhis.length === 0 ? (
                       <p className="text-sm text-muted-foreground p-3">No sannidhis found</p>
                     ) : (
@@ -2231,7 +2232,7 @@ export default function Seva() {
                   {showSevaDropdown && (
                     <div className="absolute z-20 w-full bg-white border border-border rounded-md mt-1 max-h-48 overflow-y-auto shadow-lg">
                       {sevasLoading ? (
-                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                        <div className="flex justify-center py-4"><RangoliLoader size={32} /></div>
                       ) : filteredSevas.length === 0 ? (
                         <p className="text-sm text-muted-foreground p-3">No sevas found</p>
                       ) : (
@@ -2258,7 +2259,7 @@ export default function Seva() {
               <CardContent className="p-5 space-y-3">
                 <h3 className="font-serif font-bold text-sm">Select Date</h3>
                 {calendarMonths.length === 0 ? (
-                  <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                  <div className="flex justify-center py-4"><RangoliLoader size={32} /></div>
                 ) : (
                   <>
                     <div className="flex gap-1 bg-muted rounded-lg p-1" data-testid="seva-month-tabs">

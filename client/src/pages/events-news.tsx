@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar as CalendarIcon, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,7 @@ export default function EventsNews() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <RangoliLoader size={40} />
       </div>
     );
   }

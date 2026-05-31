@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { useAuth } from "@/contexts/auth-context";
 import { Loader2, ArrowLeft, Users, Target, Trophy, Hash, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
@@ -86,7 +87,7 @@ export default function AdminQuizAnalytics() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" data-testid="loading-spinner" />
+        <RangoliLoader size={64} data-testid="loading-spinner" />
       </div>
     );
   }
@@ -105,7 +106,7 @@ export default function AdminQuizAnalytics() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" data-testid="loading-spinner" />
+        <RangoliLoader size={64} data-testid="loading-spinner" />
       </div>
     );
   }

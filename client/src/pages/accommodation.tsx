@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -577,7 +578,7 @@ export default function Accommodation() {
           <>
             {inventoryLoading ? (
               <div className="flex flex-col items-center justify-center py-16">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+                <RangoliLoader size={48} />
                 <p className="text-sm text-muted-foreground">Loading availability...</p>
               </div>
             ) : (

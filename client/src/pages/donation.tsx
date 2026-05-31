@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1376,7 +1377,7 @@ export default function Donation() {
             <h3 className="text-sm font-semibold mb-2 px-1" data-testid="text-choose-cause">Choose Donation Cause</h3>
             {subCatLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <RangoliLoader size={36} />
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-2">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import {
@@ -403,7 +404,7 @@ export default function Fastline() {
             <div className="mt-6">
               <p className="text-sm text-primary ml-1 mb-3">Choose a Location</p>
               {centres.length === 0 ? (
-                <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                <div className="flex justify-center py-4"><RangoliLoader size={32} /></div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {centres.map((c: any) => (
@@ -443,7 +444,7 @@ export default function Fastline() {
               <div className="mt-6">
                 <p className="text-sm text-primary ml-1 mb-2">Select seva</p>
                 {flCentreSevasLoading ? (
-                  <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                  <div className="flex justify-center py-4"><RangoliLoader size={32} /></div>
                 ) : flCentreSevas.length === 0 ? (
                   <p className="text-sm text-muted-foreground ml-1">No sevas available for today.</p>
                 ) : (

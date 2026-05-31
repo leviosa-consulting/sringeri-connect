@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { RangoliLoader } from "@/components/rangoli-loader";
 import { useAuth } from "@/contexts/auth-context";
 import { RotateCcw, ShieldAlert, Loader2, LogIn, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ export default function AdminLaunchReset() {
   if (authLoading || checkingStatus) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F7F2EC]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <RangoliLoader size={64} />
       </div>
     );
   }
