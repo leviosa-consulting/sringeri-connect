@@ -2861,15 +2861,13 @@ export default function Seva() {
                 {SEVA_TYPES.map((type) => {
                   const icons = { fl: Zap, otfs: CalendarDays, ps: RefreshCw };
                   const Icon = icons[type.short as keyof typeof icons];
-                  const isComingSoon = type.short === "ps";
                   return (
                     <button key={type.id}
-                      onClick={() => !isComingSoon && selectSevaType(type)}
-                      className={`flex flex-col items-center h-full relative ${isComingSoon ? "cursor-not-allowed" : ""}`}
+                      onClick={() => selectSevaType(type)}
+                      className="flex flex-col items-center h-full relative"
                       data-testid={`button-seva-type-${type.short}`}
-                      disabled={isComingSoon}
                     >
-                      <Card className={`w-full h-full transition-shadow ${isComingSoon ? "opacity-60" : "hover:shadow-lg"}`}>
+                      <Card className="w-full h-full transition-shadow hover:shadow-lg">
                         <CardContent className="p-3 flex flex-col items-center justify-center gap-2 h-full">
                           <div className="rounded-2xl w-12 h-12 flex items-center justify-center" style={{ backgroundColor: '#fcfbf7' }}>
                             <Icon className="h-6 w-6" color="#ff6600" />
@@ -2877,9 +2875,6 @@ export default function Seva() {
                           <span className="text-xs font-semibold text-center leading-tight">{type.name}</span>
                         </CardContent>
                       </Card>
-                      {isComingSoon && (
-                        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-muted-foreground">Coming Soon</span>
-                      )}
                     </button>
                   );
                 })}
