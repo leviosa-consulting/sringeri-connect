@@ -433,7 +433,7 @@ export default function Fastline() {
               {centres.length === 0 ? (
                 <div className="flex justify-center py-4"><RangoliLoader size={32} /></div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {centres.map((c: any) => (
                     <button key={c.id}
                       onClick={() => selectCentre(c)}
