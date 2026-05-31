@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import FontSizeToggle from "./font-size-toggle";
-import { SERVICE_ROUTES, SERVICE_LABELS, type ServiceMode } from "@/contexts/subdomain-mode-context";
+import { SERVICE_ROUTES, SERVICE_LABELS, type ServiceMode, useSubdomainMode } from "@/contexts/subdomain-mode-context";
 
 const SERVICE_ICONS: Record<NonNullable<ServiceMode>, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
   seva: Flame,
@@ -17,6 +17,7 @@ const SERVICES: NonNullable<ServiceMode>[] = ["seva", "donate", "yatri"];
 export default function ServicesDesktopNav() {
   const [location, setLocation] = useLocation();
   const { logout } = useAuth();
+  const { homeRoute } = useSubdomainMode();
 
   const handleLogout = async () => {
     await logout();
@@ -27,7 +28,7 @@ export default function ServicesDesktopNav() {
     <nav className="hidden lg:block sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href={SERVICE_ROUTES["seva"]} className="flex items-center gap-3">
+          <Link href={homeRoute} className="flex items-center gap-3">
             <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-12 w-auto object-contain" />
           </Link>
         </div>

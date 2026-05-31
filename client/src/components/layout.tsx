@@ -51,7 +51,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       ) : (
         /* Mobile Top Bar (Logo Only) - since Nav is at bottom */
         <div className="lg:hidden h-20 bg-background/80 backdrop-blur border-b sticky top-0 z-40 flex items-center justify-center px-4">
-          <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
+          {isServicesMode ? (
+            <Link href={homeRoute}>
+              <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
+            </Link>
+          ) : (
+            <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
+          )}
         </div>
       )}
 
