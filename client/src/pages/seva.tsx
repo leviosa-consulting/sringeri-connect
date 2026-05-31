@@ -316,6 +316,7 @@ export default function Seva() {
 
   const [cartPaymentSuccess, setCartPaymentSuccess] = useState(false);
   const [cartAckData, setCartAckData] = useState<{ txnId: string; orderId: string; amount: string; sevaNames: string[] } | null>(null);
+  const [flInAbsentia, setFlInAbsentia] = useState("0");
 
   const [kannadaName, setKannadaName] = useState("");
   const [kannadaCity, setKannadaCity] = useState("");
@@ -1165,6 +1166,7 @@ export default function Seva() {
   async function selectFlCentre(centre: any) {
     setFlCentre(centre);
     setFlSelectedSevas(new Set());
+    setFlInAbsentia("0");
     setFlCentreSevas([]);
     setFlCentreSevasLoading(true);
     try {
@@ -1257,7 +1259,7 @@ export default function Seva() {
         city: kartaCity,
         cityK: kannadaCity,
         receiptTypeId: firstSeva?.receiptTypeId || 1,
-        inAbsentia: "0",
+        inAbsentia: flInAbsentia,
         branchId: firstSeva?.branchId || 1,
         addedAt,
         status: 8,
@@ -1970,11 +1972,6 @@ export default function Seva() {
           </div>
         </div>
 
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3">
-          <p className="text-sm text-amber-800 text-center font-medium" data-testid="text-fl-warning">
-            This is only for in-person seva if you are in Sringeri today.
-          </p>
-        </div>
 
         <div className="px-4 mt-4">
           <div className="bg-white rounded-lg shadow-md px-5 py-6">
@@ -2159,6 +2156,20 @@ export default function Seva() {
             {errorMessage && (
               <div className="mt-6 text-center">
                 <p className="text-red-500 text-sm">{errorMessage}</p>
+              </div>
+            )}
+
+            {flCentre?.name?.toLowerCase().includes("guru nivas") && flSelectedSevas.size > 0 && (
+              <div className="mt-6">
+                <p className="text-xs text-primary/70 mb-2">Attendance</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setFlInAbsentia("0")}
+                    className={`flex-1 py-2 rounded text-sm font-medium transition-colors ${flInAbsentia === "0" ? "bg-primary text-white" : "bg-transparent border border-primary/30 text-primary"}`}
+                    data-testid="button-fl-in-person">In Person</button>
+                  <button onClick={() => setFlInAbsentia("1")}
+                    className={`flex-1 py-2 rounded text-sm font-medium transition-colors ${flInAbsentia === "1" ? "bg-primary text-white" : "bg-transparent border border-primary/30 text-primary"}`}
+                    data-testid="button-fl-in-absentia">In Absentia</button>
+                </div>
               </div>
             )}
 
@@ -2885,7 +2896,7 @@ export default function Seva() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-center text-lg font-serif">Today's Seva</AlertDialogTitle>
             <AlertDialogDescription className="text-center text-sm">
-              This is only in-person seva if you are in Sringeri today.
+              Please confirm before proceeding with today's seva booking.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex gap-3 sm:justify-center">
