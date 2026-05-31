@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import CountryStateCityFields from "@/components/country-state-city-fields";
 import { RangoliLoader } from "@/components/rangoli-loader";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -666,9 +667,9 @@ export default function Seva() {
     setAddressLine2("");
     setLandmark("");
     setCountry("India");
-    setPincode("");
     setState("");
     setAddressCity("");
+    setPincode("");
     setCalendarMonths([]);
     setSevaCount(1);
     setSevaCountLoading(false);
@@ -1614,25 +1615,22 @@ export default function Seva() {
                     className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                     data-testid="input-addressee-name" />
                 </div>
+                <CountryStateCityFields
+                  country={country}
+                  state={state}
+                  city={addressCity}
+                  onCountryChange={setCountry}
+                  onStateChange={setState}
+                  onCityChange={setAddressCity}
+                  variant="form"
+                  idPrefix="seva-"
+                  showRequired
+                />
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Country *</label>
-                  <input type="text" value={country} onChange={(e) => setCountry(e.target.value)}
+                  <label className="text-xs text-muted-foreground mb-1 block">Pincode *</label>
+                  <input type="text" value={pincode} onChange={(e) => setPincode(e.target.value)}
                     className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                    data-testid="input-country" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Pincode *</label>
-                    <input type="text" value={pincode} onChange={(e) => setPincode(e.target.value)}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                      data-testid="input-pincode" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">State *</label>
-                    <input type="text" value={state} onChange={(e) => setState(e.target.value)}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                      data-testid="input-state" />
-                  </div>
+                    data-testid="input-pincode" />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Street & Area *</label>
@@ -1651,12 +1649,6 @@ export default function Seva() {
                   <input type="text" value={landmark} onChange={(e) => setLandmark(e.target.value)}
                     className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                     data-testid="input-landmark" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">City *</label>
-                  <input type="text" value={addressCity} onChange={(e) => setAddressCity(e.target.value)}
-                    className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                    data-testid="input-address-city" />
                 </div>
               </div>
             </CardContent>

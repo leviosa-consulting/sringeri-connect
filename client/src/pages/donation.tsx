@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import CountryStateCityFields from "@/components/country-state-city-fields";
 import { RangoliLoader } from "@/components/rangoli-loader";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -934,37 +935,26 @@ export default function Donation() {
                 </div>
               )}
               <div className="space-y-3">
+                <CountryStateCityFields
+                  country={donationForm.country}
+                  state={donationForm.state}
+                  city={donationForm.city}
+                  onCountryChange={(v) => updatePayeeField("country", v)}
+                  onStateChange={(v) => updatePayeeField("state", v)}
+                  onCityChange={(v) => updatePayeeField("city", v)}
+                  variant="form"
+                  idPrefix="donation-"
+                  showRequired
+                />
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Country *</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">Pincode *</label>
                   <input
                     type="text"
-                    value={donationForm.country}
-                    onChange={(e) => updatePayeeField("country", e.target.value)}
+                    value={donationForm.pincode}
+                    onChange={(e) => updatePayeeField("pincode", e.target.value)}
                     className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                    data-testid="input-country"
+                    data-testid="input-pincode"
                   />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">State *</label>
-                    <input
-                      type="text"
-                      value={donationForm.state}
-                      onChange={(e) => updatePayeeField("state", e.target.value)}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                      data-testid="input-state"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Pincode *</label>
-                    <input
-                      type="text"
-                      value={donationForm.pincode}
-                      onChange={(e) => updatePayeeField("pincode", e.target.value)}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                      data-testid="input-pincode"
-                    />
-                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Street Address *</label>
@@ -976,27 +966,15 @@ export default function Donation() {
                     data-testid="input-address1"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Locality</label>
-                    <input
-                      type="text"
-                      value={donationForm.addressLine2}
-                      onChange={(e) => updatePayeeField("addressLine2", e.target.value)}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                      data-testid="input-address2"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">City *</label>
-                    <input
-                      type="text"
-                      value={donationForm.city}
-                      onChange={(e) => updatePayeeField("city", e.target.value)}
-                      className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                      data-testid="input-city"
-                    />
-                  </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Locality</label>
+                  <input
+                    type="text"
+                    value={donationForm.addressLine2}
+                    onChange={(e) => updatePayeeField("addressLine2", e.target.value)}
+                    className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                    data-testid="input-address2"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Landmark</label>

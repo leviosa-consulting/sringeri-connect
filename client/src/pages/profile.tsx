@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react";
+import CountryStateCityFields from "@/components/country-state-city-fields";
 import { RangoliLoader } from "@/components/rangoli-loader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -360,9 +361,9 @@ export default function Profile() {
     setAddrLine1(address.addressLine1 || "");
     setAddrLine2(address.addressLine2 || "");
     setAddrLandmark(address.landmark || "");
-    setAddrCity(address.city || "");
+    setAddrCountry(address.country || "India");
     setAddrState(address.state || "");
-    setAddrCountry(address.country || "");
+    setAddrCity(address.city || "");
     setAddrPincode(address.pincode || "");
     setAddrPhone(address.alternatePhone || "");
   };
@@ -478,9 +479,9 @@ export default function Profile() {
     setAddrLine1("");
     setAddrLine2("");
     setAddrLandmark("");
-    setAddrCity("");
+    setAddrCountry("India");
     setAddrState("");
-    setAddrCountry("");
+    setAddrCity("");
     setAddrPincode("");
     setAddrPhone("");
     setAddingAddress(true);
@@ -1389,18 +1390,16 @@ export default function Profile() {
                 <Label htmlFor="addr-landmark" className="text-xs">Landmark</Label>
                 <Input id="addr-landmark" value={addrLandmark} onChange={(e) => setAddrLandmark(e.target.value)} className="mt-1" data-testid="input-addr-landmark" />
               </div>
-              <div>
-                <Label htmlFor="addr-city" className="text-xs">City</Label>
-                <Input id="addr-city" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} className="mt-1" data-testid="input-addr-city" />
-              </div>
-              <div>
-                <Label htmlFor="addr-state" className="text-xs">State</Label>
-                <Input id="addr-state" value={addrState} onChange={(e) => setAddrState(e.target.value)} className="mt-1" data-testid="input-addr-state" />
-              </div>
-              <div>
-                <Label htmlFor="addr-country" className="text-xs">Country</Label>
-                <Input id="addr-country" value={addrCountry} onChange={(e) => setAddrCountry(e.target.value)} className="mt-1" data-testid="input-addr-country" />
-              </div>
+              <CountryStateCityFields
+                country={addrCountry}
+                state={addrState}
+                city={addrCity}
+                onCountryChange={setAddrCountry}
+                onStateChange={setAddrState}
+                onCityChange={setAddrCity}
+                variant="dialog"
+                idPrefix="edit-addr-"
+              />
               <div>
                 <Label htmlFor="addr-pincode" className="text-xs">Pincode</Label>
                 <Input id="addr-pincode" value={addrPincode} onChange={(e) => setAddrPincode(e.target.value)} className="mt-1" data-testid="input-addr-pincode" />
@@ -1462,18 +1461,16 @@ export default function Profile() {
                 <Label htmlFor="new-addr-landmark" className="text-xs">Landmark</Label>
                 <Input id="new-addr-landmark" value={addrLandmark} onChange={(e) => setAddrLandmark(e.target.value)} className="mt-1" data-testid="input-new-addr-landmark" />
               </div>
-              <div>
-                <Label htmlFor="new-addr-city" className="text-xs">City</Label>
-                <Input id="new-addr-city" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} className="mt-1" data-testid="input-new-addr-city" />
-              </div>
-              <div>
-                <Label htmlFor="new-addr-state" className="text-xs">State</Label>
-                <Input id="new-addr-state" value={addrState} onChange={(e) => setAddrState(e.target.value)} className="mt-1" data-testid="input-new-addr-state" />
-              </div>
-              <div>
-                <Label htmlFor="new-addr-country" className="text-xs">Country</Label>
-                <Input id="new-addr-country" value={addrCountry} onChange={(e) => setAddrCountry(e.target.value)} className="mt-1" data-testid="input-new-addr-country" />
-              </div>
+              <CountryStateCityFields
+                country={addrCountry}
+                state={addrState}
+                city={addrCity}
+                onCountryChange={setAddrCountry}
+                onStateChange={setAddrState}
+                onCityChange={setAddrCity}
+                variant="dialog"
+                idPrefix="new-addr-"
+              />
               <div>
                 <Label htmlFor="new-addr-pincode" className="text-xs">Pincode</Label>
                 <Input id="new-addr-pincode" value={addrPincode} onChange={(e) => setAddrPincode(e.target.value)} className="mt-1" data-testid="input-new-addr-pincode" />
