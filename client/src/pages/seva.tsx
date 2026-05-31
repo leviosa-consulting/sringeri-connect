@@ -791,22 +791,16 @@ export default function Seva() {
         errors.push("Please select a weekday.");
       }
       if ((recurrenceType === 3 || recurrenceType === 4) && calendarType === 1) {
-        if (!weekdayId && !specificDateNum) {
-          errors.push("Please select a weekday or specific date.");
+        if (!specificDateNum) {
+          errors.push("Please select a date.");
         }
-        if (weekdayId && !weekdayRepeatId) {
-          errors.push("Please select a repeat pattern.");
-        }
-        if (recurrenceType === 4 && specificDateNum && !monthId) {
+        if (recurrenceType === 4 && !monthId) {
           errors.push("Please select a month.");
         }
       }
       if ((recurrenceType === 3 || recurrenceType === 4) && (calendarType === 2 || calendarType === 3)) {
-        if (!weekdayId && !fromTithiId && !fromNakshatraId) {
-          errors.push("Please select a weekday, tithi, or nakshatra.");
-        }
-        if (weekdayId && !weekdayRepeatId) {
-          errors.push("Please select a repeat pattern.");
+        if (!fromTithiId && !fromNakshatraId) {
+          errors.push("Please select a tithi or nakshatra.");
         }
         if (recurrenceType === 4 && (fromTithiId || fromNakshatraId)) {
           if (calendarType === 2 && !fromChandraMasaId) errors.push("Please select a Chandra Masa.");
@@ -903,23 +897,17 @@ export default function Seva() {
       recurrenceText = "Every " + weekdayName;
     } else if (recurrenceType === 3) {
       if (calendarType === 1) {
-        if (weekdayRepeatId && weekdayId) {
-          recurrenceText = repeatName + " " + weekdayName + " of every month";
-        } else if (specificDateNum) {
+        if (specificDateNum) {
           recurrenceText = "On " + specificDateNum + " of every month";
         }
       } else if (calendarType === 2) {
-        if (weekdayRepeatId && weekdayId) {
-          recurrenceText = repeatName + " " + weekdayName + " of every month";
-        } else if (fromTithiId) {
+        if (fromTithiId) {
           recurrenceText = tithiName + " of every month";
         } else if (fromNakshatraId) {
           recurrenceText = nakshatraName + " nakshatra of every month";
         }
       } else if (calendarType === 3) {
-        if (weekdayRepeatId && weekdayId) {
-          recurrenceText = repeatName + " " + weekdayName + " of every month";
-        } else if (fromTithiId) {
+        if (fromTithiId) {
           recurrenceText = tithiName + " of every month";
         } else if (fromNakshatraId) {
           recurrenceText = nakshatraName + " nakshatra of every month";
@@ -927,29 +915,17 @@ export default function Seva() {
       }
     } else if (recurrenceType === 4) {
       if (calendarType === 1) {
-        if (weekdayRepeatId && weekdayId) {
-          recurrenceText = repeatName + " " + weekdayName + " of " + monthName + " month of every year";
-        } else if (specificDateNum) {
+        if (specificDateNum) {
           recurrenceText = specificDateNum + " " + monthName + " of every year";
         }
       } else if (calendarType === 2) {
-        if (weekdayRepeatId && weekdayId) {
-          recurrenceText = repeatName + " " + weekdayName;
-          if (fromChandraMasaId) {
-            recurrenceText += " of " + cmName + " masa  of every year";
-          }
-        } else if (fromChandraMasaId && fromTithiId) {
+        if (fromChandraMasaId && fromTithiId) {
           recurrenceText = cmName + " " + tithiName + " tithi of every year";
         } else if (fromChandraMasaId && fromNakshatraId) {
           recurrenceText = cmName + " " + nakshatraName + " nakshatra of every year";
         }
       } else if (calendarType === 3) {
-        if (weekdayRepeatId && weekdayId) {
-          recurrenceText = repeatName + " " + weekdayName;
-          if (fromSouraMasaId) {
-            recurrenceText += " of " + smName + " masa  of every year";
-          }
-        } else if (fromSouraMasaId && fromTithiId) {
+        if (fromSouraMasaId && fromTithiId) {
           recurrenceText = smName + " " + tithiName + " tithi of every year";
         } else if (fromSouraMasaId && fromNakshatraId) {
           recurrenceText = smName + " " + nakshatraName + " nakshatra of every year";
@@ -2497,35 +2473,7 @@ export default function Seva() {
                   <>
                     {calendarType === 1 && (
                       <div className="space-y-3">
-                        <div>
-                          <label className="text-xs text-muted-foreground mb-2 block">Weekday</label>
-                          <select value={weekdayId} onChange={(e) => { setWeekdayId(Number(e.target.value)); if (Number(e.target.value)) { setSpecificDateNum(0); setMonthId(0); } }}
-                            className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                            data-testid="select-weekday">
-                            <option value={0}>Select Weekday</option>
-                            {WEEKDAYS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                          </select>
-                        </div>
-                        {weekdayId > 0 && (
-                          <div>
-                            <label className="text-xs text-muted-foreground mb-2 block">Repeat</label>
-                            <select value={weekdayRepeatId} onChange={(e) => setWeekdayRepeatId(Number(e.target.value))}
-                              className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                              data-testid="select-weekday-repeat">
-                              <option value={0}>Select Repeat</option>
-                              {WEEKDAY_REPEATS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                            </select>
-                          </div>
-                        )}
-                        {!weekdayId && (
-                          <div>
-                            <label className="text-xs text-muted-foreground mb-2 block">Specific Date (1-31)</label>
-                            <input type="number" min={1} max={31} value={specificDateNum || ""} onChange={(e) => { setSpecificDateNum(Number(e.target.value)); if (Number(e.target.value)) { setWeekdayId(0); setWeekdayRepeatId(0); } }}
-                              className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                              data-testid="input-specific-date" />
-                          </div>
-                        )}
-                        {recurrenceType === 4 && !weekdayId && specificDateNum > 0 && (
+                        {recurrenceType === 4 && (
                           <div>
                             <label className="text-xs text-muted-foreground mb-2 block">Month</label>
                             <select value={monthId} onChange={(e) => setMonthId(Number(e.target.value))}
@@ -2538,35 +2486,26 @@ export default function Seva() {
                             </select>
                           </div>
                         )}
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-2 block">Date</label>
+                          <select value={specificDateNum || 0} onChange={(e) => setSpecificDateNum(Number(e.target.value))}
+                            className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
+                            data-testid="select-specific-date">
+                            <option value={0}>Select Date</option>
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     )}
 
                     {(calendarType === 2 || calendarType === 3) && (
                       <div className="space-y-3">
-                        <div>
-                          <label className="text-xs text-muted-foreground mb-2 block">Weekday</label>
-                          <select value={weekdayId} onChange={(e) => { const v = Number(e.target.value); setWeekdayId(v); if (v) { setFromTithiId(0); setFromNakshatraId(0); } }}
-                            className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                            data-testid="select-weekday">
-                            <option value={0}>Select Weekday</option>
-                            {WEEKDAYS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                          </select>
-                        </div>
-                        {weekdayId > 0 && (
-                          <div>
-                            <label className="text-xs text-muted-foreground mb-2 block">Repeat</label>
-                            <select value={weekdayRepeatId} onChange={(e) => setWeekdayRepeatId(Number(e.target.value))}
-                              className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
-                              data-testid="select-weekday-repeat">
-                              <option value={0}>Select Repeat</option>
-                              {WEEKDAY_REPEATS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                            </select>
-                          </div>
-                        )}
-                        {!weekdayId && !fromNakshatraId && (
+                        {!fromNakshatraId && (
                           <div>
                             <label className="text-xs text-muted-foreground mb-1 block">Tithi</label>
-                            <select value={fromTithiId} onChange={(e) => { const v = Number(e.target.value); setFromTithiId(v); if (v) { setFromNakshatraId(0); setWeekdayId(0); setWeekdayRepeatId(0); } }}
+                            <select value={fromTithiId} onChange={(e) => { const v = Number(e.target.value); setFromTithiId(v); if (v) setFromNakshatraId(0); }}
                               className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
                               data-testid="select-tithi">
                               <option value={0}>Select Tithi</option>
@@ -2574,10 +2513,10 @@ export default function Seva() {
                             </select>
                           </div>
                         )}
-                        {!weekdayId && !fromTithiId && (
+                        {!fromTithiId && (
                           <div>
                             <label className="text-xs text-muted-foreground mb-1 block">Nakshatra</label>
-                            <select value={fromNakshatraId} onChange={(e) => { const v = Number(e.target.value); setFromNakshatraId(v); if (v) { setFromTithiId(0); setWeekdayId(0); setWeekdayRepeatId(0); } }}
+                            <select value={fromNakshatraId} onChange={(e) => { const v = Number(e.target.value); setFromNakshatraId(v); if (v) setFromTithiId(0); }}
                               className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white"
                               data-testid="select-nakshatra">
                               <option value={0}>Select Nakshatra</option>
