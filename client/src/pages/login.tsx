@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { sendPasswordReset } from "@/lib/firebase";
 import { useSubdomainMode } from "@/contexts/subdomain-mode-context";
+import SiteFooter from "@/components/site-footer";
 
 export default function Login() {
   const [_, setLocation] = useLocation();
@@ -196,7 +197,7 @@ export default function Login() {
   const anyLoading = loading || googleLoading || appleLoading || guestLoading;
 
   return (
-    <div className="min-h-screen bg-[url('/assets/temple-hero.jpg')] lg:bg-[url('/assets/login-desktop-bg.jpg')] bg-cover bg-center flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[url('/assets/temple-hero.jpg')] lg:bg-[url('/assets/login-desktop-bg.jpg')] bg-cover bg-center flex flex-col items-center justify-center p-4 gap-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       
       <Card className="w-full max-w-sm relative z-10 border-none shadow-2xl bg-white/95 backdrop-blur">
@@ -373,6 +374,8 @@ export default function Login() {
           </div>
         </CardContent>
       </Card>
+
+      <SiteFooter variant="login" />
 
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
         <DialogContent className="sm:max-w-sm" data-testid="dialog-forgot-password">

@@ -27,6 +27,8 @@ import AdminLaunch from "@/pages/admin-launch";
 import AdminLaunchReset from "@/pages/admin-launch-reset";
 import PaymentResult from "@/pages/payment-result";
 import ComingSoon from "@/pages/coming-soon";
+import Terms from "@/pages/terms";
+import Privacy from "@/pages/privacy";
 import { PageLoader } from "@/components/rangoli-loader";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -66,6 +68,8 @@ function Router() {
         <Route path="/admin/reconciliation" component={AdminReconciliation} />
         <Route path="/admin/launch" component={AdminLaunch} />
         <Route path="/admin/launch/reset" component={AdminLaunchReset} />
+        <Route path="/terms" component={Terms} />
+        <Route path="/privacy" component={Privacy} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import DesktopNav from "./desktop-nav";
 import ServicesDesktopNav from "./services-desktop-nav";
 import ChatbotWidget from "./chatbot-widget";
+import SiteFooter from "./site-footer";
 import { useMedia } from "react-use";
 import { useSubdomainMode, SERVICE_ROUTES, type ServiceMode } from "@/contexts/subdomain-mode-context";
 
@@ -67,7 +68,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         "bg-[#fcfbf7] border-t border-border/50",
         !isDesktop && "mb-16"
       )}>
-        <div className="flex justify-center items-center gap-4 py-3 max-w-md sm:max-w-2xl mx-auto">
+        <div className="flex justify-center items-center gap-4 py-3 max-w-md sm:max-w-2xl mx-auto lg:max-w-7xl">
           <a href="https://www.youtube.com/@SharadaPeetham" target="_blank" rel="noopener noreferrer" aria-label="YouTube" data-testid="link-social-youtube">
             <svg viewBox="0 0 24 24" className="w-6 h-6 text-[#ff6600]" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
           </a>
@@ -90,6 +91,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#ff6600]" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5zm2 4h5v5H7v-5z"/></svg>
           </a>
         </div>
+        <SiteFooter />
       </footer>
 
       {/* Mobile Bottom Navigation */}
