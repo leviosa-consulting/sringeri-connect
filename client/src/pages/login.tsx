@@ -196,7 +196,7 @@ export default function Login() {
   const anyLoading = loading || googleLoading || appleLoading || guestLoading;
 
   return (
-    <div className="min-h-screen bg-[url('/assets/temple-hero.jpg')] bg-cover bg-center flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[url('/assets/temple-hero.jpg')] lg:bg-[url('/assets/login-desktop-bg.jpg')] bg-cover bg-center flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       
       <Card className="w-full max-w-sm relative z-10 border-none shadow-2xl bg-white/95 backdrop-blur">
