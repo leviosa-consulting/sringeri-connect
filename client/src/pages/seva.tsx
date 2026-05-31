@@ -979,14 +979,14 @@ export default function Seva() {
       fromDate,
       toDate: effectiveToDate,
       noEnd,
-      weekdayId: weekdayId || "",
-      weekdayRepeatId: weekdayRepeatId || "",
-      specificDate: specificDateNum || "",
-      monthId: monthId || "",
-      fromChandraMasaId: fromChandraMasaId || "",
-      fromNakshatraId: fromNakshatraId || "",
-      fromTithiId: fromTithiId || "",
-      fromSouraMasaId: fromSouraMasaId || "",
+      weekdayId: isRecurring && recurrenceType === 2 ? (weekdayId || "") : "",
+      weekdayRepeatId: isRecurring && recurrenceType === 2 ? (weekdayRepeatId || "") : "",
+      specificDate: isRecurring && (recurrenceType === 3 || recurrenceType === 4) && calendarType === 1 ? (specificDateNum || "") : "",
+      monthId: isRecurring && recurrenceType === 4 && calendarType === 1 ? (monthId || "") : "",
+      fromChandraMasaId: isRecurring && (recurrenceType === 3 || recurrenceType === 4) && calendarType === 2 ? (fromChandraMasaId || "") : "",
+      fromNakshatraId: isRecurring && (recurrenceType === 3 || recurrenceType === 4) && (calendarType === 2 || calendarType === 3) ? (fromNakshatraId || "") : "",
+      fromTithiId: isRecurring && (recurrenceType === 3 || recurrenceType === 4) && (calendarType === 2 || calendarType === 3) ? (fromTithiId || "") : "",
+      fromSouraMasaId: isRecurring && (recurrenceType === 3 || recurrenceType === 4) && calendarType === 3 ? (fromSouraMasaId || "") : "",
       remarks: effectiveRemarks,
       mode: isRecurring ? 3 : 2,
       sevaCount,
@@ -1806,6 +1806,12 @@ export default function Seva() {
                 <span>Total</span>
                 <span className="text-primary">₹{formatNumber(computedTotalPerSeva)}</span>
               </div>
+              {selectedSevaType?.id === 3 && (() => { const r = generateRemarks(); return r ? (
+                <div className="flex justify-between text-xs text-muted-foreground mt-2 pt-2 border-t">
+                  <span>Schedule</span>
+                  <span className="text-right max-w-[60%]">{r}</span>
+                </div>
+              ) : null; })()}
             </CardContent>
           </Card>
 
