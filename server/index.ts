@@ -121,7 +121,7 @@ app.use((req, res, next) => {
 
   if (req.path === "/home" || req.path === "/home/") {
     if (host.startsWith("seva.")) return res.redirect(302, "/seva");
-    if (host.startsWith("donate.")) return res.redirect(302, "/donate");
+    if (host.startsWith("donate.")) return res.redirect(302, "/donation");
     if (host.startsWith("yatri.") || host.startsWith("yatra.")) return res.redirect(302, "/accommodation");
   }
 

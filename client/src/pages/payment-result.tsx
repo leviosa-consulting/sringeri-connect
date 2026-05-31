@@ -200,7 +200,7 @@ export default function PaymentResult() {
   const getHomePath = () => {
     const host = window.location.hostname;
     if (host.startsWith("seva.")) return "/seva";
-    if (host.startsWith("donate.")) return "/donate";
+    if (host.startsWith("donate.")) return "/donation";
     if (host.startsWith("yatri.") || host.startsWith("yatra.")) return "/accommodation";
     if (host.startsWith("fastline.")) return "/fastline";
     return "/home";
@@ -210,7 +210,7 @@ export default function PaymentResult() {
     const host = window.location.hostname;
     if (flowType === "fastline") return host.startsWith("fastline.") ? "/fastline" : "/seva";
     if (flowType === "seva") return "/seva";
-    if (flowType === "donation") return "/donate";
+    if (flowType === "donation") return "/donation";
     if (flowType === "accommodation") return "/accommodation";
     return getHomePath();
   };
