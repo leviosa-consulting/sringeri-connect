@@ -392,6 +392,23 @@ export default function Accommodation() {
                 </div>
               </div>
 
+              <div className="text-left bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6" data-testid="notice-checkin-reminders">
+                <p className="text-xs font-semibold text-blue-800 mb-2 uppercase tracking-wide">Important — Check-in Information</p>
+                <ul className="space-y-2">
+                  {[
+                    "The room is provided for 24 hours from the time of check-in.",
+                    "Check-in must be completed by 11:00 PM on the date of booking.",
+                    "Room will be allotted at the time of check-in.",
+                    "Any extension of stay is at the discretion of the facilitation centre.",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-blue-900">
+                      <span className="mt-0.5 h-4 w-4 rounded-full bg-blue-200 text-blue-700 text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
               <div className="space-y-3">
                 <Button
                   className="w-full"
