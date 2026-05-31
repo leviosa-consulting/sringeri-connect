@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User } from "firebase/auth";
-import { auth, subscribeToAuthState, loginWithEmail, signUpWithEmail, loginWithGoogle, loginWithApple, logout as firebaseLogout, getIdToken } from "@/lib/firebase";
+import { auth, subscribeToAuthState, loginWithEmail, signUpWithEmail, loginWithGoogle, loginWithApple, loginAsGuest, logout as firebaseLogout, getIdToken } from "@/lib/firebase";
 
 interface UserProfile {
   uid: string;
@@ -121,6 +121,7 @@ interface DevoteeData {
 
 interface AuthContextType {
   user: User | null;
+  isGuest: boolean;
   profile: UserProfile | null;
   devoteeData: DevoteeData | null;
   loading: boolean;
@@ -130,6 +131,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
+  signInAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
   getToken: () => Promise<string | null>;
   refreshDevoteeData: () => Promise<void>;
@@ -202,12 +204,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         setProfile({
           uid: firebaseUser.uid,
-          name: firebaseUser.displayName || "Devotee",
-          email: firebaseUser.email || "",
+          name: firebaseUser.isAnonymous ? "Guest" : (firebaseUser.displayName || "Devotee"),
+          email: firebaseUser.isAnonymous ? "" : (firebaseUser.email || ""),
         });
         setLocalAvatar(getLocalAvatar(firebaseUser.uid));
         
-        await fetchDevoteeData(firebaseUser);
+        if (!firebaseUser.isAnonymous) {
+          await fetchDevoteeData(firebaseUser);
+        }
       } else {
         setProfile(null);
         setDevoteeData(null);
@@ -247,6 +251,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loginWithApple();
   };
 
+  const signInAsGuest = async () => {
+    await loginAsGuest();
+  };
+
   const logout = async () => {
     await firebaseLogout();
     setProfile(null);
@@ -265,7 +273,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ 
-      user, 
+      user,
+      isGuest: user?.isAnonymous ?? false,
       profile, 
       devoteeData,
       loading, 
@@ -275,6 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp, 
       signInWithGoogle, 
       signInWithApple,
+      signInAsGuest,
       logout, 
       getToken,
       refreshDevoteeData

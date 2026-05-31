@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera, Trash2, Pencil, Check } from "lucide-react";
+import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera, Trash2, Pencil, Check, UserX } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
@@ -73,7 +73,7 @@ function resizeImage(file: File, maxSize: number): Promise<string> {
 
 export default function Profile() {
   const [_, setLocation] = useLocation();
-  const { profile, user, logout, devoteeData, devoteeLoading, refreshDevoteeData, avatarUrl } = useAuth();
+  const { profile, user, isGuest, logout, devoteeData, devoteeLoading, refreshDevoteeData, avatarUrl } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -480,6 +480,75 @@ export default function Profile() {
     const accommodations = devoteeData?.pastAccommodations || [];
     return filterByDateRange(accommodations, a => a.reservationFor || a.reservedDate || a.checkIn, accomFromDate, accomToDate);
   }, [devoteeData?.pastAccommodations, accomFromDate, accomToDate]);
+
+  if (isGuest) {
+    return (
+      <div className="pb-24 lg:pb-8">
+        <div className="bg-primary pt-12 pb-20 px-6 text-primary-foreground relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/10" />
+          <div className="relative z-10 flex items-center gap-4">
+            <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <UserX className="h-8 w-8 text-white/80" />
+            </div>
+            <div className="flex-1">
+              <h1 className="text-2xl font-serif font-bold">Guest</h1>
+              <p className="opacity-80 text-sm mt-0.5">Browsing as guest</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white/80 hover:text-white hover:bg-white/10"
+              onClick={async () => { await logout(); setLocation("/"); }}
+              data-testid="button-guest-signout"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="px-4 -mt-10 relative z-20 space-y-4">
+          <Card className="shadow-lg">
+            <CardContent className="pt-6 pb-6 flex flex-col items-center text-center gap-4">
+              <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center">
+                <UserX className="h-7 w-7 text-muted-foreground" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-base">You're browsing as a guest</p>
+                <p className="text-sm text-muted-foreground">
+                  Sign in or create an account to view your seva history, donations, and accommodation bookings.
+                </p>
+              </div>
+              <div className="w-full space-y-2 pt-1">
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90 text-white font-medium"
+                  onClick={() => { logout().then(() => setLocation("/login")); }}
+                  data-testid="button-guest-signin"
+                >
+                  Sign In
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full font-medium"
+                  onClick={() => { logout().then(() => setLocation("/login")); }}
+                  data-testid="button-guest-signup"
+                >
+                  Create Account
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm border-amber-200 bg-amber-50/60">
+            <CardContent className="pt-4 pb-4">
+              <p className="text-xs text-amber-800/80 text-center leading-relaxed">
+                As a guest, no booking history or personal details are saved for future reference.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-24 lg:pb-8">

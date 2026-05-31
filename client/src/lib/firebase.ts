@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   signInWithCredential,
+  signInAnonymously,
   GoogleAuthProvider,
   OAuthProvider,
   signOut, 
@@ -161,6 +162,10 @@ export async function signUpWithEmail(email: string, password: string, displayNa
     await updateProfile(userCredential.user, { displayName });
   }
   return userCredential;
+}
+
+export async function loginAsGuest() {
+  return signInAnonymously(auth);
 }
 
 export async function loginWithGoogle(callbacks?: NativeAuthCallback) {

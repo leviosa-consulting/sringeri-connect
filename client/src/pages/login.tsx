@@ -20,7 +20,7 @@ import { useSubdomainMode } from "@/contexts/subdomain-mode-context";
 
 export default function Login() {
   const [_, setLocation] = useLocation();
-  const { homeRoute } = useSubdomainMode();
+  const { homeRoute, isServicesMode } = useSubdomainMode();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
@@ -32,8 +32,9 @@ export default function Login() {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
-  const { login, signUp, signInWithGoogle, signInWithApple, user, loading: authLoading } = useAuth();
+  const { login, signUp, signInWithGoogle, signInWithApple, signInAsGuest, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [guestLoading, setGuestLoading] = useState(false);
 
   if (authLoading) {
     return <PageLoader />;
@@ -175,7 +176,24 @@ export default function Login() {
     }
   };
 
-  const anyLoading = loading || googleLoading || appleLoading;
+  const handleGuestSignIn = async () => {
+    setGuestLoading(true);
+    try {
+      await signInAsGuest();
+      setLocation(homeRoute);
+    } catch (error: any) {
+      console.error("Guest sign-in error:", error);
+      toast({
+        title: "Could not continue as guest",
+        description: "Please try again or sign in with an account.",
+        variant: "destructive",
+      });
+    } finally {
+      setGuestLoading(false);
+    }
+  };
+
+  const anyLoading = loading || googleLoading || appleLoading || guestLoading;
 
   return (
     <div className="min-h-screen bg-[url('/assets/temple-hero.jpg')] bg-cover bg-center flex items-center justify-center p-4">
@@ -320,6 +338,35 @@ export default function Login() {
               {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
             </button>
           </div>
+
+          {isServicesMode && (
+            <div className="space-y-2">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full h-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-dashed border-muted-foreground/30"
+                onClick={handleGuestSignIn}
+                disabled={anyLoading}
+                data-testid="button-guest-signin"
+              >
+                {guestLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Sign in as Guest
+              </Button>
+              <p className="text-center text-xs text-muted-foreground/80 px-2">
+                No details will be stored in history for future reference.
+              </p>
+            </div>
+          )}
           
           <div className="text-center text-xs text-muted-foreground">
             By continuing, you agree to our Terms of Service & Privacy Policy
