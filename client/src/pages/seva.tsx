@@ -1806,12 +1806,12 @@ export default function Seva() {
                 <span>Total</span>
                 <span className="text-primary">₹{formatNumber(computedTotalPerSeva)}</span>
               </div>
-              {selectedSevaType?.id === 3 && (() => { const r = generateRemarks(); return r ? (
+              {selectedSevaType?.id === 3 && generateRemarks() ? (
                 <div className="flex justify-between text-xs text-muted-foreground mt-2 pt-2 border-t">
                   <span>Schedule</span>
-                  <span className="text-right max-w-[60%]">{r}</span>
+                  <span className="text-right max-w-[60%]">{generateRemarks()}</span>
                 </div>
-              ) : null; })()}
+              ) : null}
             </CardContent>
           </Card>
 
