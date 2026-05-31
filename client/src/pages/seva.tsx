@@ -2391,7 +2391,7 @@ export default function Seva() {
                     {/* Desktop: all months side by side */}
                     <div className="hidden sm:grid sm:grid-cols-3 sm:gap-4">
                       {calendarMonths.map((mo, monthIdx) => (
-                        <div key={monthIdx}>
+                        <div key={monthIdx} className="border border-border rounded-xl p-3 bg-muted/30">
                           <p className="text-xs font-semibold text-center text-muted-foreground mb-2">{mo.name}</p>
                           <div className="grid grid-cols-7 gap-0.5 mb-1">
                             {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
