@@ -501,6 +501,10 @@ export default function Profile() {
 
   const handleAddAddress = async () => {
     if (!user) return;
+    if (!addrCountry) { toast({ title: "Country required", description: "Please select a country.", variant: "destructive" }); return; }
+    if (!addrState) { toast({ title: "State required", description: "Please select a state.", variant: "destructive" }); return; }
+    if (!addrCity.trim()) { toast({ title: "City required", description: "Please enter a city.", variant: "destructive" }); return; }
+    if (!addrPincode.trim()) { toast({ title: "Pincode required", description: "Please enter a pincode.", variant: "destructive" }); return; }
     setAddressSaving(true);
     try {
       const token = await user.getIdToken();
