@@ -258,6 +258,67 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/devoteeKarta", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const token = authHeader.slice(7);
+      const verifiedUid = await verifyFirebaseTokenEarly(token);
+      if (!verifiedUid) {
+        return res.status(401).json({ error: "Invalid or expired token" });
+      }
+
+      const allowedFields = ["name", "nameK", "city", "rashiId", "gotra", "gotraK", "nakshatraId"];
+      const filtered: Record<string, string | number> = {};
+      for (const key of allowedFields) {
+        if (req.body[key] !== undefined) {
+          filtered[key] = req.body[key];
+        }
+      }
+
+      // Always use the server-verified UID — never trust client-supplied devoteeId
+      filtered.devoteeId = verifiedUid;
+
+      const response = await fetch(`${SRINGERI_API_URL}/api/devoteeKarta`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(filtered),
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to create karta" });
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        const jsonStart = text.indexOf('{');
+        if (jsonStart !== -1) {
+          data = JSON.parse(text.substring(jsonStart));
+        } else {
+          data = JSON.parse(text);
+        }
+      } catch {
+        data = { success: true };
+      }
+
+      if (data.status_code === 0) {
+        return res.status(422).json({ error: "Karta could not be created. Please try again." });
+      }
+
+      return res.json(data);
+    } catch (error) {
+      console.error("Error creating karta:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/devoteeKarta/:id", async (req, res) => {
     try {
       const authHeader = req.headers.authorization;

@@ -100,6 +100,7 @@ export default function Profile() {
   const [gotraTranslitTimer, setGotraTranslitTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [kartaDeleting, setKartaDeleting] = useState(false);
 
+  const [addingKarta, setAddingKarta] = useState(false);
   const [editingAddress, setEditingAddress] = useState<{ id: number } | null>(null);
   const [addingAddress, setAddingAddress] = useState(false);
   const [addressSaving, setAddressSaving] = useState(false);
@@ -424,6 +425,51 @@ export default function Profile() {
       toast({ title: "Delete Failed", description: message, variant: "destructive" });
     } finally {
       setAddressDeleting(false);
+    }
+  };
+
+  const openKartaAdd = () => {
+    setKartaName("");
+    setKartaNameK("");
+    setKartaCity("");
+    setKartaGotra("");
+    setKartaGotraK("");
+    setKartaNakshatraId("");
+    setKartaRashiId("");
+    setAddingKarta(true);
+  };
+
+  const handleAddKarta = async () => {
+    if (!user) return;
+    setKartaSaving(true);
+    try {
+      const token = await user.getIdToken();
+      const body: Record<string, string | number> = {
+        name: kartaName,
+        nameK: kartaNameK,
+        city: kartaCity,
+        gotra: kartaGotra,
+        gotraK: kartaGotraK,
+      };
+      if (kartaNakshatraId) body.nakshatraId = Number(kartaNakshatraId);
+      if (kartaRashiId) body.rashiId = Number(kartaRashiId);
+      const res = await fetch("/api/devoteeKarta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Failed to add karta");
+      }
+      toast({ title: "Karta Added", description: "New seva karta has been saved." });
+      setAddingKarta(false);
+      await refreshDevoteeData();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not add karta.";
+      toast({ title: "Add Failed", description: message, variant: "destructive" });
+    } finally {
+      setKartaSaving(false);
     }
   };
 
@@ -997,6 +1043,15 @@ export default function Profile() {
                         <CardTitle className="text-base font-serif flex items-center gap-2">
                           <Users className="h-4 w-4 text-primary" />
                           <span className="flex-1">Seva Kartas ({devoteeData?.kartas?.length || 0})</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 shrink-0 text-primary"
+                            onClick={(e) => { e.stopPropagation(); openKartaAdd(); }}
+                            data-testid="button-add-karta-header"
+                          >
+                            <Plus className="h-3.5 w-3.5 mr-1" /> Add
+                          </Button>
                           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${kartasOpen ? 'rotate-180' : ''}`} />
                         </CardTitle>
                       </CardHeader>
@@ -1032,7 +1087,12 @@ export default function Profile() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-kartas">No seva kartas saved</p>
+                          <div className="flex flex-col items-center gap-3 py-4">
+                            <p className="text-sm text-muted-foreground" data-testid="text-no-kartas">No seva kartas saved</p>
+                            <Button variant="outline" size="sm" onClick={openKartaAdd} data-testid="button-add-karta-empty">
+                              <Plus className="h-3.5 w-3.5 mr-1" /> Add Karta
+                            </Button>
+                          </div>
                         )}
                       </CardContent>
                     </CollapsibleContent>
@@ -1048,12 +1108,12 @@ export default function Profile() {
                           <span className="flex-1">Saved Addresses ({devoteeData?.addresses?.length || 0})</span>
                           <Button
                             variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 shrink-0"
+                            size="sm"
+                            className="h-7 px-2 shrink-0 text-primary"
                             onClick={(e) => { e.stopPropagation(); openAddressAdd(); }}
                             data-testid="button-add-address-header"
                           >
-                            <Plus className="h-4 w-4 text-primary" />
+                            <Plus className="h-3.5 w-3.5 mr-1" /> Add
                           </Button>
                           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${addressesOpen ? 'rotate-180' : ''}`} />
                         </CardTitle>
@@ -1247,6 +1307,62 @@ export default function Profile() {
                   {kartaSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save"}
                 </Button>
               </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={addingKarta} onOpenChange={(open) => { if (!open) { setAddingKarta(false); if (nameTranslitTimer) clearTimeout(nameTranslitTimer); if (gotraTranslitTimer) clearTimeout(gotraTranslitTimer); } }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-serif">Add Seva Karta</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto">
+              <div>
+                <Label htmlFor="new-karta-name" className="text-xs">Name</Label>
+                <Input id="new-karta-name" value={kartaName} onChange={(e) => handleKartaNameChange(e.target.value)} className="mt-1" data-testid="input-new-karta-name" />
+                {kartaNameK && <p className="text-xs text-muted-foreground mt-0.5">{kartaNameK}</p>}
+              </div>
+              <div>
+                <Label htmlFor="new-karta-city" className="text-xs">City</Label>
+                <Input id="new-karta-city" value={kartaCity} onChange={(e) => setKartaCity(e.target.value)} className="mt-1" data-testid="input-new-karta-city" />
+              </div>
+              <div>
+                <Label htmlFor="new-karta-gotra" className="text-xs">Gothra</Label>
+                <Input id="new-karta-gotra" value={kartaGotra} onChange={(e) => handleKartaGotraChange(e.target.value)} className="mt-1" data-testid="input-new-karta-gotra" />
+                {kartaGotraK && <p className="text-xs text-muted-foreground mt-0.5">{kartaGotraK}</p>}
+              </div>
+              <div>
+                <Label className="text-xs">Nakshatra</Label>
+                <Select value={kartaNakshatraId} onValueChange={handleNakshatraChange}>
+                  <SelectTrigger className="mt-1" data-testid="select-new-karta-nakshatra">
+                    <SelectValue placeholder="Select Nakshatra" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nakshatras.map(n => (
+                      <SelectItem key={n.id} value={String(n.id)}>{n.name} ({n.nameK})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Rashi</Label>
+                <Select value={kartaRashiId} onValueChange={setKartaRashiId}>
+                  <SelectTrigger className="mt-1" data-testid="select-new-karta-rashi">
+                    <SelectValue placeholder="Select Rashi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredRashis.map(r => (
+                      <SelectItem key={r.id} value={String(r.id)}>{r.name} ({r.nameK})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setAddingKarta(false)} data-testid="button-cancel-karta-add">Cancel</Button>
+              <Button size="sm" onClick={handleAddKarta} disabled={kartaSaving} data-testid="button-save-new-karta">
+                {kartaSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Add Karta"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
