@@ -108,13 +108,23 @@ app.use((req, res, next) => {
   return res.end(MAINTENANCE_HTML);
 });
 
-// Fastline subdomain redirect — runs after maintenance gate so bypass works
+// Subdomain redirects — runs after maintenance gate so bypass works
+// fastline.* → /fastline (all paths)
+// seva.* / donate.* / yatri.* / yatra.* → respective page when /home is hit by mistake
 app.use((req, res, next) => {
   const host = req.hostname || req.headers.host || "";
   const skipPaths = ["/api", "/fastline", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules"];
+
   if (host.startsWith("fastline.") && !skipPaths.some(p => req.path.startsWith(p))) {
     return res.redirect(301, "/fastline");
   }
+
+  if (req.path === "/home" || req.path === "/home/") {
+    if (host.startsWith("seva.")) return res.redirect(302, "/seva");
+    if (host.startsWith("donate.")) return res.redirect(302, "/donate");
+    if (host.startsWith("yatri.") || host.startsWith("yatra.")) return res.redirect(302, "/accommodation");
+  }
+
   next();
 });
 

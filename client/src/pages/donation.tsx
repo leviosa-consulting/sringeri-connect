@@ -944,7 +944,7 @@ export default function Donation() {
                   Make Another Donation
                 </button>
                 {!isServicesMode && (
-                  <button onClick={() => navigate("/home")}
+                  <button onClick={() => navigate("/donate")}
                     className="uppercase font-medium rounded-md border border-[#3d2000] text-[#3d2000] px-6 py-3 text-sm hover:bg-[#F7F2EC] transition-colors"
                     data-testid="button-ack-go-home">
                     Go Home
@@ -1375,7 +1375,7 @@ export default function Donation() {
         <div className="relative z-10">
           {!isServicesMode && (
             <button
-              onClick={() => navigate("/home")}
+              onClick={() => navigate("/donate")}
               className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
               data-testid="button-back-home"
             >
