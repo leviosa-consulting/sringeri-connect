@@ -802,6 +802,7 @@ export default function Accommodation() {
                 Details of 2 occupants are required to complete the booking.
               </p>
             </div>
+            <div className="grid sm:grid-cols-2 sm:gap-4">
             <Card>
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-4">
@@ -915,6 +916,7 @@ export default function Accommodation() {
                 </div>
               </CardContent>
             </Card>
+            </div>
 
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1 h-12" onClick={handleBack} data-testid="button-back-step2">
