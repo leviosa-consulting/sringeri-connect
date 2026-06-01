@@ -181,7 +181,6 @@ export default function Home() {
       const res = await fetch("/api/user/reconcile-pending", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ orderIds: pendingOrderIds }),
       });
       const data = await res.json();
       clearPendingPrompt();

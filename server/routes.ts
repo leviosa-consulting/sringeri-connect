@@ -3013,7 +3013,8 @@ export async function registerRoutes(
     }
   });
 
-  // User-facing reconcile: check the authenticated user's pending transaction orderIds and auto-resolve them
+  // User-facing reconcile: derives pending orderIds server-side from the user's own devotee
+  // data (no client-supplied IDs accepted), then checks Paytm and auto-resolves each one.
   app.post("/api/user/reconcile-pending", async (req, res) => {
     try {
       const authHeader = req.headers.authorization;
@@ -3024,15 +3025,40 @@ export async function registerRoutes(
       const uid = await verifyFirebaseTokenEarly(token);
       if (!uid) return res.status(401).json({ error: "Invalid token" });
 
-      const { orderIds } = req.body || {};
-      if (!Array.isArray(orderIds) || orderIds.length === 0) {
-        return res.status(400).json({ error: "orderIds array required" });
+      // Derive owned pending orderIds from the authenticated user's server-side data only.
+      // No client-supplied orderIds are used, eliminating IDOR risk.
+      const devoteeRes = await fetch(`${SRINGERI_API_URL}/api/onlineDevotee/${uid}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      if (!devoteeRes.ok) {
+        return res.status(502).json({ error: "Could not fetch user transactions" });
+      }
+      const devoteeData = await devoteeRes.json();
+      const allTxns: any[] = devoteeData?.allTransactions || [];
+
+      const pendingIds: string[] = allTxns
+        .filter((t: any) => {
+          const s = String(t.status ?? t.txnStatus ?? t.paymentStatus ?? t.state ?? "");
+          return s === "8" || s.toLowerCase() === "pending";
+        })
+        .map((t: any) => {
+          for (const k of ["paymentRef", "orderId", "orderID", "order_id", "txnId"]) {
+            if (t[k]) return String(t[k]);
+          }
+          return null;
+        })
+        .filter(Boolean) as string[];
+
+      if (pendingIds.length === 0) {
+        return res.json({ reconciled: 0, markedFailed: 0, pending: 0, errors: 0 });
       }
 
       const results = { reconciled: 0, markedFailed: 0, pending: 0, errors: 0 };
 
-      for (const orderId of orderIds.slice(0, 50)) {
-        if (typeof orderId !== "string" || !orderId) continue;
+      for (const orderId of pendingIds.slice(0, 50)) {
         try {
           const result = await paytmOrderStatus(orderId);
           if (!result) { results.errors++; continue; }
@@ -3053,7 +3079,7 @@ export async function registerRoutes(
             if (b.paymentMode) ackBody.PAYMENTMODE = String(b.paymentMode);
             if (b.bankName)    ackBody.BANKNAME    = String(b.bankName);
             if (b.currency)    ackBody.CURRENCY    = String(b.currency);
-            await fetch(`${SRINGERI_API_URL}/api/paymentAck`, {
+            const ackRes = await fetch(`${SRINGERI_API_URL}/api/paymentAck`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -3061,7 +3087,12 @@ export async function registerRoutes(
               },
               body: JSON.stringify(ackBody),
             });
-            results.reconciled++;
+            if (ackRes.ok) {
+              results.reconciled++;
+            } else {
+              console.error(`[user-reconcile] paymentAck failed for ${orderId}: HTTP ${ackRes.status}`);
+              results.errors++;
+            }
           } else if (paytmStatus === "PENDING") {
             results.pending++;
           } else {
@@ -3077,7 +3108,7 @@ export async function registerRoutes(
             if (b.paymentMode) failBody.PAYMENTMODE = String(b.paymentMode);
             if (b.bankName)    failBody.BANKNAME    = String(b.bankName);
             if (b.currency)    failBody.CURRENCY    = String(b.currency);
-            await fetch(`${SRINGERI_API_URL}/api/updateFailedTransaction`, {
+            const failRes = await fetch(`${SRINGERI_API_URL}/api/updateFailedTransaction`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -3085,7 +3116,12 @@ export async function registerRoutes(
               },
               body: JSON.stringify(failBody),
             });
-            results.markedFailed++;
+            if (failRes.ok) {
+              results.markedFailed++;
+            } else {
+              console.error(`[user-reconcile] updateFailedTransaction failed for ${orderId}: HTTP ${failRes.status}`);
+              results.errors++;
+            }
           }
         } catch (err) {
           console.error(`[user-reconcile] error for ${orderId}:`, err);
