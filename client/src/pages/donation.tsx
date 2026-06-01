@@ -1426,8 +1426,8 @@ export default function Donation() {
                         className="flex items-center gap-3 flex-1 text-left min-w-0"
                         data-testid={`button-featured-${featured.subcategory.id}`}
                       >
-                        <div className="bg-amber-100 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
-                          <DonationIcon name={featured.subcategory.name} sizeClass="h-5 w-5" colorClass="text-amber-700" />
+                        <div className="bg-primary/10 rounded-lg w-9 h-9 flex items-center justify-center shrink-0">
+                          <DonationIcon name={featured.subcategory.name} sizeClass="h-5 w-5" colorClass="text-primary" />
                         </div>
                         <span className="text-sm font-semibold text-foreground flex-1 leading-tight">{featured.subcategory.name}</span>
                       </button>
@@ -1536,7 +1536,7 @@ export default function Donation() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <DonationIcon name={sub.name} sizeClass="h-4 w-4 shrink-0" isSelected={isSubSelected} colorClass={isSubSelected ? "text-white/80" : "text-primary/60"} />
+                        <DonationIcon name={sub.name} sizeClass="h-4 w-4 shrink-0" isSelected={isSubSelected} colorClass={isSubSelected ? "text-white" : "text-primary"} />
                         <span className="text-sm font-medium leading-snug">
                           {sub.is80G === 0 ? `${sub.name} (non-80G)` : sub.name}
                         </span>
