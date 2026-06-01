@@ -163,6 +163,12 @@ function ActionCell({ orderId, rowState, onResolve, onRetryAck, onRetryMarkFaile
                   : JSON.stringify(detail.failResponse)}
               </span>
             )}
+            <button
+              onClick={onResolve}
+              className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/70 transition-colors"
+            >
+              Re-check
+            </button>
           </div>
         )}
 

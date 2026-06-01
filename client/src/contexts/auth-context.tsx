@@ -182,10 +182,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
           const allTxns: any[] = data.allTransactions || [];
+          const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
           const pendingIds = allTxns
             .filter((t: any) => {
               const s = String(t.status ?? t.txnStatus ?? t.paymentStatus ?? t.state ?? "");
-              return s === "8" || s.toLowerCase() === "pending";
+              if (!(s === "8" || s.toLowerCase() === "pending")) return false;
+              // Only prompt for transactions up to 3 days old
+              const rawDate = t.txnDate || t.createdAt || t.date || t.bookingDate ||
+                t.transactionDate || t.paymentDate || t.createdDate;
+              if (!rawDate) return true; // unknown date — include to avoid silent misses
+              try {
+                const ms = new Date(rawDate).getTime();
+                return isNaN(ms) || ms >= threeDaysAgo;
+              } catch { return true; }
             })
             .map((t: any) => {
               for (const k of ["paymentRef", "orderId", "orderID", "order_id", "txnId"]) {
