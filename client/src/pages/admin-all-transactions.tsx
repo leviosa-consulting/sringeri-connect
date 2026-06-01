@@ -227,6 +227,7 @@ export default function AdminAllTransactions() {
   const [searched, setSearched] = useState(false);
   const [filter, setFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "success" | "pending" | "failed">("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [bulkRunning, setBulkRunning] = useState(false);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
 
@@ -242,6 +243,7 @@ export default function AdminAllTransactions() {
     setLoadError(null);
     setFilter("");
     setStatusFilter("all");
+    setTypeFilter("all");
     setRowStates({});
     try {
       const token = await getToken();
@@ -410,12 +412,21 @@ export default function AdminAllTransactions() {
     return true;
   };
 
-  const filtered = transactions.filter(t =>
-    matchesStatusFilter(t) &&
-    (!filter.trim() || Object.values(t).some(v =>
+  const uniqueTypes = Array.from(new Set(
+    transactions.map(t => getField(t, "type", "category", "txnType", "serviceType")).filter(v => v && v !== "—")
+  )).sort();
+
+  const filtered = transactions.filter(t => {
+    if (!matchesStatusFilter(t)) return false;
+    if (typeFilter !== "all") {
+      const txnType = getField(t, "type", "category", "txnType", "serviceType");
+      if (txnType !== typeFilter) return false;
+    }
+    if (filter.trim() && !Object.values(t).some(v =>
       String(v ?? "").toLowerCase().includes(filter.toLowerCase())
-    ))
-  );
+    )) return false;
+    return true;
+  });
 
   const countByStatus = (code: string) =>
     transactions.filter(t => {
@@ -559,6 +570,29 @@ export default function AdminAllTransactions() {
               {bulkRunning ? "Checking…" : "Check & Reconcile All"}
             </Button>
           </div>
+
+          {uniqueTypes.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground font-medium shrink-0">Type:</span>
+              <button
+                onClick={() => setTypeFilter("all")}
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${typeFilter === "all" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+                data-testid="filter-type-all"
+              >
+                All
+              </button>
+              {uniqueTypes.map(type => (
+                <button
+                  key={type}
+                  onClick={() => setTypeFilter(typeFilter === type ? "all" : type)}
+                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${typeFilter === type ? "bg-primary text-white" : "bg-primary/10 text-primary hover:bg-primary/20"}`}
+                  data-testid={`filter-type-${type}`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
