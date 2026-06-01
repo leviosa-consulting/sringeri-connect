@@ -2,15 +2,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { RangoliLoader } from "@/components/rangoli-loader";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
 interface Rashi {
@@ -39,7 +30,6 @@ export default function Fastline() {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [showWarning, setShowWarning] = useState(true);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [ackData, setAckData] = useState<{ txnId: string; orderId: string; amount: string; sevaNames: string[] } | null>(null);
 
@@ -352,20 +342,6 @@ export default function Fastline() {
 
   return (
     <div className="min-h-screen bg-[#F7F2EC]" data-testid="fastline-public">
-      <AlertDialog open={showWarning} onOpenChange={setShowWarning}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif">Today's Seva</AlertDialogTitle>
-            <AlertDialogDescription>
-              Please confirm before proceeding with today's seva booking.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => window.history.back()} data-testid="button-fl-cancel">Go Back</AlertDialogCancel>
-            <Button onClick={() => setShowWarning(false)} data-testid="button-fl-continue">Continue</Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       <div className="px-4 pt-6 pb-4">
         <div className="max-w-2xl mx-auto flex justify-center">
           <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
