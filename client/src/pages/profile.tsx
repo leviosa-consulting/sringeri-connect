@@ -134,6 +134,7 @@ export default function Profile() {
 
   const [allTxnsOpen, setAllTxnsOpen] = useState(false);
   const [allTxnsShown, setAllTxnsShown] = useState(PAGE_SIZE);
+  const [txnCheckStates, setTxnCheckStates] = useState<Record<string, "checking" | "reconciled" | "confirmed_failed" | "pending" | "error">>({});
 
   const displayName = devoteeData?.name || profile?.name || user?.displayName || "Devotee";
   const email = devoteeData?.email || profile?.email || user?.email || "";
@@ -162,6 +163,43 @@ export default function Profile() {
   };
 
   const { toast } = useToast();
+
+  const checkAndResolveTxn = async (orderId: string) => {
+    if (!user || txnCheckStates[orderId] === "checking") return;
+    setTxnCheckStates(prev => ({ ...prev, [orderId]: "checking" }));
+    try {
+      const token = await user.getIdToken();
+      if (!token) throw new Error("Not authenticated");
+      const res = await fetch("/api/user/check-transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTxnCheckStates(prev => ({ ...prev, [orderId]: "error" }));
+        toast({ title: "Check failed", description: data?.error || "Could not reach Paytm. Try again.", variant: "destructive" });
+        return;
+      }
+      const outcome = data.outcome as string;
+      if (outcome === "reconciled") {
+        setTxnCheckStates(prev => ({ ...prev, [orderId]: "reconciled" }));
+        toast({ title: "Transaction reconciled ✓", description: "Payment confirmed on Paytm and updated." });
+      } else if (outcome === "pending") {
+        setTxnCheckStates(prev => ({ ...prev, [orderId]: "pending" }));
+        toast({ title: "Still pending", description: "Payment is still being processed. Check again later.", variant: "default" });
+      } else if (outcome === "confirmed_failed") {
+        setTxnCheckStates(prev => ({ ...prev, [orderId]: "confirmed_failed" }));
+        toast({ title: "Transaction confirmed failed", description: "Paytm confirmed failure. Record updated.", variant: "destructive" });
+      } else {
+        setTxnCheckStates(prev => ({ ...prev, [orderId]: "error" }));
+        toast({ title: "Could not update", description: data?.error || "Check status, but update step failed.", variant: "destructive" });
+      }
+    } catch (err: any) {
+      setTxnCheckStates(prev => ({ ...prev, [orderId]: "error" }));
+      toast({ title: "Check failed", description: err?.message || "Network error.", variant: "destructive" });
+    }
+  };
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -831,30 +869,59 @@ export default function Profile() {
                                 const isSuccess = rawStatus === "1" || rawStatus.toLowerCase() === "success" || rawStatus.toLowerCase() === "txn_success";
                                 const isPending = rawStatus === "8" || rawStatus.toLowerCase() === "pending";
                                 const isFailed = rawStatus === "9" || rawStatus.toLowerCase().includes("fail");
+                                const checkState = orderId !== "—" ? txnCheckStates[orderId] : undefined;
+                                const showCheckBtn = (isFailed || isPending) && orderId !== "—" && checkState !== "reconciled" && checkState !== "confirmed_failed";
                                 return (
-                                  <div key={orderId !== "—" ? orderId : idx} className="flex items-start justify-between py-2 border-b last:border-0 gap-2" data-testid={`row-txn-${idx}`}>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        {isSuccess && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />}
-                                        {isPending && <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
-                                        {isFailed && <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
-                                        <span className="font-medium text-sm">{type !== "—" ? type : "Transaction"}</span>
+                                  <div key={orderId !== "—" ? orderId : idx} className="py-2 border-b last:border-0" data-testid={`row-txn-${idx}`}>
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          {isSuccess && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />}
+                                          {isPending && <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+                                          {isFailed && <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+                                          <span className="font-medium text-sm">{type !== "—" ? type : "Transaction"}</span>
+                                        </div>
+                                        {orderId !== "—" && (
+                                          <div className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">{orderId}</div>
+                                        )}
+                                        {date !== "—" && (
+                                          <div className="text-xs text-muted-foreground mt-0.5">{date}</div>
+                                        )}
                                       </div>
-                                      {orderId !== "—" && (
-                                        <div className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">{orderId}</div>
-                                      )}
-                                      {date !== "—" && (
-                                        <div className="text-xs text-muted-foreground mt-0.5">{date}</div>
-                                      )}
-                                    </div>
-                                    <div className="text-right shrink-0">
-                                      {amount !== "—" && (
-                                        <div className="font-medium text-sm text-primary">₹{amount}</div>
-                                      )}
-                                      <div className={`text-[10px] font-medium mt-0.5 ${isSuccess ? "text-green-600" : isPending ? "text-amber-600" : isFailed ? "text-red-500" : "text-muted-foreground"}`}>
-                                        {isSuccess ? "Success" : isPending ? "Pending" : isFailed ? "Failed" : rawStatus}
+                                      <div className="text-right shrink-0">
+                                        {amount !== "—" && (
+                                          <div className="font-medium text-sm text-primary">₹{amount}</div>
+                                        )}
+                                        <div className={`text-[10px] font-medium mt-0.5 ${
+                                          checkState === "reconciled" ? "text-green-600"
+                                          : checkState === "confirmed_failed" ? "text-red-600"
+                                          : checkState === "pending" ? "text-amber-600"
+                                          : isSuccess ? "text-green-600" : isPending ? "text-amber-600" : isFailed ? "text-red-500" : "text-muted-foreground"
+                                        }`}>
+                                          {checkState === "reconciled" ? "Reconciled ✓"
+                                            : checkState === "confirmed_failed" ? "Confirmed Failed"
+                                            : checkState === "pending" ? "Still Pending"
+                                            : isSuccess ? "Success" : isPending ? "Pending" : isFailed ? "Failed" : rawStatus}
+                                        </div>
                                       </div>
                                     </div>
+                                    {showCheckBtn && (
+                                      <div className="mt-1.5">
+                                        {checkState === "checking" ? (
+                                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                            <Loader2 className="h-3 w-3 animate-spin" /> Checking…
+                                          </span>
+                                        ) : (
+                                          <button
+                                            onClick={() => checkAndResolveTxn(orderId)}
+                                            className="text-[11px] px-2.5 py-1 rounded-md bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-colors"
+                                            data-testid={`button-check-txn-${orderId}`}
+                                          >
+                                            {checkState === "error" ? "Retry Check" : "Check & Resolve"}
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}

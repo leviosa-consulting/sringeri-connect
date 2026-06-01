@@ -3146,6 +3146,115 @@ export async function registerRoutes(
     }
   });
 
+  // Check and resolve a single transaction for the authenticated user.
+  // Verifies ownership server-side before touching Paytm — no IDOR risk.
+  app.post("/api/user/check-transaction", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const token = authHeader.slice(7);
+      const uid = await verifyFirebaseTokenEarly(token);
+      if (!uid) return res.status(401).json({ error: "Invalid token" });
+
+      const { orderId } = req.body || {};
+      if (!orderId || typeof orderId !== "string") {
+        return res.status(400).json({ error: "orderId required" });
+      }
+
+      // Verify ownership — orderId must exist in user's own allTransactions
+      const devoteeRes = await fetch(`${SRINGERI_API_URL}/api/onlineDevotee/${uid}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      if (!devoteeRes.ok) {
+        return res.status(502).json({ error: "Could not fetch user transactions" });
+      }
+      const devoteeData = await devoteeRes.json();
+      const allTxns: any[] = devoteeData?.allTransactions || [];
+      const owned = allTxns.some((t: any) => {
+        for (const k of ["paymentRef", "orderId", "orderID", "order_id", "txnId"]) {
+          if (t[k] && String(t[k]) === orderId) return true;
+        }
+        return false;
+      });
+      if (!owned) {
+        return res.status(403).json({ error: "Transaction not found for this user" });
+      }
+
+      const result = await paytmOrderStatus(orderId);
+      if (!result) {
+        return res.status(502).json({ error: "Could not reach Paytm" });
+      }
+      const b = result.body || {};
+      const ri = b.resultInfo || {};
+      const paytmStatus = ri.resultStatus;
+
+      if (paytmStatus === "TXN_SUCCESS") {
+        const ackBody: Record<string, string> = {
+          ORDERID: orderId, STATUS: "TXN_SUCCESS",
+          RESPCODE: String(ri.resultCode ?? "01"),
+          RESPMSG: ri.resultMsg || "Txn Success",
+        };
+        if (b.txnId)       ackBody.TXNID       = String(b.txnId);
+        if (b.bankTxnId)   ackBody.BANKTXNID   = String(b.bankTxnId);
+        if (b.txnAmount)   ackBody.TXNAMOUNT   = String(b.txnAmount);
+        if (b.txnDate)     ackBody.TXNDATE     = String(b.txnDate);
+        if (b.paymentMode) ackBody.PAYMENTMODE = String(b.paymentMode);
+        if (b.bankName)    ackBody.BANKNAME    = String(b.bankName);
+        if (b.currency)    ackBody.CURRENCY    = String(b.currency);
+        const ackRes = await fetch(`${SRINGERI_API_URL}/api/paymentAck`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+          },
+          body: JSON.stringify(ackBody),
+        });
+        if (ackRes.ok) {
+          return res.json({ outcome: "reconciled", paytmStatus, msg: ri.resultMsg });
+        }
+        return res.status(502).json({ outcome: "ack_failed", error: "ACK step failed", paytmStatus });
+      }
+
+      if (paytmStatus === "PENDING") {
+        return res.json({ outcome: "pending", paytmStatus, msg: ri.resultMsg });
+      }
+
+      // Paytm confirmed failure
+      const failBody: Record<string, string> = {
+        ORDERID: orderId, STATUS: paytmStatus || "TXN_FAILURE",
+        RESPCODE: String(ri.resultCode ?? ""),
+        RESPMSG: ri.resultMsg || "Transaction Failed",
+      };
+      if (b.txnId)       failBody.TXNID       = String(b.txnId);
+      if (b.bankTxnId)   failBody.BANKTXNID   = String(b.bankTxnId);
+      if (b.txnAmount)   failBody.TXNAMOUNT   = String(b.txnAmount);
+      if (b.txnDate)     failBody.TXNDATE     = String(b.txnDate);
+      if (b.paymentMode) failBody.PAYMENTMODE = String(b.paymentMode);
+      if (b.bankName)    failBody.BANKNAME    = String(b.bankName);
+      if (b.currency)    failBody.CURRENCY    = String(b.currency);
+      const failRes = await fetch(`${SRINGERI_API_URL}/api/updateFailedTransaction`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(failBody),
+      });
+      if (failRes.ok) {
+        return res.json({ outcome: "confirmed_failed", paytmStatus, msg: ri.resultMsg });
+      }
+      return res.status(502).json({ outcome: "mark_failed_error", error: "Failed to update record", paytmStatus });
+    } catch (error) {
+      console.error("Error in user check-transaction:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/paytm-callback", async (req, res) => {
     try {
       const paytmResponse = req.body;
