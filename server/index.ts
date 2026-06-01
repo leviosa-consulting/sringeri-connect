@@ -115,6 +115,11 @@ app.use((req, res, next) => {
   const host = req.hostname || req.headers.host || "";
   const skipPaths = ["/api", "/fastline", "/payment-result", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules"];
 
+  if (host.startsWith("fastline.") && req.path.startsWith("/kiosk")) {
+    const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+    return res.redirect(301, `https://dssp.lcpl.in${req.path}${qs}`);
+  }
+
   if (host.startsWith("fastline.") && !skipPaths.some(p => req.path.startsWith(p))) {
     return res.redirect(301, "/fastline");
   }
