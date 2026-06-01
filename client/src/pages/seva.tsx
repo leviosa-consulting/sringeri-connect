@@ -230,7 +230,7 @@ function formatDate(dateString: string): string {
 export default function Seva() {
   const { user, devoteeData } = useAuth();
   const [, navigate] = useLocation();
-  const { isServicesMode } = useSubdomainMode();
+  const { isServicesMode, homeRoute } = useSubdomainMode();
 
   const [selectedSevaType, setSelectedSevaType] = useState<SevaType | null>(null);
   const [step, setStep] = useState<"home" | "select" | "karta" | "address" | "review" | "payee">("home");
@@ -2834,7 +2834,7 @@ export default function Seva() {
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10">
           {!isServicesMode && (
-            <button onClick={() => navigate("/seva")}
+            <button onClick={() => navigate(homeRoute)}
               className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3" data-testid="button-back-home">
               <ArrowLeft className="h-4 w-4" /> Home
             </button>

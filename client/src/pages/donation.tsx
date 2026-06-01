@@ -420,7 +420,7 @@ function getIconForName(name: string): LucideIcon {
 export default function Donation() {
   const { user, devoteeData } = useAuth();
   const [, navigate] = useLocation();
-  const { isServicesMode } = useSubdomainMode();
+  const { isServicesMode, homeRoute } = useSubdomainMode();
 
   const [step, setStep] = useState<"select" | "review" | "payee">("select");
   const [selectedHeading, setSelectedHeading] = useState<DonationHeading | null>(null);
@@ -945,7 +945,7 @@ export default function Donation() {
                   Make Another Donation
                 </button>
                 {!isServicesMode && (
-                  <button onClick={() => navigate("/donation")}
+                  <button onClick={() => navigate(homeRoute)}
                     className="uppercase font-medium rounded-md border border-[#3d2000] text-[#3d2000] px-6 py-3 text-sm hover:bg-[#F7F2EC] transition-colors"
                     data-testid="button-ack-go-home">
                     Go Home
@@ -1376,12 +1376,12 @@ export default function Donation() {
         <div className="relative z-10">
           {!isServicesMode && (
             <button
-              onClick={() => navigate("/donation")}
+              onClick={() => navigate(homeRoute)}
               className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
               data-testid="button-back-home"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back
+              Home
             </button>
           )}
           <div className="flex items-center gap-3">
