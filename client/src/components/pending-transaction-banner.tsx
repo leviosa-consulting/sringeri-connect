@@ -17,7 +17,7 @@ export function PendingTransactionBanner({ typeKeywords, sessionKey, label }: Pr
 
   if (!user || user.isAnonymous || dismissed) return null;
 
-  const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+  const cutoff = new Date("2026-06-01").getTime();
   const allTxns: any[] = devoteeData?.allTransactions || [];
 
   const pendingCount = allTxns.filter((t: any) => {
@@ -29,7 +29,7 @@ export function PendingTransactionBanner({ typeKeywords, sessionKey, label }: Pr
     if (rawDate) {
       try {
         const ms = new Date(rawDate).getTime();
-        if (!isNaN(ms) && ms < threeDaysAgo) return false;
+        if (!isNaN(ms) && ms < cutoff) return false;
       } catch {}
     }
 
