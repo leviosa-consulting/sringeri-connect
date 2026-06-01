@@ -224,6 +224,7 @@ export default function AdminAllTransactions() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [filter, setFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "success" | "pending" | "failed">("all");
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
 
   const setRow = (orderId: string, state: RowState) =>
@@ -237,6 +238,7 @@ export default function AdminAllTransactions() {
     setLoading(true);
     setLoadError(null);
     setFilter("");
+    setStatusFilter("all");
     setRowStates({});
     try {
       const token = await getToken();
@@ -354,13 +356,21 @@ export default function AdminAllTransactions() {
     }
   }
 
-  const filtered = filter.trim()
-    ? transactions.filter(t =>
-        Object.values(t).some(v =>
-          String(v ?? "").toLowerCase().includes(filter.toLowerCase())
-        )
-      )
-    : transactions;
+  const matchesStatusFilter = (t: Transaction) => {
+    if (statusFilter === "all") return true;
+    const s = getField(t, "status", "txnStatus", "paymentStatus", "state");
+    if (statusFilter === "success") return s === "1" || s.toLowerCase() === "success" || s.toLowerCase() === "txn_success";
+    if (statusFilter === "pending") return s === "8" || s.toLowerCase() === "pending";
+    if (statusFilter === "failed") return s === "9" || s.toLowerCase().includes("fail");
+    return true;
+  };
+
+  const filtered = transactions.filter(t =>
+    matchesStatusFilter(t) &&
+    (!filter.trim() || Object.values(t).some(v =>
+      String(v ?? "").toLowerCase().includes(filter.toLowerCase())
+    ))
+  );
 
   const countByStatus = (code: string) =>
     transactions.filter(t => {
@@ -462,18 +472,34 @@ export default function AdminAllTransactions() {
       ) : searched && transactions.length > 0 ? (
         <>
           <div className="flex gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+            <button
+              onClick={() => setStatusFilter(statusFilter === "success" ? "all" : "success")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === "success" ? "bg-green-600 text-white" : "bg-green-50 text-green-700 hover:bg-green-100"}`}
+              data-testid="filter-success"
+            >
               <CheckCircle2 className="h-3 w-3" /> Success: {countByStatus("1")}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+            </button>
+            <button
+              onClick={() => setStatusFilter(statusFilter === "pending" ? "all" : "pending")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === "pending" ? "bg-amber-500 text-white" : "bg-amber-50 text-amber-700 hover:bg-amber-100"}`}
+              data-testid="filter-pending"
+            >
               <Clock className="h-3 w-3" /> Pending: {countByStatus("8")}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
+            </button>
+            <button
+              onClick={() => setStatusFilter(statusFilter === "failed" ? "all" : "failed")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === "failed" ? "bg-red-600 text-white" : "bg-red-50 text-red-700 hover:bg-red-100"}`}
+              data-testid="filter-failed"
+            >
               <XCircle className="h-3 w-3" /> Failed: {countByStatus("9")}
-            </span>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+            </button>
+            <button
+              onClick={() => setStatusFilter("all")}
+              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === "all" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+              data-testid="filter-all"
+            >
               Total: {transactions.length}
-            </span>
+            </button>
           </div>
 
           <div className="relative">
