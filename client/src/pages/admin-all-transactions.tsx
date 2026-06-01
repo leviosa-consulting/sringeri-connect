@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { RangoliLoader } from "@/components/rangoli-loader";
 import { useAuth } from "@/contexts/auth-context";
-import { ArrowLeft, RefreshCw, AlertCircle, Search, ListFilter, CheckCircle2, Clock, XCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, AlertCircle, Search, ListFilter, CheckCircle2, Clock, XCircle, Loader2, PlayCircle } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -76,12 +76,13 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed }: {
+function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed, bulkRunning }: {
   orderId: string;
   rowState: RowState;
   onCheck: () => void;
   onAck: () => void;
   onMarkFailed: () => void;
+  bulkRunning: boolean;
 }) {
   if (orderId === "—") return <td className="px-3 py-3" />;
 
@@ -93,7 +94,8 @@ function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed }: {
         {(status === "idle") && (
           <button
             onClick={onCheck}
-            className="text-xs px-2.5 py-1 rounded bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-colors"
+            disabled={bulkRunning}
+            className="text-xs px-2.5 py-1 rounded bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             data-testid={`button-check-${orderId}`}
           >
             Check Status
@@ -225,6 +227,7 @@ export default function AdminAllTransactions() {
   const [searched, setSearched] = useState(false);
   const [filter, setFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "success" | "pending" | "failed">("all");
+  const [bulkRunning, setBulkRunning] = useState(false);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
 
   const setRow = (orderId: string, state: RowState) =>
@@ -264,7 +267,7 @@ export default function AdminAllTransactions() {
     }
   }, [isAdmin, getToken, fromDate, toDate]);
 
-  async function checkStatus(orderId: string) {
+  async function checkStatus(orderId: string, silent = false): Promise<RowStatus> {
     setRow(orderId, { status: "checking" });
     try {
       const token = await getToken();
@@ -278,30 +281,32 @@ export default function AdminAllTransactions() {
       if (!res.ok) {
         const s: RowState = { status: "failed", message: data?.error || `HTTP ${res.status}` };
         setRow(orderId, s);
-        toast({ title: `Check failed`, description: data?.error || `HTTP ${res.status}`, variant: "destructive" });
-        return;
+        if (!silent) toast({ title: `Check failed`, description: data?.error || `HTTP ${res.status}`, variant: "destructive" });
+        return "failed";
       }
       const paytmStatus = String(data?.status || "UNKNOWN");
       let next: RowState;
       if (paytmStatus === "TXN_SUCCESS") {
         next = { status: "success", message: data.resultMsg, detail: data };
-        toast({ title: `Order …${orderId.slice(-8)}: Success on Paytm`, description: data.resultMsg || "Ready to reconcile" });
+        if (!silent) toast({ title: `Order …${orderId.slice(-8)}: Success on Paytm`, description: data.resultMsg || "Ready to reconcile" });
       } else if (paytmStatus === "PENDING") {
         next = { status: "pending", message: data.resultMsg, detail: data };
-        toast({ title: `Order …${orderId.slice(-8)}: Still Pending`, description: data.resultMsg || "Try again later", variant: "default" });
+        if (!silent) toast({ title: `Order …${orderId.slice(-8)}: Still Pending`, description: data.resultMsg || "Try again later", variant: "default" });
       } else {
         next = { status: "failed", message: data.resultMsg || paytmStatus, detail: data };
-        toast({ title: `Order …${orderId.slice(-8)}: Failed on Paytm`, description: data.resultMsg || paytmStatus, variant: "destructive" });
+        if (!silent) toast({ title: `Order …${orderId.slice(-8)}: Failed on Paytm`, description: data.resultMsg || paytmStatus, variant: "destructive" });
       }
       setRow(orderId, next);
+      return next.status;
     } catch (err: any) {
       const s: RowState = { status: "failed", message: err?.message || "Check failed" };
       setRow(orderId, s);
-      toast({ title: "Status check error", description: s.message, variant: "destructive" });
+      if (!silent) toast({ title: "Status check error", description: s.message, variant: "destructive" });
+      return "failed";
     }
   }
 
-  async function sendAck(orderId: string) {
+  async function sendAck(orderId: string, silent = false): Promise<RowStatus> {
     setRow(orderId, { status: "acking" });
     try {
       const token = await getToken();
@@ -315,16 +320,56 @@ export default function AdminAllTransactions() {
       if (!res.ok) {
         const s: RowState = { status: "ack_failed", message: data?.error || `HTTP ${res.status}` };
         setRow(orderId, s);
-        toast({ title: "Reconcile failed", description: data?.error || `HTTP ${res.status}`, variant: "destructive" });
-        return;
+        if (!silent) toast({ title: "Reconcile failed", description: data?.error || `HTTP ${res.status}`, variant: "destructive" });
+        return "ack_failed";
       }
       setRow(orderId, { status: "acked", message: "Acknowledged", detail: data });
-      toast({ title: `Order …${orderId.slice(-8)}: Reconciled`, description: "Payment acknowledged successfully." });
+      if (!silent) toast({ title: `Order …${orderId.slice(-8)}: Reconciled`, description: "Payment acknowledged successfully." });
+      return "acked";
     } catch (err: any) {
       const s: RowState = { status: "ack_failed", message: err?.message || "ACK failed" };
       setRow(orderId, s);
-      toast({ title: "Reconcile error", description: s.message, variant: "destructive" });
+      if (!silent) toast({ title: "Reconcile error", description: s.message, variant: "destructive" });
+      return "ack_failed";
     }
+  }
+
+  async function checkAndReconcileAll() {
+    setBulkRunning(true);
+    let successCount = 0, pendingCount = 0, failedCount = 0, ackedCount = 0, ackFailCount = 0, skippedCount = 0;
+    for (const t of filtered) {
+      const orderId = getField(t, "paymentRef", "orderId", "orderID", "order_id", "txnId");
+      if (orderId === "—") continue;
+      // Skip rows already acted on in this session
+      const currentState = rowStates[orderId]?.status ?? "idle";
+      if (currentState !== "idle") continue;
+      // Skip transactions that are already confirmed successful (status=1) — no need to hit Paytm
+      const txnStatus = getField(t, "status", "txnStatus", "paymentStatus", "state");
+      const alreadySuccess = txnStatus === "1" || txnStatus.toLowerCase() === "success" || txnStatus.toLowerCase() === "txn_success";
+      if (alreadySuccess) { skippedCount++; continue; }
+
+      const checked = await checkStatus(orderId, true);
+      if (checked === "success") {
+        successCount++;
+        const acked = await sendAck(orderId, true);
+        if (acked === "acked") ackedCount++;
+        else ackFailCount++;
+      } else if (checked === "pending") {
+        pendingCount++;
+      } else {
+        failedCount++;
+      }
+    }
+    setBulkRunning(false);
+    const parts = [];
+    if (successCount) parts.push(`${successCount} success (${ackedCount} reconciled${ackFailCount ? `, ${ackFailCount} ack failed` : ""})`);
+    if (pendingCount) parts.push(`${pendingCount} pending`);
+    if (failedCount) parts.push(`${failedCount} failed`);
+    if (skippedCount) parts.push(`${skippedCount} already-success skipped`);
+    toast({
+      title: "Check & Reconcile complete",
+      description: parts.length ? parts.join(", ") : "No idle transactions to process",
+    });
   }
 
   async function markFailed(orderId: string) {
@@ -500,6 +545,19 @@ export default function AdminAllTransactions() {
             >
               Total: {transactions.length}
             </button>
+            <Button
+              size="sm"
+              onClick={checkAndReconcileAll}
+              disabled={bulkRunning || filtered.filter(t => {
+                const id = getField(t, "paymentRef", "orderId", "orderID", "order_id", "txnId");
+                return (rowStates[id]?.status ?? "idle") === "idle";
+              }).length === 0}
+              className="ml-auto"
+              data-testid="button-check-reconcile-all"
+            >
+              {bulkRunning ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <PlayCircle className="h-4 w-4 mr-1.5" />}
+              {bulkRunning ? "Checking…" : "Check & Reconcile All"}
+            </Button>
           </div>
 
           <div className="relative">
@@ -567,6 +625,7 @@ export default function AdminAllTransactions() {
                           onCheck={() => checkStatus(orderId)}
                           onAck={() => sendAck(orderId)}
                           onMarkFailed={() => markFailed(orderId)}
+                          bulkRunning={bulkRunning}
                         />
                       </tr>
                     );
