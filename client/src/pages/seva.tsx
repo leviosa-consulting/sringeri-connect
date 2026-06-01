@@ -14,6 +14,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/auth-context";
+import { PendingTransactionBanner } from "@/components/pending-transaction-banner";
 import { useLocation } from "wouter";
 import { useSubdomainMode } from "@/contexts/subdomain-mode-context";
 import {
@@ -2847,6 +2848,12 @@ export default function Seva() {
           </div>
         </div>
       </div>
+
+      <PendingTransactionBanner
+        typeKeywords={["seva", "puja", "archana", "abhisheka", "homa"]}
+        sessionKey="ssp_pending_seva_checked"
+        label="seva"
+      />
 
       <div className="px-4 mt-4 space-y-4">
         {!selectedCentre && (

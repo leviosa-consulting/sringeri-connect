@@ -15,6 +15,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/auth-context";
+import { PendingTransactionBanner } from "@/components/pending-transaction-banner";
 import { useLocation } from "wouter";
 import { useSubdomainMode } from "@/contexts/subdomain-mode-context";
 import {
@@ -1392,6 +1393,12 @@ export default function Donation() {
           </div>
         </div>
       </div>
+
+      <PendingTransactionBanner
+        typeKeywords={["donation", "donate", "daan"]}
+        sessionKey="ssp_pending_donation_checked"
+        label="donation"
+      />
 
       <div className="px-4 mt-4 space-y-4">
         {donationDataLoading && (

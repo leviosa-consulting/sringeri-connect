@@ -14,6 +14,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/auth-context";
+import { PendingTransactionBanner } from "@/components/pending-transaction-banner";
 import { useLocation } from "wouter";
 import { useSubdomainMode } from "@/contexts/subdomain-mode-context";
 import {
@@ -551,6 +552,12 @@ export default function Accommodation() {
           Payment debited but no confirmation? Please wait or email <a href="mailto:online@sringeri.net" className="underline font-bold">online@sringeri.net</a>. <span className="font-bold">DO NOT RE-BOOK.</span>
         </p>
       </div>
+
+      <PendingTransactionBanner
+        typeKeywords={["accommodation", "room", "booking", "reservation", "yatri"]}
+        sessionKey="ssp_pending_accom_checked"
+        label="accommodation"
+      />
 
       {/* Step Progress Bar */}
       <div className="px-4 pt-4 pb-2">
