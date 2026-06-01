@@ -109,6 +109,7 @@ interface DevoteeData {
   pastSevas: PastSeva[];
   pastDonations: PastDonation[];
   pastAccommodations: PastAccommodation[];
+  allTransactions?: any[];
   sevaBookingSummary: {
     totalSeva: number;
     totalSevaAmount: string | number | null;
@@ -134,6 +135,8 @@ interface AuthContextType {
   signInAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
   getToken: () => Promise<string | null>;
+  pendingOrderIds: string[];
+  clearPendingPrompt: () => void;
   refreshDevoteeData: () => Promise<void>;
 }
 
@@ -155,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [devoteeLoading, setDevoteeLoading] = useState(false);
   const [localAvatar, setLocalAvatar] = useState<string | null>(null);
+  const [pendingOrderIds, setPendingOrderIds] = useState<string[]>([]);
 
   const fetchDevoteeData = async (firebaseUser: User) => {
     setDevoteeLoading(true);
@@ -175,7 +179,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log("Raw pastAccommodations:", JSON.stringify(data.pastAccommodations));
         }
         setDevoteeData(data);
-        
+
+        try {
+          const allTxns: any[] = data.allTransactions || [];
+          const pendingIds = allTxns
+            .filter((t: any) => {
+              const s = String(t.status ?? t.txnStatus ?? t.paymentStatus ?? t.state ?? "");
+              return s === "8" || s.toLowerCase() === "pending";
+            })
+            .map((t: any) => {
+              for (const k of ["paymentRef", "orderId", "orderID", "order_id", "txnId"]) {
+                if (t[k]) return String(t[k]);
+              }
+              return null;
+            })
+            .filter(Boolean) as string[];
+          if (pendingIds.length > 0 && !sessionStorage.getItem("ssp_pending_checked")) {
+            setPendingOrderIds(pendingIds);
+          }
+        } catch {}
+
         // Update profile with devotee data if available
         if (data.name) {
           setProfile({
@@ -255,10 +278,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loginAsGuest();
   };
 
+  const clearPendingPrompt = () => {
+    setPendingOrderIds([]);
+    try { sessionStorage.setItem("ssp_pending_checked", "1"); } catch {}
+  };
+
   const logout = async () => {
     await firebaseLogout();
     setProfile(null);
     setDevoteeData(null);
+    setPendingOrderIds([]);
+    try { sessionStorage.removeItem("ssp_pending_checked"); } catch {}
   };
 
   const getToken = async () => {
@@ -287,6 +317,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInAsGuest,
       logout, 
       getToken,
+      pendingOrderIds,
+      clearPendingPrompt,
       refreshDevoteeData
     }}>
       {children}

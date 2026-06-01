@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera, Trash2, Pencil, Check, UserX, Plus } from "lucide-react";
+import { LogOut, History, MapPin, Users, Heart, Home, Loader2, RefreshCw, ChevronDown, Filter, X, Camera, Trash2, Pencil, Check, UserX, Plus, CreditCard, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
@@ -131,6 +131,9 @@ export default function Profile() {
   const [accomFilterOpen, setAccomFilterOpen] = useState(false);
   const [accomFromDate, setAccomFromDate] = useState("");
   const [accomToDate, setAccomToDate] = useState("");
+
+  const [allTxnsOpen, setAllTxnsOpen] = useState(false);
+  const [allTxnsShown, setAllTxnsShown] = useState(PAGE_SIZE);
 
   const displayName = devoteeData?.name || profile?.name || user?.displayName || "Devotee";
   const email = devoteeData?.email || profile?.email || user?.email || "";
@@ -790,6 +793,90 @@ export default function Profile() {
               </div>
             ) : (
               <>
+                {/* All Transactions - Collapsible */}
+                {(() => {
+                  const allTxns: any[] = devoteeData?.allTransactions || [];
+                  const sorted = [...allTxns].sort((a, b) => {
+                    const getDate = (t: any) => t.addedAt || t.txnDate || t.date || t.bookingDate || t.donationDate || t.createdAt || "";
+                    return getDate(b).localeCompare(getDate(a));
+                  });
+                  if (sorted.length === 0) return null;
+                  const getField = (t: any, ...keys: string[]) => {
+                    for (const k of keys) {
+                      if (t[k] !== undefined && t[k] !== null && t[k] !== "") return String(t[k]);
+                    }
+                    return "—";
+                  };
+                  return (
+                    <Collapsible open={allTxnsOpen} onOpenChange={(open) => { setAllTxnsOpen(open); if (!open) setAllTxnsShown(PAGE_SIZE); }}>
+                      <Card data-testid="card-all-transactions">
+                        <CollapsibleTrigger asChild>
+                          <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                            <CardTitle className="text-base font-serif flex items-center gap-2">
+                              <CreditCard className="h-4 w-4 text-primary" />
+                              <span className="flex-1">All Transactions ({sorted.length})</span>
+                              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${allTxnsOpen ? 'rotate-180' : ''}`} />
+                            </CardTitle>
+                          </CardHeader>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <CardContent className="pt-0">
+                            <div className="space-y-0">
+                              {sorted.slice(0, allTxnsShown).map((txn, idx) => {
+                                const orderId = getField(txn, "paymentRef", "orderId", "orderID", "order_id", "txnId");
+                                const type = getField(txn, "type", "category", "txnType", "serviceType");
+                                const amount = getField(txn, "txnAmount", "amount", "totalAmount");
+                                const date = getField(txn, "addedAt", "txnDate", "date", "bookingDate", "donationDate", "createdAt");
+                                const rawStatus = getField(txn, "status", "txnStatus", "paymentStatus", "state");
+                                const isSuccess = rawStatus === "1" || rawStatus.toLowerCase() === "success" || rawStatus.toLowerCase() === "txn_success";
+                                const isPending = rawStatus === "8" || rawStatus.toLowerCase() === "pending";
+                                const isFailed = rawStatus === "9" || rawStatus.toLowerCase().includes("fail");
+                                return (
+                                  <div key={orderId !== "—" ? orderId : idx} className="flex items-start justify-between py-2 border-b last:border-0 gap-2" data-testid={`row-txn-${idx}`}>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        {isSuccess && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />}
+                                        {isPending && <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+                                        {isFailed && <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+                                        <span className="font-medium text-sm">{type !== "—" ? type : "Transaction"}</span>
+                                      </div>
+                                      {orderId !== "—" && (
+                                        <div className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">{orderId}</div>
+                                      )}
+                                      {date !== "—" && (
+                                        <div className="text-xs text-muted-foreground mt-0.5">{date}</div>
+                                      )}
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      {amount !== "—" && (
+                                        <div className="font-medium text-sm text-primary">₹{amount}</div>
+                                      )}
+                                      <div className={`text-[10px] font-medium mt-0.5 ${isSuccess ? "text-green-600" : isPending ? "text-amber-600" : isFailed ? "text-red-500" : "text-muted-foreground"}`}>
+                                        {isSuccess ? "Success" : isPending ? "Pending" : isFailed ? "Failed" : rawStatus}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {allTxnsShown < sorted.length && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full mt-2 text-xs text-primary"
+                                  onClick={() => setAllTxnsShown(prev => prev + PAGE_SIZE)}
+                                  data-testid="button-load-more-txns"
+                                >
+                                  Load More ({sorted.length - allTxnsShown} remaining)
+                                </Button>
+                              )}
+                            </div>
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
+                  );
+                })()}
+
                 {/* Past Sevas - Collapsible */}
                 <Collapsible open={sevasOpen} onOpenChange={(open) => { setSevasOpen(open); if (!open) setSevasShown(PAGE_SIZE); }}>
                   <Card data-testid="card-past-sevas">

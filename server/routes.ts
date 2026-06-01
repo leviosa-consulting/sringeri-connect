@@ -3013,6 +3013,94 @@ export async function registerRoutes(
     }
   });
 
+  // User-facing reconcile: check the authenticated user's pending transaction orderIds and auto-resolve them
+  app.post("/api/user/reconcile-pending", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const token = authHeader.slice(7);
+      const uid = await verifyFirebaseTokenEarly(token);
+      if (!uid) return res.status(401).json({ error: "Invalid token" });
+
+      const { orderIds } = req.body || {};
+      if (!Array.isArray(orderIds) || orderIds.length === 0) {
+        return res.status(400).json({ error: "orderIds array required" });
+      }
+
+      const results = { reconciled: 0, markedFailed: 0, pending: 0, errors: 0 };
+
+      for (const orderId of orderIds.slice(0, 50)) {
+        if (typeof orderId !== "string" || !orderId) continue;
+        try {
+          const result = await paytmOrderStatus(orderId);
+          if (!result) { results.errors++; continue; }
+          const b = result.body || {};
+          const ri = b.resultInfo || {};
+          const paytmStatus = ri.resultStatus;
+
+          if (paytmStatus === "TXN_SUCCESS") {
+            const ackBody: Record<string, string> = {
+              ORDERID: orderId, STATUS: "TXN_SUCCESS",
+              RESPCODE: String(ri.resultCode ?? "01"),
+              RESPMSG: ri.resultMsg || "Txn Success",
+            };
+            if (b.txnId)       ackBody.TXNID       = String(b.txnId);
+            if (b.bankTxnId)   ackBody.BANKTXNID   = String(b.bankTxnId);
+            if (b.txnAmount)   ackBody.TXNAMOUNT   = String(b.txnAmount);
+            if (b.txnDate)     ackBody.TXNDATE     = String(b.txnDate);
+            if (b.paymentMode) ackBody.PAYMENTMODE = String(b.paymentMode);
+            if (b.bankName)    ackBody.BANKNAME    = String(b.bankName);
+            if (b.currency)    ackBody.CURRENCY    = String(b.currency);
+            await fetch(`${SRINGERI_API_URL}/api/paymentAck`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+              },
+              body: JSON.stringify(ackBody),
+            });
+            results.reconciled++;
+          } else if (paytmStatus === "PENDING") {
+            results.pending++;
+          } else {
+            const failBody: Record<string, string> = {
+              ORDERID: orderId, STATUS: paytmStatus || "TXN_FAILURE",
+              RESPCODE: String(ri.resultCode ?? ""),
+              RESPMSG: ri.resultMsg || "Transaction Failed",
+            };
+            if (b.txnId)       failBody.TXNID       = String(b.txnId);
+            if (b.bankTxnId)   failBody.BANKTXNID   = String(b.bankTxnId);
+            if (b.txnAmount)   failBody.TXNAMOUNT   = String(b.txnAmount);
+            if (b.txnDate)     failBody.TXNDATE     = String(b.txnDate);
+            if (b.paymentMode) failBody.PAYMENTMODE = String(b.paymentMode);
+            if (b.bankName)    failBody.BANKNAME    = String(b.bankName);
+            if (b.currency)    failBody.CURRENCY    = String(b.currency);
+            await fetch(`${SRINGERI_API_URL}/api/updateFailedTransaction`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+              },
+              body: JSON.stringify(failBody),
+            });
+            results.markedFailed++;
+          }
+        } catch (err) {
+          console.error(`[user-reconcile] error for ${orderId}:`, err);
+          results.errors++;
+        }
+      }
+
+      console.log(`[user-reconcile] uid=${uid}`, results);
+      res.json(results);
+    } catch (error) {
+      console.error("Error in user reconcile-pending:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/paytm-callback", async (req, res) => {
     try {
       const paytmResponse = req.body;

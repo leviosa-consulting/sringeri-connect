@@ -4,8 +4,9 @@ import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Info, Megaphone, Play, Globe, BookOpen, CalendarDays, ChevronDown } from "lucide-react";
+import { Info, Megaphone, Play, Globe, BookOpen, CalendarDays, ChevronDown, AlertTriangle, X, Loader2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { getIdToken } from "@/lib/firebase";
 import FontSizeToggle from "@/components/font-size-toggle";
@@ -64,7 +65,9 @@ interface TodayDetails {
 
 export default function Home() {
   const [_, setLocation] = useLocation();
-  const { profile, user, avatarUrl } = useAuth();
+  const { profile, user, avatarUrl, pendingOrderIds, clearPendingPrompt, getToken } = useAuth();
+  const { toast } = useToast();
+  const [pendingChecking, setPendingChecking] = useState(false);
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
   const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
@@ -168,6 +171,35 @@ export default function Home() {
     };
     fetchYoutubeVideos();
   }, []);
+
+  const checkPendingTransactions = async () => {
+    if (!pendingOrderIds.length || pendingChecking) return;
+    setPendingChecking(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch("/api/user/reconcile-pending", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderIds: pendingOrderIds }),
+      });
+      const data = await res.json();
+      clearPendingPrompt();
+      const parts: string[] = [];
+      if (data.reconciled) parts.push(`${data.reconciled} confirmed & reconciled`);
+      if (data.markedFailed) parts.push(`${data.markedFailed} marked as failed`);
+      if (data.pending) parts.push(`${data.pending} still pending`);
+      if (data.errors) parts.push(`${data.errors} errors`);
+      toast({
+        title: "Transaction status checked",
+        description: parts.length ? parts.join(", ") : "All transactions checked",
+      });
+    } catch {
+      toast({ title: "Check failed", description: "Could not check transaction status", variant: "destructive" });
+    } finally {
+      setPendingChecking(false);
+    }
+  };
 
   const formatTodayDate = () => {
     const now = new Date();
@@ -452,6 +484,48 @@ export default function Home() {
           </div>
         </div>
       )}
+      {pendingOrderIds.length > 0 && !user?.isAnonymous && (
+        <div className="px-4 lg:px-6">
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200" data-testid="banner-pending-transactions">
+            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-800">
+                {pendingOrderIds.length} pending transaction{pendingOrderIds.length > 1 ? "s" : ""} found
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Some recent payments may not have been confirmed. Tap below to check and update their status.
+              </p>
+              <div className="flex items-center gap-3 mt-3">
+                <button
+                  onClick={checkPendingTransactions}
+                  disabled={pendingChecking}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors disabled:opacity-60"
+                  data-testid="button-check-pending"
+                >
+                  {pendingChecking ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking…</>
+                  ) : "Check Status"}
+                </button>
+                <button
+                  onClick={clearPendingPrompt}
+                  className="text-xs text-amber-700 hover:text-amber-900 font-medium"
+                  data-testid="button-dismiss-pending"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={clearPendingPrompt}
+              className="p-1 hover:bg-amber-100 rounded text-amber-600"
+              data-testid="button-close-pending-banner"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col lg:grid lg:grid-cols-12 gap-8 px-4 lg:px-6">
         
         {/* Main Content Column */}

@@ -76,12 +76,12 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed, bulkRunning }: {
+function ActionCell({ orderId, rowState, onResolve, onRetryAck, onRetryMarkFailed, bulkRunning }: {
   orderId: string;
   rowState: RowState;
-  onCheck: () => void;
-  onAck: () => void;
-  onMarkFailed: () => void;
+  onResolve: () => void;
+  onRetryAck: () => void;
+  onRetryMarkFailed: () => void;
   bulkRunning: boolean;
 }) {
   if (orderId === "—") return <td className="px-3 py-3" />;
@@ -91,18 +91,18 @@ function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed, bulkRunni
   return (
     <td className="px-3 py-3 whitespace-nowrap">
       <div className="flex flex-col gap-1 items-start">
-        {(status === "idle") && (
+        {status === "idle" && (
           <button
-            onClick={onCheck}
+            onClick={onResolve}
             disabled={bulkRunning}
             className="text-xs px-2.5 py-1 rounded bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            data-testid={`button-check-${orderId}`}
+            data-testid={`button-resolve-${orderId}`}
           >
-            Check Status
+            Check & Resolve
           </button>
         )}
 
-        {status === "checking" && (
+        {(status === "checking" || status === "success" || status === "failed") && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" /> Checking…
           </span>
@@ -114,7 +114,7 @@ function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed, bulkRunni
               <Clock className="h-3 w-3" /> Still Pending
             </span>
             <button
-              onClick={onCheck}
+              onClick={onResolve}
               className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/70 transition-colors"
             >
               Re-check
@@ -122,62 +122,16 @@ function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed, bulkRunni
           </div>
         )}
 
-        {status === "success" && (
-          <div className="flex flex-col gap-1">
-            <span className="inline-flex items-center gap-1 text-xs text-green-700 font-medium">
-              <CheckCircle2 className="h-3 w-3" /> Paytm: Success
-            </span>
-            <button
-              onClick={onAck}
-              className="text-xs px-2.5 py-1 rounded bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors"
-              data-testid={`button-ack-${orderId}`}
-            >
-              Reconcile
-            </button>
-          </div>
-        )}
-
-        {status === "failed" && (
-          <div className="flex flex-col gap-1">
-            <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
-              <XCircle className="h-3 w-3" /> Paytm: Failed
-            </span>
-            {message && <span className="text-[10px] text-muted-foreground max-w-[120px] truncate" title={message}>{message}</span>}
-            <button
-              onClick={onMarkFailed}
-              className="text-xs px-2.5 py-1 rounded bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors"
-              data-testid={`button-mark-failed-${orderId}`}
-            >
-              Mark Failed
-            </button>
-          </div>
-        )}
-
-        {status === "acking" && (
+        {(status === "acking" || status === "marking") && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" /> Reconciling…
+            <Loader2 className="h-3 w-3 animate-spin" />
+            {status === "acking" ? "Reconciling…" : "Updating…"}
           </span>
         )}
 
         {status === "acked" && (
           <span className="inline-flex items-center gap-1 text-xs text-green-700 font-semibold">
             <CheckCircle2 className="h-3 w-3" /> Reconciled ✓
-          </span>
-        )}
-
-        {status === "ack_failed" && (
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-red-600 font-medium">ACK failed</span>
-            {message && <span className="text-[10px] text-muted-foreground max-w-[120px] truncate" title={message}>{message}</span>}
-            <button onClick={onAck} className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/70">
-              Retry
-            </button>
-          </div>
-        )}
-
-        {status === "marking" && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" /> Marking…
           </span>
         )}
 
@@ -196,6 +150,16 @@ function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed, bulkRunni
           </div>
         )}
 
+        {status === "ack_failed" && (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-red-600 font-medium">ACK failed</span>
+            {message && <span className="text-[10px] text-muted-foreground max-w-[120px] truncate" title={message}>{message}</span>}
+            <button onClick={onRetryAck} className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/70">
+              Retry
+            </button>
+          </div>
+        )}
+
         {status === "mark_failed" && (
           <div className="flex flex-col gap-1">
             <span className="text-xs text-red-600 font-medium">Update failed</span>
@@ -204,7 +168,7 @@ function ActionCell({ orderId, rowState, onCheck, onAck, onMarkFailed, bulkRunni
                 {message}
               </span>
             )}
-            <button onClick={onMarkFailed} className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/70">
+            <button onClick={onRetryMarkFailed} className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/70">
               Retry
             </button>
           </div>
@@ -374,7 +338,7 @@ export default function AdminAllTransactions() {
     });
   }
 
-  async function markFailed(orderId: string) {
+  async function markFailed(orderId: string, silent = false): Promise<RowStatus> {
     setRow(orderId, { status: "marking" });
     try {
       const token = await getToken();
@@ -391,15 +355,42 @@ export default function AdminAllTransactions() {
           ? { status: "pending", message: "Still pending on Paytm — cannot mark failed" }
           : { status: "mark_failed", message: msg };
         setRow(orderId, s);
-        toast({ title: "Mark failed error", description: msg, variant: "destructive" });
-        return;
+        if (!silent) toast({ title: "Mark failed error", description: msg, variant: "destructive" });
+        return s.status;
       }
       setRow(orderId, { status: "marked", detail: data });
-      toast({ title: `Order …${orderId.slice(-8)}: Marked as Failed`, description: "Transaction updated successfully." });
+      if (!silent) toast({ title: `Order …${orderId.slice(-8)}: Marked as Failed`, description: "Transaction updated successfully." });
+      return "marked";
     } catch (err: any) {
       const s: RowState = { status: "mark_failed", message: err?.message || "Update failed" };
       setRow(orderId, s);
-      toast({ title: "Mark failed error", description: s.message, variant: "destructive" });
+      if (!silent) toast({ title: "Mark failed error", description: s.message, variant: "destructive" });
+      return "mark_failed";
+    }
+  }
+
+  async function checkAndResolve(orderId: string) {
+    const checked = await checkStatus(orderId, true);
+    if (checked === "success") {
+      const acked = await sendAck(orderId, true);
+      if (acked === "acked") {
+        toast({ title: `Order …${orderId.slice(-8)}: Reconciled ✓`, description: "Confirmed on Paytm and acknowledged." });
+      } else {
+        toast({ title: `ACK failed — …${orderId.slice(-8)}`, description: "Paytm success but reconcile step failed. Use Retry.", variant: "destructive" });
+      }
+    } else if (checked === "pending") {
+      toast({ title: `Order …${orderId.slice(-8)}: Still Pending`, description: "Transaction still pending on Paytm. Try again later." });
+    } else if (checked === "failed") {
+      const marked = await markFailed(orderId, true);
+      if (marked === "marked") {
+        toast({ title: `Order …${orderId.slice(-8)}: Marked Failed ✓`, description: "Confirmed failed on Paytm — transaction updated." });
+      } else if (marked === "pending") {
+        toast({ title: `Order …${orderId.slice(-8)}: Still Pending`, description: "Cannot mark as failed while still pending on Paytm." });
+      } else {
+        toast({ title: `Could not mark …${orderId.slice(-8)}`, description: "Failed on Paytm but Sringeri update failed. Use Retry.", variant: "destructive" });
+      }
+    } else {
+      toast({ title: `Check failed — …${orderId.slice(-8)}`, description: "Could not determine transaction status.", variant: "destructive" });
     }
   }
 
@@ -656,9 +647,9 @@ export default function AdminAllTransactions() {
                         <ActionCell
                           orderId={orderId}
                           rowState={rowState}
-                          onCheck={() => checkStatus(orderId)}
-                          onAck={() => sendAck(orderId)}
-                          onMarkFailed={() => markFailed(orderId)}
+                          onResolve={() => checkAndResolve(orderId)}
+                          onRetryAck={() => sendAck(orderId)}
+                          onRetryMarkFailed={() => markFailed(orderId)}
                           bulkRunning={bulkRunning}
                         />
                       </tr>
