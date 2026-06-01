@@ -20,7 +20,8 @@ type RowStatus =
   | "checking"
   | "success"
   | "pending"
-  | "failed"
+  | "failed"        // check itself failed (network/auth/HTTP error) — do NOT auto-mark-failed
+  | "paytm_failed"  // Paytm explicitly reported failure — safe to auto-mark-failed
   | "acking"
   | "acked"
   | "ack_failed"
@@ -102,10 +103,25 @@ function ActionCell({ orderId, rowState, onResolve, onRetryAck, onRetryMarkFaile
           </button>
         )}
 
-        {(status === "checking" || status === "success" || status === "failed") && (
+        {(status === "checking" || status === "success" || status === "paytm_failed") && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" /> Checking…
           </span>
+        )}
+
+        {status === "failed" && (
+          <div className="flex flex-col gap-1">
+            <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
+              <XCircle className="h-3 w-3" /> Check error
+            </span>
+            {message && <span className="text-[10px] text-muted-foreground max-w-[120px] truncate" title={message}>{message}</span>}
+            <button
+              onClick={onResolve}
+              className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/70 transition-colors"
+            >
+              Re-check
+            </button>
+          </div>
         )}
 
         {status === "pending" && (
@@ -259,7 +275,8 @@ export default function AdminAllTransactions() {
         next = { status: "pending", message: data.resultMsg, detail: data };
         if (!silent) toast({ title: `Order …${orderId.slice(-8)}: Still Pending`, description: data.resultMsg || "Try again later", variant: "default" });
       } else {
-        next = { status: "failed", message: data.resultMsg || paytmStatus, detail: data };
+        // Paytm explicitly reported a failure — distinct from a check error
+        next = { status: "paytm_failed", message: data.resultMsg || paytmStatus, detail: data };
         if (!silent) toast({ title: `Order …${orderId.slice(-8)}: Failed on Paytm`, description: data.resultMsg || paytmStatus, variant: "destructive" });
       }
       setRow(orderId, next);
@@ -322,7 +339,12 @@ export default function AdminAllTransactions() {
         else ackFailCount++;
       } else if (checked === "pending") {
         pendingCount++;
+      } else if (checked === "paytm_failed") {
+        // Paytm confirmed failure — auto-mark
+        await markFailed(orderId, true);
+        failedCount++;
       } else {
+        // check error — don't auto-mark, just count
         failedCount++;
       }
     }
@@ -380,7 +402,8 @@ export default function AdminAllTransactions() {
       }
     } else if (checked === "pending") {
       toast({ title: `Order …${orderId.slice(-8)}: Still Pending`, description: "Transaction still pending on Paytm. Try again later." });
-    } else if (checked === "failed") {
+    } else if (checked === "paytm_failed") {
+      // Only auto-mark-failed when Paytm explicitly reported failure — not on check errors
       const marked = await markFailed(orderId, true);
       if (marked === "marked") {
         toast({ title: `Order …${orderId.slice(-8)}: Marked Failed ✓`, description: "Confirmed failed on Paytm — transaction updated." });
@@ -390,7 +413,8 @@ export default function AdminAllTransactions() {
         toast({ title: `Could not mark …${orderId.slice(-8)}`, description: "Failed on Paytm but Sringeri update failed. Use Retry.", variant: "destructive" });
       }
     } else {
-      toast({ title: `Check failed — …${orderId.slice(-8)}`, description: "Could not determine transaction status.", variant: "destructive" });
+      // checked === "failed": the status check itself encountered an error — do NOT auto-mark
+      toast({ title: `Check failed — …${orderId.slice(-8)}`, description: "Could not reach Paytm. Use Re-check to try again.", variant: "destructive" });
     }
   }
 
