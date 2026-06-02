@@ -134,6 +134,7 @@ export default function Profile() {
 
   const [allTxnsOpen, setAllTxnsOpen] = useState(false);
   const [allTxnsShown, setAllTxnsShown] = useState(PAGE_SIZE);
+  const [txnTypeFilter, setTxnTypeFilter] = useState<Set<string>>(new Set());
   const [txnCheckStates, setTxnCheckStates] = useState<Record<string, "checking" | "reconciled" | "confirmed_failed" | "pending" | "error">>({});
 
   const displayName = devoteeData?.name || profile?.name || user?.displayName || "Devotee";
