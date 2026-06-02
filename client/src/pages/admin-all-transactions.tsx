@@ -449,6 +449,16 @@ export default function AdminAllTransactions() {
     return true;
   });
 
+  const isFiltered = typeFilter.size > 0 || statusFilter !== "all" || filter.trim() !== "";
+
+  const filteredTotal = isFiltered
+    ? filtered.reduce((sum, t) => {
+        const raw = getField(t, "txnAmount", "amount", "totalAmount");
+        const n = parseFloat(raw.replace(/[^0-9.]/g, ""));
+        return sum + (isNaN(n) ? 0 : n);
+      }, 0)
+    : 0;
+
   const countByStatus = (code: string) =>
     transactions.filter(t => {
       const s = getField(t, "status", "txnStatus", "paymentStatus", "state");
@@ -577,6 +587,11 @@ export default function AdminAllTransactions() {
             >
               Total: {transactions.length}
             </button>
+            {isFiltered && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary" data-testid="filtered-total-amount">
+                Filtered total: ₹{filteredTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            )}
             <Button
               size="sm"
               onClick={checkAndReconcileAll}
