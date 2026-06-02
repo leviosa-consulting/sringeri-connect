@@ -213,7 +213,7 @@ export default function AdminAllTransactions() {
   const [searched, setSearched] = useState(false);
   const [filter, setFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "success" | "pending" | "failed">("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<Set<string>>(new Set());
   const [bulkRunning, setBulkRunning] = useState(false);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
 
@@ -229,7 +229,7 @@ export default function AdminAllTransactions() {
     setLoadError(null);
     setFilter("");
     setStatusFilter("all");
-    setTypeFilter("all");
+    setTypeFilter(new Set());
     setRowStates({});
     try {
       const token = await getToken();
@@ -439,9 +439,9 @@ export default function AdminAllTransactions() {
 
   const filtered = transactions.filter(t => {
     if (!matchesStatusFilter(t)) return false;
-    if (typeFilter !== "all") {
+    if (typeFilter.size > 0) {
       const txnType = getField(t, "type", "category", "txnType", "serviceType");
-      if (txnType !== typeFilter) return false;
+      if (!typeFilter.has(txnType)) return false;
     }
     if (filter.trim() && !Object.values(t).some(v =>
       String(v ?? "").toLowerCase().includes(filter.toLowerCase())
@@ -596,8 +596,8 @@ export default function AdminAllTransactions() {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-muted-foreground font-medium shrink-0">Type:</span>
               <button
-                onClick={() => setTypeFilter("all")}
-                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${typeFilter === "all" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+                onClick={() => setTypeFilter(new Set())}
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${typeFilter.size === 0 ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
                 data-testid="filter-type-all"
               >
                 All
@@ -605,8 +605,12 @@ export default function AdminAllTransactions() {
               {uniqueTypes.map(type => (
                 <button
                   key={type}
-                  onClick={() => setTypeFilter(typeFilter === type ? "all" : type)}
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${typeFilter === type ? "bg-primary text-white" : "bg-primary/10 text-primary hover:bg-primary/20"}`}
+                  onClick={() => setTypeFilter(prev => {
+                    const next = new Set(prev);
+                    next.has(type) ? next.delete(type) : next.add(type);
+                    return next;
+                  })}
+                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${typeFilter.has(type) ? "bg-primary text-white" : "bg-primary/10 text-primary hover:bg-primary/20"}`}
                   data-testid={`filter-type-${type}`}
                 >
                   {type}
