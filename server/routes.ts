@@ -1111,50 +1111,6 @@ export async function registerRoutes(
       const rand = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
       const orderId = `YATRI_${ts}_${rand}`;
 
-      const paytmParams: Record<string, any> = {
-        body: {
-          requestType: "Payment",
-          mid: PAYTM_MID_VAL,
-          websiteName: "DEFAULT",
-          orderId: orderId,
-          txnAmount: {
-            value: String(Number(totalAmount).toFixed(2)),
-            currency: "INR",
-          },
-          userInfo: {
-            custId: uid || mobileNumber || "GUEST",
-          },
-          callbackUrl: `${req.protocol}://${req.get("host")}/api/paytm-callback`,
-        },
-      };
-
-      const checksum = await PaytmChecksum.generateSignature(
-        JSON.stringify(paytmParams.body),
-        PAYTM_KEY_VAL
-      );
-      paytmParams.head = { signature: checksum };
-
-      const paytmRes = await fetch(
-        `https://securegw.paytm.in/theia/api/v1/initiateTransaction?mid=${PAYTM_MID_VAL}&orderId=${orderId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(paytmParams),
-        }
-      );
-
-      const paytmData = await paytmRes.json();
-
-      if (!(paytmData.body?.resultInfo?.resultStatus === "S" && paytmData.body?.txnToken)) {
-        console.error("Paytm initiate failed for reservation:", JSON.stringify(paytmData));
-        return res.status(500).json({
-          error: "Failed to initiate payment",
-          details: paytmData.body?.resultInfo?.resultMsg || "Unknown error",
-        });
-      }
-
-      const txnToken = paytmData.body.txnToken;
-
       const reservationPayload = {
         reservedDate: reservedDate || "",
         mobileNumber: mobileNumber || "",
@@ -1216,10 +1172,63 @@ export async function registerRoutes(
         return res.status(502).json({ error: "Reservation registration failed", details: "Invalid response from server. Please try again." });
       }
 
-      if (sringeriData && (sringeriData.error || sringeriData.status === "Failed" || sringeriData.status === "Error")) {
+      const sringeriStatus = String(sringeriData?.status || "").toLowerCase();
+      const reservationId = Number(sringeriData?.reservationId ?? sringeriData?.id ?? 1);
+      const isNoRooms = sringeriResText.toLowerCase().includes("no more rooms") || reservationId <= 0;
+
+      if (isNoRooms) {
+        console.error("Sringeri onlineReservationPtm: no rooms available:", sringeriResText);
+        return res.status(409).json({ error: "No rooms available", details: "Rooms got full by the time the request was submitted. Please go back and select a different date or room type." });
+      }
+
+      if (sringeriData && (sringeriData.error || sringeriStatus === "failed" || sringeriStatus === "error")) {
         console.error("Sringeri onlineReservationPtm returned error in body:", JSON.stringify(sringeriData));
         return res.status(502).json({ error: "Reservation registration failed", details: sringeriData.message || sringeriData.error || "Server rejected the reservation." });
       }
+
+      const paytmParams: Record<string, any> = {
+        body: {
+          requestType: "Payment",
+          mid: PAYTM_MID_VAL,
+          websiteName: "DEFAULT",
+          orderId: orderId,
+          txnAmount: {
+            value: String(Number(totalAmount).toFixed(2)),
+            currency: "INR",
+          },
+          userInfo: {
+            custId: uid || mobileNumber || "GUEST",
+          },
+          callbackUrl: `${req.protocol}://${req.get("host")}/api/paytm-callback`,
+        },
+      };
+
+      const checksum = await PaytmChecksum.generateSignature(
+        JSON.stringify(paytmParams.body),
+        PAYTM_KEY_VAL
+      );
+      paytmParams.head = { signature: checksum };
+
+      const paytmRes = await fetch(
+        `https://securegw.paytm.in/theia/api/v1/initiateTransaction?mid=${PAYTM_MID_VAL}&orderId=${orderId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(paytmParams),
+        }
+      );
+
+      const paytmData = await paytmRes.json();
+
+      if (!(paytmData.body?.resultInfo?.resultStatus === "S" && paytmData.body?.txnToken)) {
+        console.error("Paytm initiate failed for reservation:", JSON.stringify(paytmData));
+        return res.status(500).json({
+          error: "Failed to initiate payment",
+          details: paytmData.body?.resultInfo?.resultMsg || "Unknown error",
+        });
+      }
+
+      const txnToken = paytmData.body.txnToken;
 
       res.json({
         txnToken: txnToken,
