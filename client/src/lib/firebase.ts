@@ -56,10 +56,14 @@ function isInWebView(): boolean {
   return isAndroidWebView || isIOSWebView || hasWebViewGlobals || hasCustomWebViewIndicator;
 }
 
-function requestNativeGoogleSignIn(): void {
-  if ((window as any).ReactNativeWebView) {
-    (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'GOOGLE_SIGNIN_REQUEST' }));
-  }
+/**
+ * Generates a cryptographically random hex nonce for binding a sign-in request
+ * to its corresponding response, preventing replayed or injected success messages.
+ */
+function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 }
 
 type NativeAuthCallback = {
@@ -68,7 +72,33 @@ type NativeAuthCallback = {
   onCancelled?: () => void;
 };
 
+/**
+ * Tracks an in-progress native sign-in flow independently of whether a callback
+ * was provided. This is the authoritative "is a sign-in pending?" flag.
+ * Set to a random nonce when a request is sent; cleared on any terminal message.
+ */
+let pendingNativeSignInNonce: string | null = null;
+
+/**
+ * Optional callbacks for the current native sign-in flow. May be null even when
+ * pendingNativeSignInNonce is set (e.g. loginWithGoogle called without callbacks).
+ */
 let pendingNativeAuthCallback: NativeAuthCallback | null = null;
+
+function clearPendingNativeSignIn(): void {
+  pendingNativeSignInNonce = null;
+  pendingNativeAuthCallback = null;
+}
+
+function requestNativeGoogleSignIn(): void {
+  if ((window as any).ReactNativeWebView) {
+    const nonce = generateNonce();
+    pendingNativeSignInNonce = nonce;
+    (window as any).ReactNativeWebView.postMessage(
+      JSON.stringify({ type: 'GOOGLE_SIGNIN_REQUEST', nonce })
+    );
+  }
+}
 
 async function handleGoogleAuthResponse(payload: { accessToken?: string; idToken: string; expiresIn?: number }) {
   try {
@@ -78,19 +108,27 @@ async function handleGoogleAuthResponse(payload: { accessToken?: string; idToken
     if (pendingNativeAuthCallback?.onSuccess) {
       pendingNativeAuthCallback.onSuccess(result.user);
     }
-    pendingNativeAuthCallback = null;
+    clearPendingNativeSignIn();
     return result;
   } catch (error) {
     console.error("Error signing in with native credential:", error);
     if (pendingNativeAuthCallback?.onError) {
       pendingNativeAuthCallback.onError(error as Error);
     }
-    pendingNativeAuthCallback = null;
+    clearPendingNativeSignIn();
     throw error;
   }
 }
 
 window.addEventListener('message', (event) => {
+  // Guard 1: Only process messages when running inside a genuine React Native WebView.
+  // window.ReactNativeWebView is injected exclusively by the RN bridge; it is absent in
+  // all normal browser contexts (including attacker-controlled popups or iframes), so
+  // this single check prevents cross-origin postMessage injection for web users.
+  if (!isInReactNativeWebView()) {
+    return;
+  }
+
   let data = event.data;
   
   if (typeof data === 'string') {
@@ -102,20 +140,32 @@ window.addEventListener('message', (event) => {
   }
   
   if (data.type === 'GOOGLE_SIGNIN_SUCCESS') {
+    // Guard 2: Require an active pending sign-in flow started by this app.
+    // pendingNativeSignInNonce is set only when loginWithGoogle() was called; it is
+    // independent of whether a callback was supplied.
+    if (!pendingNativeSignInNonce) {
+      console.warn("Received GOOGLE_SIGNIN_SUCCESS with no pending native sign-in; ignoring.");
+      return;
+    }
     handleGoogleAuthResponse(data.payload);
   } else if (data.type === 'GOOGLE_SIGNIN_ERROR') {
     console.error("Native Google sign-in error:", data.payload?.error);
     if (pendingNativeAuthCallback?.onError) {
       pendingNativeAuthCallback.onError(new Error(data.payload?.error || 'Native sign-in failed'));
     }
-    pendingNativeAuthCallback = null;
+    clearPendingNativeSignIn();
   } else if (data.type === 'GOOGLE_SIGNIN_CANCELLED') {
     console.log("Native Google sign-in cancelled");
     if (pendingNativeAuthCallback?.onCancelled) {
       pendingNativeAuthCallback.onCancelled();
     }
-    pendingNativeAuthCallback = null;
+    clearPendingNativeSignIn();
   } else if (data.type === 'APPLE_SIGNIN_SUCCESS') {
+    // Same guard as Google: require an active pending sign-in flow.
+    if (!pendingNativeSignInNonce) {
+      console.warn("Received APPLE_SIGNIN_SUCCESS with no pending native sign-in; ignoring.");
+      return;
+    }
     (async () => {
       try {
         const idToken = data.idToken || data.payload?.idToken;
@@ -128,13 +178,13 @@ window.addEventListener('message', (event) => {
         if (pendingNativeAuthCallback?.onSuccess) {
           pendingNativeAuthCallback.onSuccess(result.user);
         }
-        pendingNativeAuthCallback = null;
+        clearPendingNativeSignIn();
       } catch (error) {
         console.error("Error signing in with native Apple credential:", error);
         if (pendingNativeAuthCallback?.onError) {
           pendingNativeAuthCallback.onError(error as Error);
         }
-        pendingNativeAuthCallback = null;
+        clearPendingNativeSignIn();
       }
     })();
   } else if (data.type === 'APPLE_SIGNIN_ERROR') {
@@ -143,12 +193,12 @@ window.addEventListener('message', (event) => {
     if (pendingNativeAuthCallback?.onError) {
       pendingNativeAuthCallback.onError(new Error(errorMsg));
     }
-    pendingNativeAuthCallback = null;
+    clearPendingNativeSignIn();
   } else if (data.type === 'APPLE_SIGNIN_CANCELLED') {
     if (pendingNativeAuthCallback?.onCancelled) {
       pendingNativeAuthCallback.onCancelled();
     }
-    pendingNativeAuthCallback = null;
+    clearPendingNativeSignIn();
   }
 });
 
@@ -170,6 +220,8 @@ export async function loginAsGuest() {
 
 export async function loginWithGoogle(callbacks?: NativeAuthCallback) {
   if (isInReactNativeWebView()) {
+    // Store callbacks (may be null/undefined) separately from the pending-flow flag.
+    // requestNativeGoogleSignIn() sets pendingNativeSignInNonce unconditionally.
     pendingNativeAuthCallback = callbacks || null;
     requestNativeGoogleSignIn();
     return;
@@ -196,9 +248,13 @@ export function loginWithApple(callbacks?: NativeAuthCallback): Promise<any> {
         },
       };
       if ((window as any).ReactNativeWebView) {
-        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'APPLE_SIGNIN_REQUEST' }));
+        const nonce = generateNonce();
+        pendingNativeSignInNonce = nonce;
+        (window as any).ReactNativeWebView.postMessage(
+          JSON.stringify({ type: 'APPLE_SIGNIN_REQUEST', nonce })
+        );
       } else {
-        pendingNativeAuthCallback = null;
+        clearPendingNativeSignIn();
         reject(new Error('ReactNativeWebView not available'));
       }
     });
