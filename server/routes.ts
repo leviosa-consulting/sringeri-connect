@@ -3052,6 +3052,20 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/reconciliation-logs", async (req, res) => {
+    try {
+      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const { from, to } = req.query as { from?: string; to?: string };
+      const fromDate = from ? new Date(from + "T00:00:00.000Z") : new Date(new Date().setHours(0, 0, 0, 0));
+      const toDate = to ? new Date(to + "T23:59:59.999Z") : new Date(new Date().setHours(23, 59, 59, 999));
+      const logs = await storage.getReconciliationLogs(fromDate, toDate);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching reconciliation logs:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // User-facing reconcile: derives pending orderIds server-side from the user's own devotee
   // data (no client-supplied IDs accepted), then checks Paytm and auto-resolves each one.
   app.post("/api/user/reconcile-pending", async (req, res) => {

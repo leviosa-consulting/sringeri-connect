@@ -1,7 +1,9 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
+import cron from "node-cron";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
+import { runReconciliation } from "./reconciliation-service";
 import { createServer } from "http";
 
 const app = express();
@@ -212,6 +214,16 @@ httpServer.on("error", (err: any) => {
     }
 
     log("all routes and middleware initialized");
+
+    cron.schedule("*/15 * * * *", async () => {
+      log("Running scheduled reconciliation…", "cron");
+      try {
+        await runReconciliation();
+      } catch (err) {
+        console.error("Reconciliation cron error:", err);
+      }
+    });
+    log("Reconciliation cron scheduled (every 15 minutes)", "cron");
   } catch (err) {
     console.error("Failed to initialize application:", err);
     process.exit(1);

@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/auth-context";
 import { RangoliLoader } from "@/components/rangoli-loader";
-import { Loader2, BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare } from "lucide-react";
+import { Loader2, BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare, ClipboardList } from "lucide-react";
 import { Link } from "wouter";
 
 const ADMIN_UIDS = [
@@ -44,6 +44,13 @@ const adminTools = [
     icon: ScrollText,
     path: "/admin/all-transactions",
     color: "bg-teal-50 text-teal-600",
+  },
+  {
+    title: "Reconciliation Logs",
+    description: "Audit trail of automated payment reconciliation runs — every 15 minutes",
+    icon: ClipboardList,
+    path: "/admin/reconciliation-logs",
+    color: "bg-indigo-50 text-indigo-600",
   },
   {
     title: "Support & Feedback",

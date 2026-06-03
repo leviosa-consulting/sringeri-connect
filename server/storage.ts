@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage } from "@shared/schema";
+import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql, eq, and, gte, lte, desc, asc, count, countDistinct, avg } from "drizzle-orm";
@@ -44,6 +44,8 @@ export interface IStorage {
   listAllSupportMessages(type?: string, status?: string): Promise<SupportMessage[]>;
   getSupportMessage(id: number): Promise<SupportMessage | undefined>;
   replySupportMessage(id: number, reply: string): Promise<SupportMessage>;
+  insertReconciliationLog(log: InsertReconciliationLog): Promise<ReconciliationLog>;
+  getReconciliationLogs(from: Date, to: Date): Promise<ReconciliationLog[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -113,6 +115,8 @@ export class MemStorage implements IStorage {
     return this.supportMsgs.filter(m => (!type || m.type === type) && (!status || m.status === status)).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
   async getSupportMessage(id: number): Promise<SupportMessage | undefined> { return this.supportMsgs.find(m => m.id === id); }
+  async insertReconciliationLog(_log: InsertReconciliationLog): Promise<ReconciliationLog> { throw new Error("Not implemented"); }
+  async getReconciliationLogs(_from: Date, _to: Date): Promise<ReconciliationLog[]> { return []; }
   async replySupportMessage(id: number, reply: string): Promise<SupportMessage> {
     const msg = this.supportMsgs.find(m => m.id === id);
     if (!msg) throw new Error("Not found");
@@ -557,6 +561,25 @@ if (process.env.DATABASE_URL) {
         .where(eq(supportMessages.id, id))
         .returning();
       return result;
+    }
+
+    async insertReconciliationLog(log: InsertReconciliationLog): Promise<ReconciliationLog> {
+      const [result] = await db.insert(reconciliationLogs).values({
+        ranAt: log.ranAt ?? new Date(),
+        checkedCount: log.checkedCount ?? 0,
+        ackedCount: log.ackedCount ?? 0,
+        failedCount: log.failedCount ?? 0,
+        pendingCount: log.pendingCount ?? 0,
+        errorCount: log.errorCount ?? 0,
+        details: log.details ?? [],
+      }).returning();
+      return result;
+    }
+
+    async getReconciliationLogs(from: Date, to: Date): Promise<ReconciliationLog[]> {
+      return db.select().from(reconciliationLogs)
+        .where(and(gte(reconciliationLogs.ranAt, from), lte(reconciliationLogs.ranAt, to)))
+        .orderBy(desc(reconciliationLogs.ranAt));
     }
   }
 

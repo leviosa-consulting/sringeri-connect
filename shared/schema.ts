@@ -154,3 +154,29 @@ export const appSettings = pgTable("app_settings", {
 });
 
 export type AppSetting = typeof appSettings.$inferSelect;
+
+export const reconciliationLogs = pgTable("reconciliation_logs", {
+  id: serial("id").primaryKey(),
+  ranAt: timestamp("ran_at").defaultNow().notNull(),
+  checkedCount: integer("checked_count").default(0).notNull(),
+  ackedCount: integer("acked_count").default(0).notNull(),
+  failedCount: integer("failed_count").default(0).notNull(),
+  pendingCount: integer("pending_count").default(0).notNull(),
+  errorCount: integer("error_count").default(0).notNull(),
+  details: jsonb("details").$type<ReconciliationDetail[]>().default([]).notNull(),
+}, (table) => [
+  index("reconciliation_logs_ran_at_idx").on(table.ranAt),
+]);
+
+export interface ReconciliationDetail {
+  orderId: string;
+  type?: string;
+  paytmStatus: string;
+  outcome: "acked" | "marked_failed" | "pending" | "error";
+  error?: string;
+  txnAmount?: string;
+  txnId?: string;
+}
+
+export type ReconciliationLog = typeof reconciliationLogs.$inferSelect;
+export type InsertReconciliationLog = typeof reconciliationLogs.$inferInsert;
