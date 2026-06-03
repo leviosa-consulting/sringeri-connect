@@ -127,11 +127,23 @@ export default function Home() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await fetch('/api/sringeri-events?limit=10');
-        if (response.ok) {
-          const data = await response.json();
-          setSringeriEvents(data.events || []);
-        }
+        const [eventsRes, vyRes] = await Promise.all([
+          fetch('/api/sringeri-events?limit=10'),
+          fetch('/api/vijayayatra?limit=10'),
+        ]);
+        const eventsData = eventsRes.ok ? await eventsRes.json() : { events: [] };
+        const vyData = vyRes.ok ? await vyRes.json() : { items: [] };
+
+        const vyAsEvents = (vyData.items || []).map((e: any) => ({
+          ...e,
+          id: `vy-${e.id}`,
+        }));
+
+        const merged = [...(eventsData.events || []), ...vyAsEvents]
+          .sort((a, b) => b.dateTimestamp - a.dateTimestamp)
+          .slice(0, 10);
+
+        setSringeriEvents(merged);
       } catch (error) {
         console.error("Error fetching sringeri events:", error);
       } finally {

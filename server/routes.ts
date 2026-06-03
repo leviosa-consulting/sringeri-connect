@@ -882,6 +882,61 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/vijayayatra", async (req, res) => {
+    try {
+      if (!sringeriDb) {
+        return res.status(503).json({ error: "Sringeri.net Firestore not configured" });
+      }
+
+      const fetchLimit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+      const sringeriBaseUrl = "https://www.sringeri.net";
+
+      const colRef = collection(sringeriDb, "vijayayatra");
+      const q = query(colRef, orderBy("date", "desc"), limit(100));
+      const snapshot = await getDocs(q);
+
+      const allItems: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.status && data.status !== "published") return;
+        const dateSeconds = data.date?.seconds;
+        const dateStr = dateSeconds
+          ? new Date(dateSeconds * 1000).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+          : null;
+
+        const rawImage = data.featuredImage || null;
+        const imageUrl = rawImage
+          ? (rawImage.startsWith('http') ? rawImage : `https://files.sringeri.net/${rawImage}`)
+          : null;
+
+        const itemUrl = data.slug ? `${sringeriBaseUrl}/vijaya-yatra/${data.slug}` : (data.url || null);
+
+        allItems.push({
+          id: doc.id,
+          title: data.title || "",
+          description: data.description ? data.description.replace(/<[^>]*>/g, '').substring(0, 200) : "",
+          date: dateStr,
+          dateTimestamp: dateSeconds || 0,
+          featuredImage: imageUrl,
+          location: data.location || "",
+          status: data.status || "",
+          url: itemUrl,
+          slug: data.slug || "",
+          isOnline: data.isOnline || false,
+        });
+      });
+
+      const offset = parseInt(req.query.offset as string) || 0;
+      const paginated = allItems.slice(offset, offset + fetchLimit);
+      const hasMore = offset + fetchLimit < allItems.length;
+
+      res.json({ items: paginated, hasMore, total: allItems.length });
+    } catch (error) {
+      console.error("Error fetching vijayayatra:", error);
+      res.status(500).json({ error: "Failed to fetch vijayayatra" });
+    }
+  });
+
   app.get("/api/sringeri-events", async (req, res) => {
     try {
       if (!sringeriDb) {

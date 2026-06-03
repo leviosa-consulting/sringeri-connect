@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
 import { RangoliLoader } from "@/components/rangoli-loader";
-import { Loader2, Calendar, Megaphone, Play, Filter } from "lucide-react";
+import { Calendar, Megaphone, Play, MapPin } from "lucide-react";
 
 interface UpdateItem {
   id: string;
-  type: "event" | "announcement" | "video";
+  type: "event" | "announcement" | "video" | "vijayayatra";
   title: string;
   timestamp: number;
   url: string | null;
@@ -15,8 +15,12 @@ interface DateGroup {
   items: UpdateItem[];
 }
 
-const TAG: Record<string, { label: string; icon: typeof Calendar; bg: string; color: string; activeBg: string }> = {
+const ALL_TYPES = ["event", "vijayayatra", "announcement", "video"] as const;
+type UpdateType = typeof ALL_TYPES[number];
+
+const TAG: Record<UpdateType, { label: string; icon: typeof Calendar; bg: string; color: string; activeBg: string }> = {
   event: { label: "Event", icon: Calendar, bg: "bg-[#e8a735]/15 text-[#e8a735]", color: "#e8a735", activeBg: "bg-[#e8a735] text-white border-[#e8a735]" },
+  vijayayatra: { label: "Vijaya Yatra", icon: MapPin, bg: "bg-[#0891b2]/15 text-[#0891b2]", color: "#0891b2", activeBg: "bg-[#0891b2] text-white border-[#0891b2]" },
   announcement: { label: "Announcement", icon: Megaphone, bg: "bg-[#ff6600]/15 text-[#ff6600]", color: "#ff6600", activeBg: "bg-[#ff6600] text-white border-[#ff6600]" },
   video: { label: "Video", icon: Play, bg: "bg-[#c0392b]/15 text-[#c0392b]", color: "#c0392b", activeBg: "bg-[#c0392b] text-white border-[#c0392b]" },
 };
@@ -37,6 +41,16 @@ function normalizeEvents(events: any[]): UpdateItem[] {
     type: "event" as const,
     title: e.title,
     timestamp: (e.dateTimestamp || 0) * (e.dateTimestamp < 1e12 ? 1000 : 1),
+    url: e.url || null,
+  }));
+}
+
+function normalizeVijayaYatra(items: any[]): UpdateItem[] {
+  return items.map((e) => ({
+    id: `vy-${e.id}`,
+    type: "vijayayatra" as const,
+    title: e.title,
+    timestamp: (e.dateTimestamp || 0) * ((e.dateTimestamp || 0) < 1e12 ? 1000 : 1),
     url: e.url || null,
   }));
 }
@@ -82,18 +96,21 @@ export default function Updates() {
   useEffect(() => {
     async function fetchAll() {
       try {
-        const [eventsRes, annRes, videosRes] = await Promise.all([
+        const [eventsRes, vyRes, annRes, videosRes] = await Promise.all([
           fetch("/api/sringeri-events?limit=30&offset=0"),
+          fetch("/api/vijayayatra?limit=30&offset=0"),
           fetch("/api/announcements?limit=30"),
           fetch("/api/youtube-videos"),
         ]);
 
         const eventsData = eventsRes.ok ? await eventsRes.json() : { events: [] };
+        const vyData = vyRes.ok ? await vyRes.json() : { items: [] };
         const annData = annRes.ok ? await annRes.json() : { announcements: [] };
         const videosData = videosRes.ok ? await videosRes.json() : { videos: [] };
 
         const all = [
           ...normalizeEvents(eventsData.events || []),
+          ...normalizeVijayaYatra(vyData.items || []),
           ...normalizeAnnouncements(annData.announcements || []),
           ...normalizeVideos(videosData.videos || []),
         ];
@@ -109,15 +126,11 @@ export default function Updates() {
     fetchAll();
   }, []);
 
-  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(["event", "announcement", "video"]));
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(ALL_TYPES));
 
-  const allSelected = activeFilters.size === 3;
+  const allSelected = activeFilters.size === ALL_TYPES.length;
 
   const toggleFilter = (key: string) => {
-    if (key === "all") {
-      setActiveFilters(new Set(["event", "announcement", "video"]));
-      return;
-    }
     setActiveFilters((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
@@ -159,15 +172,9 @@ export default function Updates() {
       <h1 className="text-2xl font-serif font-bold mb-4 px-1" data-testid="text-updates-title">Updates</h1>
 
       <div className="flex items-center gap-2 mb-5 px-1 overflow-x-auto" data-testid="filter-bar">
-        {([
-          // { key: "all", label: "All", icon: Filter },
-          { key: "event", label: "Events", icon: Calendar },
-          { key: "announcement", label: "Announcements", icon: Megaphone },
-          { key: "video", label: "Videos", icon: Play },
-        ] as const).map(({ key, label, icon: Icon }) => {
-          const isActive = key === "all" ? allSelected : activeFilters.has(key);
-          const tagInfo = key !== "all" ? TAG[key] : null;
-          const activeCls = tagInfo ? tagInfo.activeBg : "bg-[#B4A597] text-white border-[#B4A597]";
+        {(ALL_TYPES.map((key) => ({ key, label: TAG[key].label, icon: TAG[key].icon }))).map(({ key, label, icon: Icon }) => {
+          const isActive = activeFilters.has(key);
+          const activeCls = TAG[key].activeBg;
           return (
             <button
               key={key}
@@ -204,7 +211,7 @@ export default function Updates() {
 
             <div className="space-y-2 ml-1">
               {group.items.map((item) => {
-                const tag = TAG[item.type];
+                const tag = TAG[item.type as UpdateType];
                 const Icon = tag.icon;
                 return (
                   <a
