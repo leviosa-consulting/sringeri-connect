@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RangoliLoader } from "@/components/rangoli-loader";
 import { useAuth } from "@/contexts/auth-context";
-import { ArrowLeft, ChevronDown, ChevronRight, CheckCircle2, Clock, XCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, CheckCircle2, Clock, XCircle, AlertCircle, RefreshCw, PlayCircle, PauseCircle } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -161,6 +161,46 @@ export default function AdminReconciliationLogs() {
   const [searched, setSearched] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const [cronEnabled, setCronEnabled] = useState<boolean | null>(null);
+  const [cronToggling, setCronToggling] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin || !getToken) return;
+    getToken().then(token => {
+      if (!token) return;
+      fetch("/api/admin/cron-status", { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(d => setCronEnabled(!!d.enabled))
+        .catch(() => {});
+    });
+  }, [isAdmin, getToken]);
+
+  async function toggleCron() {
+    if (!getToken || cronToggling) return;
+    setCronToggling(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      const res = await fetch("/api/admin/cron-toggle", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setCronEnabled(!!data.enabled);
+      toast({
+        title: data.enabled ? "Cron started" : "Cron paused",
+        description: data.enabled
+          ? "Reconciliation will run every 15 minutes."
+          : "Reconciliation is paused. No runs will happen until re-enabled.",
+      });
+    } catch (err: any) {
+      toast({ title: "Failed to toggle cron", description: err?.message, variant: "destructive" });
+    } finally {
+      setCronToggling(false);
+    }
+  }
+
   async function fetchLogs() {
     if (!isAdmin || !getToken) return;
     setLoading(true);
@@ -208,9 +248,43 @@ export default function AdminReconciliationLogs() {
         <Link href="/admin" className="p-2 rounded-lg hover:bg-muted transition-colors" data-testid="link-back-admin">
           <ArrowLeft className="h-5 w-5 text-muted-foreground" />
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-foreground">Reconciliation Logs</h1>
           <p className="text-sm text-muted-foreground">Audit trail of automated reconciliation runs — every 15 minutes</p>
+        </div>
+
+        {/* Cron status badge + toggle */}
+        <div className="flex items-center gap-2 flex-shrink-0" data-testid="cron-status-section">
+          {cronEnabled !== null && (
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                cronEnabled
+                  ? "bg-green-50 text-green-700 border border-green-200"
+                  : "bg-amber-50 text-amber-700 border border-amber-200"
+              }`}
+              data-testid="badge-cron-status"
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${cronEnabled ? "bg-green-500 animate-pulse" : "bg-amber-500"}`} />
+              {cronEnabled ? "Running" : "Paused"}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleCron}
+            disabled={cronToggling || cronEnabled === null}
+            className="flex items-center gap-1.5 text-xs h-8"
+            data-testid="button-toggle-cron"
+          >
+            {cronToggling ? (
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            ) : cronEnabled ? (
+              <PauseCircle className="h-3.5 w-3.5" />
+            ) : (
+              <PlayCircle className="h-3.5 w-3.5" />
+            )}
+            {cronEnabled ? "Stop" : "Start"}
+          </Button>
         </div>
       </div>
 

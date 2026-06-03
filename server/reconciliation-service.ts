@@ -73,7 +73,29 @@ function parseUpstream(text: string): any {
   }
 }
 
+function isSringeriSuccess(txn: any): boolean {
+  const s = String(txn.status ?? txn.paymentStatus ?? txn.txnStatus ?? txn.transactionStatus ?? "").toLowerCase().trim();
+  return s === "1" || s === "success" || s === "txn_success" || s === "completed";
+}
+
+function isSringeriFailed(txn: any): boolean {
+  const s = String(txn.status ?? txn.paymentStatus ?? txn.txnStatus ?? txn.transactionStatus ?? "").toLowerCase().trim();
+  return s === "9" || s === "failed" || s === "txn_failure" || s === "fail" || s === "cancelled" || s === "rejected";
+}
+
 export async function runReconciliation(): Promise<void> {
+  // Check if cron is enabled (default: enabled)
+  const cronEnabled = await storage.getAppSetting("recon_cron_enabled");
+  if (cronEnabled === "false") {
+    console.log("[reconciliation] Cron is paused — skipping run");
+    await storage.insertReconciliationLog({
+      ranAt: new Date(), checkedCount: 0, ackedCount: 0, failedCount: 0,
+      pendingCount: 0, errorCount: 0,
+      details: [{ orderId: "N/A", paytmStatus: "N/A", outcome: "error", error: "Cron paused by admin" }],
+    });
+    return;
+  }
+
   const ranAt = new Date();
   const details: ReconciliationDetail[] = [];
   let checkedCount = 0;
@@ -115,15 +137,23 @@ export async function runReconciliation(): Promise<void> {
     // Filter to today's date in IST (UTC+5:30) — only reconcile current-day transactions
     const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
     const todayIST = nowIST.toISOString().split("T")[0]; // "YYYY-MM-DD" in IST
-    const transactions = allTransactions.filter(txn => {
+    const todayTransactions = allTransactions.filter(txn => {
       const rawDate = txn.txnDate || txn.date || txn.bookingDate || txn.createdAt || txn.created_at || txn.transactionDate || "";
       if (!rawDate) return true; // No date field → include (API should already scope to today)
-      // Normalise to YYYY-MM-DD for comparison (handles ISO "T" and space-separated datetime)
       const dateStr = String(rawDate).replace(/[T ].*$/, "").trim();
       return dateStr === todayIST;
     });
 
-    console.log(`[reconciliation] Found ${allTransactions.length} pending (${transactions.length} for today ${todayIST})`);
+    // Skip any transaction the Sringeri system already considers success or failed —
+    // only process genuinely pending (or status-unknown) entries.
+    const transactions = todayTransactions.filter(txn => {
+      if (isSringeriSuccess(txn)) return false;
+      if (isSringeriFailed(txn)) return false;
+      return true;
+    });
+    const skippedCount = todayTransactions.length - transactions.length;
+
+    console.log(`[reconciliation] Found ${allTransactions.length} total, ${todayTransactions.length} for today ${todayIST}, ${transactions.length} pending (skipped ${skippedCount} already-resolved)`);
 
     for (const txn of transactions) {
       const orderId = String(txn.paymentRef || txn.orderId || txn.orderID || txn.order_id || txn.txnId || "");

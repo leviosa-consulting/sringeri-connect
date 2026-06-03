@@ -3066,6 +3066,30 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/cron-status", async (req, res) => {
+    try {
+      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const val = await storage.getAppSetting("recon_cron_enabled");
+      res.json({ enabled: val !== "false" });
+    } catch (error) {
+      console.error("Error fetching cron status:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/cron-toggle", async (req, res) => {
+    try {
+      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      const current = await storage.getAppSetting("recon_cron_enabled");
+      const nowEnabled = current === "false"; // toggle
+      await storage.setAppSetting("recon_cron_enabled", nowEnabled ? "true" : "false");
+      res.json({ enabled: nowEnabled });
+    } catch (error) {
+      console.error("Error toggling cron:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // User-facing reconcile: derives pending orderIds server-side from the user's own devotee
   // data (no client-supplied IDs accepted), then checks Paytm and auto-resolves each one.
   app.post("/api/user/reconcile-pending", async (req, res) => {
