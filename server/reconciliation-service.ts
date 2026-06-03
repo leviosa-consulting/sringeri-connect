@@ -102,6 +102,14 @@ export async function runReconciliation(): Promise<void> {
     return;
   }
 
+  // DB-level mutex: only ONE process (out of multiple Node workers) runs per window.
+  // The atomic upsert returns a row only for the process that wins the claim.
+  const claimed = await storage.tryCronClaim("recon_cron_last_run", 10);
+  if (!claimed) {
+    console.log("[reconciliation] Skipping — another instance claimed this run");
+    return;
+  }
+
   const ranAt = new Date();
   const details: ReconciliationDetail[] = [];
   let checkedCount = 0;
@@ -140,13 +148,14 @@ export async function runReconciliation(): Promise<void> {
           ? data.transactions
           : [];
 
-    // Filter to today's date in IST (UTC+5:30) — only reconcile current-day transactions
+    // Filter to today's date in IST (UTC+5:30) — only reconcile current-day transactions.
+    // The Sringeri API returns addedAt as "YYYY-MM-DD HH:mm:ss"; take the first 10 chars.
     const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
     const todayIST = nowIST.toISOString().split("T")[0]; // "YYYY-MM-DD" in IST
     const todayTransactions = allTransactions.filter(txn => {
-      const rawDate = txn.txnDate || txn.date || txn.bookingDate || txn.createdAt || txn.created_at || txn.transactionDate || "";
-      if (!rawDate) return true; // No date field → include (API should already scope to today)
-      const dateStr = String(rawDate).replace(/[T ].*$/, "").trim();
+      const rawDate = txn.addedAt || txn.txnDate || txn.date || txn.bookingDate || txn.createdAt || txn.created_at || txn.transactionDate || "";
+      if (!rawDate) return true; // No date field → include as safe fallback
+      const dateStr = String(rawDate).slice(0, 10).trim(); // handles "YYYY-MM-DD HH:mm:ss" and ISO
       return dateStr === todayIST;
     });
 

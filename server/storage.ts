@@ -38,6 +38,7 @@ export interface IStorage {
   getQuizAnalyticsAttempts(page: number, limit: number): Promise<{ attempts: { id: number; odUserId: string; quizTitle: string; quizPublishDate: string; score: number; totalQuestions: number; completedAt: Date }[]; total: number }>;
   getAppSetting(key: string): Promise<string | null>;
   setAppSetting(key: string, value: string): Promise<void>;
+  tryCronClaim(key: string, windowMinutes: number): Promise<boolean>;
   deleteUserData(odUserId: string): Promise<void>;
   createSupportMessage(msg: InsertSupportMessage): Promise<SupportMessage>;
   listUserSupportMessages(odUserId: string, type: string): Promise<SupportMessage[]>;
@@ -102,6 +103,7 @@ export class MemStorage implements IStorage {
   async getQuizAnalyticsAttempts(_page: number, _limit: number): Promise<{ attempts: { id: number; odUserId: string; quizTitle: string; quizPublishDate: string; score: number; totalQuestions: number; completedAt: Date }[]; total: number }> { return { attempts: [], total: 0 }; }
   async getAppSetting(_key: string): Promise<string | null> { return null; }
   async setAppSetting(_key: string, _value: string): Promise<void> {}
+  async tryCronClaim(_key: string, _windowMinutes: number): Promise<boolean> { return true; }
   async deleteUserData(_odUserId: string): Promise<void> {}
   private supportMsgs: SupportMessage[] = [];
   private supportMsgIdCounter = 1;
@@ -519,6 +521,23 @@ if (process.env.DATABASE_URL) {
       await db.insert(appSettings)
         .values({ key, value, updatedAt: new Date() })
         .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
+    }
+
+    async tryCronClaim(key: string, windowMinutes: number): Promise<boolean> {
+      const now = new Date();
+      const threshold = new Date(now.getTime() - windowMinutes * 60 * 1000);
+      // Atomic upsert: insert epoch seed if key missing, then update only when
+      // the last claim is older than the window.  A single row returned = we won.
+      const result = await db.execute(sql`
+        INSERT INTO app_settings (key, value, updated_at)
+        VALUES (${key}, '1970-01-01T00:00:00.000Z', ${threshold} - INTERVAL '1 second')
+        ON CONFLICT (key) DO UPDATE
+          SET value      = ${now.toISOString()},
+              updated_at = ${now}
+          WHERE app_settings.updated_at < ${threshold}
+        RETURNING key
+      `);
+      return (result.rows?.length ?? 0) > 0;
     }
 
     async deleteUserData(odUserId: string): Promise<void> {
