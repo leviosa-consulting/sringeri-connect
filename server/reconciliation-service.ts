@@ -73,14 +73,20 @@ function parseUpstream(text: string): any {
   }
 }
 
-function isSringeriSuccess(txn: any): boolean {
-  const s = String(txn.status ?? txn.paymentStatus ?? txn.txnStatus ?? txn.transactionStatus ?? "").toLowerCase().trim();
-  return s === "1" || s === "success" || s === "txn_success" || s === "completed";
+function sringeriStatus(txn: any): string {
+  return String(
+    txn.status ?? txn.paymentStatus ?? txn.txnStatus ?? txn.transactionStatus ?? txn.state ?? ""
+  ).toLowerCase().trim();
 }
 
-function isSringeriFailed(txn: any): boolean {
-  const s = String(txn.status ?? txn.paymentStatus ?? txn.txnStatus ?? txn.transactionStatus ?? "").toLowerCase().trim();
-  return s === "9" || s === "failed" || s === "txn_failure" || s === "fail" || s === "cancelled" || s === "rejected";
+/**
+ * Returns true only if the Sringeri record is genuinely pending (or has no
+ * status at all).  Everything else — success, failure, or any other explicit
+ * non-pending value — is excluded so we don't touch already-resolved entries.
+ */
+function isSringeriPending(txn: any): boolean {
+  const s = sringeriStatus(txn);
+  return s === "" || s === "8" || s === "pending";
 }
 
 export async function runReconciliation(): Promise<void> {
@@ -144,13 +150,10 @@ export async function runReconciliation(): Promise<void> {
       return dateStr === todayIST;
     });
 
-    // Skip any transaction the Sringeri system already considers success or failed —
-    // only process genuinely pending (or status-unknown) entries.
-    const transactions = todayTransactions.filter(txn => {
-      if (isSringeriSuccess(txn)) return false;
-      if (isSringeriFailed(txn)) return false;
-      return true;
-    });
+    // Only process entries Sringeri marks as pending (status 8 / "pending") or
+    // entries with no status field at all.  Any other explicit status — success,
+    // failed, processing, initiated, etc. — is skipped without touching upstream.
+    const transactions = todayTransactions.filter(isSringeriPending);
     const skippedCount = todayTransactions.length - transactions.length;
 
     console.log(`[reconciliation] Found ${allTransactions.length} total, ${todayTransactions.length} for today ${todayIST}, ${transactions.length} pending (skipped ${skippedCount} already-resolved)`);
