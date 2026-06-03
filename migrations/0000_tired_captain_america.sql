@@ -65,17 +65,6 @@ CREATE TABLE "quizzes" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "reconciliation_logs" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"ran_at" timestamp DEFAULT now() NOT NULL,
-	"checked_count" integer DEFAULT 0 NOT NULL,
-	"acked_count" integer DEFAULT 0 NOT NULL,
-	"failed_count" integer DEFAULT 0 NOT NULL,
-	"pending_count" integer DEFAULT 0 NOT NULL,
-	"error_count" integer DEFAULT 0 NOT NULL,
-	"details" jsonb DEFAULT '[]'::jsonb NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "support_messages" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"type" text NOT NULL,
@@ -112,7 +101,6 @@ CREATE UNIQUE INDEX "quiz_attempts_user_quiz_idx" ON "quiz_attempts" USING btree
 CREATE INDEX "quiz_attempts_user_completed_idx" ON "quiz_attempts" USING btree ("od_user_id","completed_at");--> statement-breakpoint
 CREATE INDEX "quizzes_publish_date_idx" ON "quizzes" USING btree ("publish_date");--> statement-breakpoint
 CREATE INDEX "quizzes_group_name_idx" ON "quizzes" USING btree ("group_name");--> statement-breakpoint
-CREATE INDEX "reconciliation_logs_ran_at_idx" ON "reconciliation_logs" USING btree ("ran_at");--> statement-breakpoint
 CREATE INDEX "support_messages_user_type_idx" ON "support_messages" USING btree ("od_user_id","type");--> statement-breakpoint
 CREATE INDEX "support_messages_status_idx" ON "support_messages" USING btree ("status");--> statement-breakpoint
 CREATE UNIQUE INDEX "user_badges_user_badge_idx" ON "user_badges" USING btree ("od_user_id","badge_id");--> statement-breakpoint

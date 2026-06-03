@@ -104,7 +104,7 @@ export async function runReconciliation(): Promise<void> {
       return;
     }
 
-    const transactions: any[] = Array.isArray(data)
+    const allTransactions: any[] = Array.isArray(data)
       ? data
       : Array.isArray(data?.data)
         ? data.data
@@ -112,7 +112,18 @@ export async function runReconciliation(): Promise<void> {
           ? data.transactions
           : [];
 
-    console.log(`[reconciliation] Found ${transactions.length} pending transactions`);
+    // Filter to today's date in IST (UTC+5:30) — only reconcile current-day transactions
+    const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    const todayIST = nowIST.toISOString().split("T")[0]; // "YYYY-MM-DD" in IST
+    const transactions = allTransactions.filter(txn => {
+      const rawDate = txn.txnDate || txn.date || txn.bookingDate || txn.createdAt || txn.created_at || txn.transactionDate || "";
+      if (!rawDate) return true; // No date field → include (API should already scope to today)
+      // Normalise to YYYY-MM-DD for comparison (handles ISO "T" and space-separated datetime)
+      const dateStr = String(rawDate).replace(/[T ].*$/, "").trim();
+      return dateStr === todayIST;
+    });
+
+    console.log(`[reconciliation] Found ${allTransactions.length} pending (${transactions.length} for today ${todayIST})`);
 
     for (const txn of transactions) {
       const orderId = String(txn.paymentRef || txn.orderId || txn.orderID || txn.order_id || txn.txnId || "");
