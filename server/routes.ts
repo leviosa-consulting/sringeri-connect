@@ -2305,23 +2305,45 @@ export async function registerRoutes(
   });
 
   app.get("/api/transliterate", async (req, res) => {
+    const text = (req.query.text as string || "").trim().slice(0, 200);
+    if (!text) return res.json({ transliteration: "" });
+    const lang = "kn";
+
+    // Primary: unofficial gtx endpoint (free, no key needed)
     try {
-      const text = (req.query.text as string || "").trim().slice(0, 200);
-      const lang = "kn";
-      if (!text) return res.json({ transliteration: "" });
-
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(text)}`;
-      const response = await fetch(url);
-      if (!response.ok) return res.json({ transliteration: "" });
+      const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
+      if (response.ok) {
+        const data = await response.json();
+        const translated = Array.isArray(data) && Array.isArray(data[0])
+          ? data[0].map((s: any) => (Array.isArray(s) ? s[0] : "")).join("")
+          : "";
+        if (translated) return res.json({ transliteration: translated });
+      }
+    } catch {
+      // gtx failed or timed out — fall through to official API
+    }
 
+    // Fallback: official Google Cloud Translation API
+    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+    if (!apiKey) return res.json({ transliteration: "" });
+    try {
+      const response = await fetch(
+        `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ q: text, source: "en", target: lang, format: "text" }),
+          signal: AbortSignal.timeout(5000),
+        }
+      );
+      if (!response.ok) return res.json({ transliteration: "" });
       const data = await response.json();
-      const translated = Array.isArray(data) && Array.isArray(data[0])
-        ? data[0].map((s: any) => (Array.isArray(s) ? s[0] : "")).join("")
-        : "";
-      res.json({ transliteration: translated });
+      const translated = data?.data?.translations?.[0]?.translatedText || "";
+      return res.json({ transliteration: translated });
     } catch (error) {
-      console.error("Transliteration error:", error);
-      res.json({ transliteration: "" });
+      console.error("Transliteration fallback error:", error);
+      return res.json({ transliteration: "" });
     }
   });
 
