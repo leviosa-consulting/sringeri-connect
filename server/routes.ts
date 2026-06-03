@@ -1171,6 +1171,15 @@ export async function registerRoutes(
 
   app.post("/api/onlineReservationPtm", async (req, res) => {
     try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      const verifiedUid = await verifyFirebaseTokenEarly(authHeader.slice(7));
+      if (!verifiedUid) {
+        return res.status(401).json({ error: "Invalid or expired session" });
+      }
+
       const PAYTM_MID_VAL = process.env.PAYTM_MID;
       const PAYTM_KEY_VAL = process.env.PAYTM_MERCHANT_KEY;
 
@@ -1180,10 +1189,42 @@ export async function registerRoutes(
 
       const { reservedDate, mobileNumber, email, occupantName1, occupantAge1,
               occupantIdType1, occupantIdNumber1, occupantName2, occupantAge2,
-              occupantIdType2, occupantIdNumber2, roomCount, rent, deposit,
-              inventoryId, uid, filter } = req.body;
+              occupantIdType2, occupantIdNumber2, roomCount,
+              inventoryId, filter } = req.body;
 
-      const totalAmount = Number(rent || 0) + Number(deposit || 0);
+      if (!inventoryId) {
+        return res.status(400).json({ error: "inventoryId is required" });
+      }
+
+      // Server-side price lookup: never trust client-supplied rent/deposit
+      const inventoryRes = await fetch(`${SRINGERI_API_URL}/api/onlineInventory`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      if (!inventoryRes.ok) {
+        return res.status(502).json({ error: "Could not verify room pricing. Please try again." });
+      }
+      const inventoryText = await inventoryRes.text().catch(() => "");
+      let inventoryData: any[] = [];
+      try {
+        const start = inventoryText.search(/[\[{]/);
+        inventoryData = start !== -1 ? JSON.parse(inventoryText.substring(start)) : JSON.parse(inventoryText);
+        if (!Array.isArray(inventoryData)) inventoryData = [inventoryData];
+      } catch {
+        return res.status(502).json({ error: "Could not verify room pricing. Please try again." });
+      }
+      const inventoryItem = inventoryData.find(
+        (item: any) => String(item.inventoryId) === String(inventoryId)
+      );
+      if (!inventoryItem) {
+        return res.status(400).json({ error: "Selected room is no longer available" });
+      }
+      const rent = Number(inventoryItem.rent ?? 0);
+      const deposit = Number(inventoryItem.deposit ?? 0);
+
+      const totalAmount = rent + deposit;
       if (!totalAmount || totalAmount <= 0) {
         return res.status(400).json({ error: "Valid amount is required" });
       }
@@ -1197,7 +1238,6 @@ export async function registerRoutes(
         String(now.getSeconds()).padStart(2, "0");
       const rand = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
       const orderId = `YATRI_${ts}_${rand}`;
-
       const reservationPayload = {
         reservedDate: reservedDate || "",
         mobileNumber: mobileNumber || "",
@@ -1211,10 +1251,10 @@ export async function registerRoutes(
         occupantIdType2: occupantIdType2 || 1,
         occupantIdNumber2: occupantIdNumber2 || "",
         roomCount: roomCount || 1,
-        rent: rent || 0,
-        deposit: deposit || 0,
+        rent: rent,
+        deposit: deposit,
         inventoryId: inventoryId,
-        uid: uid || "",
+        uid: verifiedUid,
         filter: filter || {},
         orderId: orderId,
       };
@@ -1284,7 +1324,7 @@ export async function registerRoutes(
             currency: "INR",
           },
           userInfo: {
-            custId: uid || mobileNumber || "GUEST",
+            custId: verifiedUid,
           },
           callbackUrl: `${req.protocol}://${req.get("host")}/api/paytm-callback`,
         },
@@ -2857,43 +2897,13 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/paymentAck", async (req, res) => {
-    try {
-      console.log("paymentAck request body:", JSON.stringify(req.body));
-
-      const response = await fetch(`${SRINGERI_API_URL}/api/paymentAck`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
-        },
-        body: JSON.stringify(req.body),
-      });
-
-      const text = await response.text();
-      console.log("paymentAck Sringeri response:", response.status, text);
-
-      if (!response.ok) {
-        return res.status(response.status).json({ error: "Failed to acknowledge payment" });
-      }
-
-      let data;
-      try {
-        const jsonStart = text.indexOf('{');
-        if (jsonStart !== -1) {
-          data = JSON.parse(text.substring(jsonStart));
-        } else {
-          data = JSON.parse(text);
-        }
-      } catch (parseError) {
-        return res.status(500).json({ error: "Invalid API response" });
-      }
-
-      res.json(data);
-    } catch (error) {
-      console.error("Error acknowledging payment:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
+  // Payment acknowledgements are sent directly from the server to the upstream
+  // Sringeri API in the paytm-callback and reconciliation routes after
+  // server-side Paytm verification. There is no legitimate reason for a client
+  // to call this endpoint; exposing it as a public proxy would let any
+  // authenticated caller force an upstream ack for any order ID they supply.
+  app.post("/api/paymentAck", (_req, res) => {
+    res.status(410).json({ error: "This endpoint is not available" });
   });
 
   // Helper: query Paytm order status, optionally trying SPCT MID as fallback.
@@ -3489,7 +3499,14 @@ export async function registerRoutes(
         useKey = PAYTM_KEY_SPCT_VAL;
       }
 
-      if (useKey && paytmResponse.CHECKSUMHASH) {
+      // Checksum verification is mandatory when Paytm keys are configured.
+      // Reject callbacks that omit CHECKSUMHASH entirely — missing hash is not
+      // the same as a failed verification; it means the request was not from Paytm.
+      if (useKey) {
+        if (!paytmResponse.CHECKSUMHASH) {
+          console.error("Paytm callback missing CHECKSUMHASH for order:", paytmResponse.ORDERID);
+          return res.redirect(`/payment-result?orderId=${encodeURIComponent(paytmResponse.ORDERID || "")}&status=FAILED&respMsg=${encodeURIComponent("Payment verification failed. Please contact support.")}`);
+        }
         const { CHECKSUMHASH, ...dataWithoutChecksum } = paytmResponse;
         const isValid = PaytmChecksum.verifySignature(
           dataWithoutChecksum,
@@ -3503,31 +3520,16 @@ export async function registerRoutes(
         console.log("Paytm callback checksum verified for order:", paytmResponse.ORDERID);
       }
 
-      const ackBody: Record<string, string> = {};
-      const fields = ["BANKNAME", "BANKTXNID", "CURRENCY", "PAYMENTMODE", "ORDERID", "RESPCODE", "RESPMSG", "STATUS", "TXNDATE", "TXNID", "TXNAMOUNT"];
-      for (const f of fields) {
-        if (paytmResponse[f]) ackBody[f] = paytmResponse[f];
-      }
-
-      try {
-        await fetch(`${SRINGERI_API_URL}/api/paymentAck`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
-          },
-          body: JSON.stringify(ackBody),
-        });
-      } catch (ackErr) {
-        console.error("paymentAck call failed in callback (non-blocking):", ackErr);
-      }
-
       const orderId = paytmResponse.ORDERID || "";
       let verifiedStatus = paytmResponse.STATUS || "FAILED";
       let verifiedTxnId = paytmResponse.TXNID || "";
       let verifiedAmount = paytmResponse.TXNAMOUNT || "";
       let verifiedRespMsg = paytmResponse.RESPMSG || "";
 
+      // Server-side status verification with Paytm — this is the authoritative result.
+      // The paymentAck to the upstream system only fires after this verification,
+      // so the ack always reflects the server-confirmed status rather than the
+      // unverified callback fields.
       if (useMid && useKey && orderId) {
         try {
           const verifyParams: Record<string, any> = {
@@ -3559,6 +3561,29 @@ export async function registerRoutes(
         } catch (verifyErr) {
           console.error("Server-side verification failed, using callback status:", verifyErr);
         }
+      }
+
+      // Acknowledge payment to the upstream system only after server-side verification.
+      const ackBody: Record<string, string> = {};
+      const fields = ["BANKNAME", "BANKTXNID", "CURRENCY", "PAYMENTMODE", "ORDERID", "RESPCODE", "RESPMSG", "STATUS", "TXNDATE", "TXNID", "TXNAMOUNT"];
+      for (const f of fields) {
+        if (paytmResponse[f]) ackBody[f] = paytmResponse[f];
+      }
+      // Override STATUS with the server-verified value so the upstream sees the
+      // authoritative status rather than what the callback claimed.
+      if (verifiedStatus) ackBody["STATUS"] = verifiedStatus;
+
+      try {
+        await fetch(`${SRINGERI_API_URL}/api/paymentAck`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+          },
+          body: JSON.stringify(ackBody),
+        });
+      } catch (ackErr) {
+        console.error("paymentAck call failed in callback (non-blocking):", ackErr);
       }
 
       const params = new URLSearchParams();

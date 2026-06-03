@@ -14,6 +14,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/auth-context";
+import { getIdToken } from "@/lib/firebase";
 import { PendingTransactionBanner } from "@/components/pending-transaction-banner";
 import { useLocation } from "wouter";
 import { useSubdomainMode } from "@/contexts/subdomain-mode-context";
@@ -251,6 +252,13 @@ export default function Accommodation() {
     setErrorMessage("");
 
     try {
+      const idToken = await getIdToken();
+      if (!idToken) {
+        setErrorMessage("Session expired. Please log in again and retry.");
+        setSubmitting(false);
+        return;
+      }
+
       const reservationData = {
         reservedDate: selectedDate.dbDate,
         mobileNumber: mobile,
@@ -264,16 +272,16 @@ export default function Accommodation() {
         occupantIdType2: 1,
         occupantIdNumber2: occupant2.idNumber,
         roomCount: 1,
-        rent: selectedRoom.rent,
-        deposit: selectedRoom.deposit,
         inventoryId: selectedRoom.inventoryId,
-        uid: user.uid,
         filter: {},
       };
 
       const res = await fetch("/api/onlineReservationPtm", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify(reservationData),
       });
 
