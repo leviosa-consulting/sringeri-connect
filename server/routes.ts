@@ -2620,10 +2620,9 @@ export async function registerRoutes(
     try {
       const body = { ...req.body };
       if (typeof body.mobile === "string") {
-        let m = body.mobile.trim().replace(/\D/g, "");
-        if (m.length === 11 && m.startsWith("0")) m = m.slice(1);
-        if (m.length !== 10) {
-          return res.status(400).json({ error: "Please enter a valid 10-digit mobile number." });
+        const m = body.mobile.trim().replace(/\D/g, "");
+        if (m.length !== 10 || m.startsWith("0")) {
+          return res.status(400).json({ error: "Please enter a valid 10-digit mobile number not starting with 0." });
         }
         body.mobile = m;
       }
