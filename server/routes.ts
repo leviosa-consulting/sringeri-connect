@@ -2618,13 +2618,22 @@ export async function registerRoutes(
 
   app.post("/api/newReceiptFl", async (req, res) => {
     try {
+      const body = { ...req.body };
+      if (typeof body.mobile === "string") {
+        let m = body.mobile.trim().replace(/\D/g, "");
+        if (m.length === 11 && m.startsWith("0")) m = m.slice(1);
+        if (m.length !== 10) {
+          return res.status(400).json({ error: "Please enter a valid 10-digit mobile number." });
+        }
+        body.mobile = m;
+      }
       const response = await fetch(`${SRINGERI_API_URL}/api/newReceiptFl`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
         },
-        body: JSON.stringify(req.body),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {

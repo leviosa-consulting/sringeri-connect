@@ -366,7 +366,7 @@ export default function Fastline() {
             </div>
 
             <div className="mt-4">
-              <input type="text" value={kartaMobile} onChange={(e) => setKartaMobile(e.target.value)}
+              <input type="tel" inputMode="numeric" maxLength={11} value={kartaMobile} onChange={(e) => setKartaMobile(e.target.value.replace(/\D/g, ""))}
                 placeholder="Mobile Number"
                 className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 focus:outline-none focus:ring-0 transition-colors"
                 data-testid="input-fl-mobile" />
