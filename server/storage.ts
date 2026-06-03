@@ -525,16 +525,27 @@ if (process.env.DATABASE_URL) {
 
     async tryCronClaim(key: string, windowMinutes: number): Promise<boolean> {
       const now = new Date();
+      const epoch = new Date(0);
       const threshold = new Date(now.getTime() - windowMinutes * 60 * 1000);
-      // Atomic upsert: insert epoch seed if key missing, then update only when
-      // the last claim is older than the window.  A single row returned = we won.
-      const result = await db.execute(sql`
+
+      // Step 1: Seed the row with an epoch timestamp if it doesn't exist yet.
+      // ON CONFLICT DO NOTHING means exactly one process creates it; others skip.
+      await db.execute(sql`
         INSERT INTO app_settings (key, value, updated_at)
-        VALUES (${key}, '1970-01-01T00:00:00.000Z', ${threshold} - INTERVAL '1 second')
-        ON CONFLICT (key) DO UPDATE
-          SET value      = ${now.toISOString()},
-              updated_at = ${now}
-          WHERE app_settings.updated_at < ${threshold}
+        VALUES (${key}, '1970-01-01T00:00:00.000Z', ${epoch})
+        ON CONFLICT (key) DO NOTHING
+      `);
+
+      // Step 2: Conditional UPDATE — PostgreSQL row-lock guarantees that concurrent
+      // UPDATE statements on the same row are serialized. The first one to commit
+      // sets updated_at = now; any later process sees updated_at >= threshold and
+      // gets 0 rows, so only one winner per window.
+      const result = await db.execute(sql`
+        UPDATE app_settings
+        SET value      = ${now.toISOString()},
+            updated_at = ${now}
+        WHERE key          = ${key}
+          AND updated_at   < ${threshold}
         RETURNING key
       `);
       return (result.rows?.length ?? 0) > 0;
