@@ -215,15 +215,19 @@ httpServer.on("error", (err: any) => {
 
     log("all routes and middleware initialized");
 
-    cron.schedule("*/15 * * * *", async () => {
-      log("Running scheduled reconciliation…", "cron");
-      try {
-        await runReconciliation();
-      } catch (err) {
-        console.error("Reconciliation cron error:", err);
-      }
-    });
-    log("Reconciliation cron scheduled (every 15 minutes)", "cron");
+    if (process.env.NODE_ENV === "production") {
+      cron.schedule("*/15 * * * *", async () => {
+        log("Running scheduled reconciliation…", "cron");
+        try {
+          await runReconciliation();
+        } catch (err) {
+          console.error("Reconciliation cron error:", err);
+        }
+      });
+      log("Reconciliation cron scheduled (every 15 minutes)", "cron");
+    } else {
+      log("Reconciliation cron skipped (not production)", "cron");
+    }
   } catch (err) {
     console.error("Failed to initialize application:", err);
     process.exit(1);
