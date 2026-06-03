@@ -91,10 +91,7 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Unauthorized" });
       }
       const token = authHeader.split(" ")[1];
-      const parts = token.split(".");
-      if (parts.length !== 3) return res.status(401).json({ error: "Invalid token" });
-      const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
-      const uid = payload.user_id || payload.sub;
+      const uid = await verifyFirebaseTokenEarly(token);
       if (!uid) return res.status(401).json({ error: "Invalid token" });
 
       const LAUNCH_ADMIN_UIDS = (process.env.ANALYTICS_ADMIN_UIDS || "").split(",").map(s => s.trim()).filter(Boolean);
@@ -118,10 +115,7 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Unauthorized" });
       }
       const token = authHeader.split(" ")[1];
-      const parts = token.split(".");
-      if (parts.length !== 3) return res.status(401).json({ error: "Invalid token" });
-      const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
-      const uid = payload.user_id || payload.sub;
+      const uid = await verifyFirebaseTokenEarly(token);
       if (!uid) return res.status(401).json({ error: "Invalid token" });
 
       const LAUNCH_ADMIN_UIDS = (process.env.ANALYTICS_ADMIN_UIDS || "").split(",").map(s => s.trim()).filter(Boolean);
