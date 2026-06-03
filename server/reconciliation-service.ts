@@ -134,6 +134,15 @@ export async function runReconciliation(): Promise<void> {
         const ri = b.resultInfo || {};
         const paytmStatus = String(ri.resultStatus || "UNKNOWN");
 
+        // Only act on statuses Paytm explicitly confirms — never mutate upstream for ambiguous results.
+        // Explicit success:  TXN_SUCCESS
+        // Explicit failures: TXN_FAILURE, ORDER IS CLOSE (and common aliases)
+        // Everything else (UNKNOWN, empty, etc.) → log as error, no upstream call.
+        const isExplicitFailure =
+          paytmStatus === "TXN_FAILURE" ||
+          /order\s+is\s+close/i.test(paytmStatus) ||
+          /order\s+close/i.test(ri.resultMsg || "");
+
         if (paytmStatus === "TXN_SUCCESS") {
           const ackBody: Record<string, string> = {
             ORDERID: orderId,
@@ -158,14 +167,25 @@ export async function runReconciliation(): Promise<void> {
               },
               body: JSON.stringify(ackBody),
             });
-            if (ackRes.ok) {
+            const ackText = await ackRes.text();
+            let ackData: any = null;
+            try { ackData = parseUpstream(ackText); } catch { /* ignore */ }
+            // Treat body-level error indicators (HTTP 200 with error payload) as failures
+            const ackBodyError =
+              ackData?.status === 0 || ackData?.status === false ||
+              ackData?.success === false || ackData?.status_code === 0 ||
+              (typeof ackData?.status === "string" && /fail|error/i.test(ackData.status)) ||
+              (ackData?.error != null && ackData?.message == null && ackData?.status == null);
+            if (!ackRes.ok || ackBodyError) {
+              const msg = ackBodyError
+                ? (ackData?.message || ackData?.error || ackData?.msg || ackData?.status || ackText.slice(0, 100))
+                : `ACK failed HTTP ${ackRes.status}: ${ackText.slice(0, 100)}`;
+              errorCount++;
+              details.push({ orderId, type: txnType, paytmStatus, outcome: "error", error: String(msg), txnAmount: b.txnAmount });
+            } else {
               ackedCount++;
               details.push({ orderId, type: txnType, paytmStatus, outcome: "acked", txnAmount: b.txnAmount, txnId: b.txnId });
               console.log(`[reconciliation] Acked: ${orderId}`);
-            } else {
-              const errText = await ackRes.text();
-              errorCount++;
-              details.push({ orderId, type: txnType, paytmStatus, outcome: "error", error: `ACK failed HTTP ${ackRes.status}: ${errText.slice(0, 100)}`, txnAmount: b.txnAmount });
             }
           } catch (ackErr: any) {
             errorCount++;
@@ -176,10 +196,11 @@ export async function runReconciliation(): Promise<void> {
           pendingCount++;
           details.push({ orderId, type: txnType, paytmStatus, outcome: "pending" });
 
-        } else {
+        } else if (isExplicitFailure) {
+          // Only call updateFailedTransaction for explicit Paytm failure statuses
           const failBody: Record<string, string> = {
             ORDERID: orderId,
-            STATUS: paytmStatus || "TXN_FAILURE",
+            STATUS: paytmStatus,
             RESPCODE: String(ri.resultCode ?? ""),
             RESPMSG: ri.resultMsg || "Transaction Failed",
           };
@@ -200,19 +221,36 @@ export async function runReconciliation(): Promise<void> {
               },
               body: JSON.stringify(failBody),
             });
-            if (failRes.ok) {
+            const failText = await failRes.text();
+            let failData: any = null;
+            try { failData = parseUpstream(failText); } catch { /* ignore */ }
+            // Treat body-level error indicators (HTTP 200 with error payload) as failures
+            const failBodyError =
+              failData?.status === 0 || failData?.status === false ||
+              failData?.success === false || failData?.status_code === 0 ||
+              (typeof failData?.status === "string" && /fail|error|nothing updated/i.test(failData.status)) ||
+              (failData?.error != null && failData?.message == null && failData?.status == null);
+            if (!failRes.ok || failBodyError) {
+              const msg = failBodyError
+                ? (failData?.message || failData?.error || failData?.msg || failData?.status || failText.slice(0, 100))
+                : `Mark-failed HTTP ${failRes.status}: ${failText.slice(0, 100)}`;
+              errorCount++;
+              details.push({ orderId, type: txnType, paytmStatus, outcome: "error", error: String(msg), txnAmount: b.txnAmount });
+            } else {
               failedCount++;
               details.push({ orderId, type: txnType, paytmStatus, outcome: "marked_failed", txnAmount: b.txnAmount, txnId: b.txnId });
               console.log(`[reconciliation] Marked failed: ${orderId}`);
-            } else {
-              const errText = await failRes.text();
-              errorCount++;
-              details.push({ orderId, type: txnType, paytmStatus, outcome: "error", error: `Mark-failed HTTP ${failRes.status}: ${errText.slice(0, 100)}`, txnAmount: b.txnAmount });
             }
           } catch (failErr: any) {
             errorCount++;
             details.push({ orderId, type: txnType, paytmStatus, outcome: "error", error: `Mark-failed exception: ${failErr?.message}` });
           }
+
+        } else {
+          // Ambiguous or unknown status — do NOT mutate upstream state
+          console.warn(`[reconciliation] Ambiguous Paytm status for ${orderId}: "${paytmStatus}" — skipping upstream mutation`);
+          errorCount++;
+          details.push({ orderId, type: txnType, paytmStatus, outcome: "error", error: `Ambiguous status "${paytmStatus}" — no action taken` });
         }
       } catch (err: any) {
         errorCount++;
