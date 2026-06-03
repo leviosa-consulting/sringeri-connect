@@ -590,7 +590,10 @@ export default function Donation() {
 
   useEffect(() => {
     if (user?.uid) {
-      fetch(`/api/onlineDevotee/${user.uid}`)
+      user.getIdToken()
+        .then((token) => fetch(`/api/onlineDevotee/${user.uid}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }))
         .then((r) => r.json())
         .then((data) => {
           setDonationForm((prev) => ({

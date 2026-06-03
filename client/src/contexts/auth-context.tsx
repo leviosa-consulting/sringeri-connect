@@ -171,7 +171,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("setOnlineSession failed (non-blocking):", e);
       }
 
-      const response = await fetch(`/api/onlineDevotee/${uid}`);
+      const idToken = await firebaseUser.getIdToken();
+      const response = await fetch(`/api/onlineDevotee/${uid}`, {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
       
       if (response.ok) {
         const data = await response.json();

@@ -337,6 +337,31 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Valid Karta ID is required" });
       }
 
+      // Verify the requested karta record belongs to the authenticated user
+      const ownershipRes = await fetch(`${SRINGERI_API_URL}/api/devoteeKarta/${verifiedUid}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      if (!ownershipRes.ok) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      let ownershipData: any;
+      try {
+        const ownershipText = await ownershipRes.text();
+        const start = ownershipText.search(/[\[{]/);
+        ownershipData = start !== -1 ? JSON.parse(ownershipText.substring(start)) : JSON.parse(ownershipText);
+      } catch {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const ownedIds: number[] = (Array.isArray(ownershipData) ? ownershipData : [ownershipData])
+        .map((r: any) => r?.id)
+        .filter((v: any) => v !== undefined && v !== null);
+      if (!ownedIds.includes(Number(id))) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
       const allowedFields = ["name", "nameK", "city", "rashiId", "gotra", "gotraK", "nakshatraId", "status"];
       const filtered: Record<string, string | number> = {};
       for (const key of allowedFields) {
@@ -388,6 +413,19 @@ export async function registerRoutes(
       
       if (!uid) {
         return res.status(400).json({ error: "User ID is required" });
+      }
+
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const token = authHeader.slice(7);
+      const verifiedUid = await verifyFirebaseTokenEarly(token);
+      if (!verifiedUid) {
+        return res.status(401).json({ error: "Invalid or expired token" });
+      }
+      if (verifiedUid !== uid) {
+        return res.status(403).json({ error: "Forbidden" });
       }
 
       const response = await fetch(`${SRINGERI_API_URL}/api/onlineDevotee/${uid}`, {
@@ -1704,6 +1742,20 @@ export async function registerRoutes(
   app.get("/api/devoteeKarta/:uid", async (req, res) => {
     try {
       const { uid } = req.params;
+
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const token = authHeader.slice(7);
+      const verifiedUid = await verifyFirebaseTokenEarly(token);
+      if (!verifiedUid) {
+        return res.status(401).json({ error: "Invalid or expired token" });
+      }
+      if (verifiedUid !== uid) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
       const response = await fetch(`${SRINGERI_API_URL}/api/devoteeKarta/${uid}`, {
         headers: {
           "Content-Type": "application/json",
@@ -1740,6 +1792,20 @@ export async function registerRoutes(
   app.get("/api/devoteeAddress/:uid", async (req, res) => {
     try {
       const { uid } = req.params;
+
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const token = authHeader.slice(7);
+      const verifiedUid = await verifyFirebaseTokenEarly(token);
+      if (!verifiedUid) {
+        return res.status(401).json({ error: "Invalid or expired token" });
+      }
+      if (verifiedUid !== uid) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
       const response = await fetch(`${SRINGERI_API_URL}/api/devoteeAddress/${uid}`, {
         headers: {
           "Content-Type": "application/json",
@@ -1850,6 +1916,31 @@ export async function registerRoutes(
       const { id } = req.params;
       if (!id || isNaN(Number(id))) {
         return res.status(400).json({ error: "Valid Address ID is required" });
+      }
+
+      // Verify the requested address record belongs to the authenticated user
+      const ownershipRes = await fetch(`${SRINGERI_API_URL}/api/devoteeAddress/${verifiedUid}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+      });
+      if (!ownershipRes.ok) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      let ownershipData: any;
+      try {
+        const ownershipText = await ownershipRes.text();
+        const start = ownershipText.search(/[\[{]/);
+        ownershipData = start !== -1 ? JSON.parse(ownershipText.substring(start)) : JSON.parse(ownershipText);
+      } catch {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const ownedIds: number[] = (Array.isArray(ownershipData) ? ownershipData : [ownershipData])
+        .map((r: any) => r?.id)
+        .filter((v: any) => v !== undefined && v !== null);
+      if (!ownedIds.includes(Number(id))) {
+        return res.status(403).json({ error: "Forbidden" });
       }
 
       const allowedFields = ["addresseeName", "addressLine1", "addressLine2", "landmark", "city", "state", "country", "pincode", "status", "alternatePhone"];

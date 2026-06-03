@@ -513,7 +513,10 @@ export default function Seva() {
 
   useEffect(() => {
     if (user) {
-      fetch(`/api/onlineDevotee/${user.uid}`)
+      user.getIdToken()
+        .then((token) => fetch(`/api/onlineDevotee/${user.uid}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }))
         .then((r) => r.json())
         .then((data) => {
           setPayeeName(data.name || "");
