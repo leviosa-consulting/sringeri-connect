@@ -215,6 +215,8 @@ export default function Fastline() {
         status: 8,
         paymentRef: orderId,
         selectedSevas: selectedSevasList,
+        ...(kartaNakshatraId && { nakshatraId: kartaNakshatraId }),
+        ...(kartaRashiId && { rashiId: kartaRashiId }),
       };
 
       const receiptRes = await fetch("/api/newReceiptFl", {
