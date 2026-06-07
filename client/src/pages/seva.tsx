@@ -1111,6 +1111,8 @@ export default function Seva() {
         selectedSevas: cart,
         sevaTypeId: selectedSevaType?.id || cart[0]?.mode || 2,
         uid: user?.uid || "",
+        ...(kartaNakshatraId && { nakshatraId: kartaNakshatraId }),
+        ...(kartaRashiId && { rashiId: kartaRashiId }),
       };
       if (isRecurring) {
         receiptBody.inAbsentia = 1;
@@ -1267,6 +1269,8 @@ export default function Seva() {
         status: 8,
         paymentRef: orderId,
         selectedSevas: selectedSevasList,
+        ...(kartaNakshatraId && { nakshatraId: kartaNakshatraId }),
+        ...(kartaRashiId && { rashiId: kartaRashiId }),
       };
 
       const receiptRes = await fetch("/api/newReceiptFl", {
