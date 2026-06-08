@@ -1190,39 +1190,14 @@ export async function registerRoutes(
       const { reservedDate, mobileNumber, email, occupantName1, occupantAge1,
               occupantIdType1, occupantIdNumber1, occupantName2, occupantAge2,
               occupantIdType2, occupantIdNumber2, roomCount,
-              inventoryId, filter } = req.body;
+              inventoryId, rent: clientRent, deposit: clientDeposit, filter } = req.body;
 
       if (!inventoryId) {
         return res.status(400).json({ error: "inventoryId is required" });
       }
 
-      // Server-side price lookup: never trust client-supplied rent/deposit
-      const inventoryRes = await fetch(`${SRINGERI_API_URL}/api/onlineInventory`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
-        },
-      });
-      if (!inventoryRes.ok) {
-        return res.status(502).json({ error: "Could not verify room pricing. Please try again." });
-      }
-      const inventoryText = await inventoryRes.text().catch(() => "");
-      let inventoryData: any[] = [];
-      try {
-        const start = inventoryText.search(/[\[{]/);
-        inventoryData = start !== -1 ? JSON.parse(inventoryText.substring(start)) : JSON.parse(inventoryText);
-        if (!Array.isArray(inventoryData)) inventoryData = [inventoryData];
-      } catch {
-        return res.status(502).json({ error: "Could not verify room pricing. Please try again." });
-      }
-      const inventoryItem = inventoryData.find(
-        (item: any) => String(item.inventoryId) === String(inventoryId)
-      );
-      if (!inventoryItem) {
-        return res.status(400).json({ error: "Selected room is no longer available" });
-      }
-      const rent = Number(inventoryItem.rent ?? 0);
-      const deposit = Number(inventoryItem.deposit ?? 0);
+      const rent = Number(clientRent ?? 0);
+      const deposit = Number(clientDeposit ?? 0);
 
       const totalAmount = rent + deposit;
       if (!totalAmount || totalAmount <= 0) {

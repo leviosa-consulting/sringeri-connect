@@ -273,6 +273,8 @@ export default function Accommodation() {
         occupantIdNumber2: occupant2.idNumber,
         roomCount: 1,
         inventoryId: selectedRoom.inventoryId,
+        rent: selectedRoom.rent,
+        deposit: selectedRoom.deposit,
         filter: {},
       };
 
