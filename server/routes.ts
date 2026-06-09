@@ -17,6 +17,41 @@ export async function registerRoutes(
   const SRINGERI_API_URL = process.env.VITE_SRINGERI_API_URL || "https://dsspv2.lcpl.in";
   const SRINGERI_API_KEY = process.env.SRINGERI_API_KEY;
 
+  // ---------------------------------------------------------------------------
+  // In-memory TTL cache — reduces upstream API calls for static/semi-static data
+  // ---------------------------------------------------------------------------
+  function makeCache(ttlMs: number): { get(k: string): any; set(k: string, v: any): void } {
+    const s = new Map<string, { v: any; t: number }>();
+    return {
+      get(k: string) { const e = s.get(k); return (e && Date.now() - e.t < ttlMs) ? e.v : null; },
+      set(k: string, v: any) { s.set(k, { v, t: Date.now() }); },
+    };
+  }
+  const _c = {
+    launchStatus:        makeCache(30_000),              // 30 s  — DB hit reduction
+    rashis:              makeCache(12 * 3600_000),        // 12 hr — never changes
+    nakshatras:          makeCache(12 * 3600_000),
+    tithis:              makeCache(12 * 3600_000),
+    chandraMasas:        makeCache(12 * 3600_000),
+    souraMasas:          makeCache(12 * 3600_000),
+    calendarTypes:       makeCache(12 * 3600_000),
+    recurrenceTypes:     makeCache(12 * 3600_000),
+    govtIdTypes:         makeCache(12 * 3600_000),
+    donationHeading:     makeCache(3600_000),             // 1 hr
+    donationCategory:    makeCache(3600_000),
+    donationSubCats:     makeCache(3600_000),             // full list; filtered per request
+    postageOptions:      makeCache(3600_000),
+    postageOptionsDon:   makeCache(3600_000),
+    centres:             makeCache(3600_000),
+    centreSevas:         makeCache(30 * 60_000),          // 30 min; keyed by endpoint URL
+    onlineFrequentSevas: makeCache(30 * 60_000),
+    onlineInventory:     makeCache(2 * 60_000),           // 2 min — availability
+    todayDetails:        makeCache(6 * 3600_000),         // 6 hr; keyed by date
+  };
+  // Transliterate cache: same input always gives same output
+  const _xlitCache = new Map<string, string>();
+  const XLIT_MAX = 5000;
+
   const firebaseAdminMod = await import("firebase-admin");
   if (!firebaseAdminMod.default.apps.length) {
     firebaseAdminMod.default.initializeApp({
@@ -77,8 +112,12 @@ export async function registerRoutes(
 
   app.get("/api/launch-status", async (_req, res) => {
     try {
+      const cached = _c.launchStatus.get("v");
+      if (cached !== null) return res.json(cached);
       const val = await storage.getAppSetting("isLaunched");
-      res.json({ isLaunched: val === "true" });
+      const result = { isLaunched: val === "true" };
+      _c.launchStatus.set("v", result);
+      res.json(result);
     } catch (error) {
       res.json({ isLaunched: false });
     }
@@ -777,6 +816,61 @@ export async function registerRoutes(
     return out;
   };
 
+  const fetchFromPiped = async (channelId: string): Promise<any[]> => {
+    const instances = [
+      "https://pipedapi.kavin.rocks",
+      "https://pipedapi.in",
+      "https://piped-api.lunar.icu",
+      "https://api.piped.yt",
+    ];
+    for (const base of instances) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        let res;
+        try {
+          res = await fetch(`${base}/channel/${channelId}`, {
+            headers: { "Accept": "application/json" },
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+        if (!res.ok) {
+          console.log(`[YouTube] Piped ${base} returned HTTP ${res.status}`);
+          continue;
+        }
+        const json = await res.json();
+        const items: any[] = json.relatedStreams || json.latestVideos || [];
+        if (items.length === 0) {
+          console.log(`[YouTube] Piped ${base} returned 0 videos`);
+          continue;
+        }
+        const out = items.slice(0, 10).map((v: any) => {
+          const videoId = (v.url || "").replace("/watch?v=", "");
+          const uploadedMs = v.uploaded ? (v.uploaded > 1e12 ? v.uploaded : v.uploaded * 1000) : 0;
+          return {
+            videoId,
+            title: v.title || "",
+            published: uploadedMs ? new Date(uploadedMs).toISOString() : "",
+            date: uploadedMs ? new Date(uploadedMs).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null,
+            thumbnail: v.thumbnail || `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+            url: `https://www.youtube.com/watch?v=${videoId}`,
+          };
+        }).filter((v: any) => v.videoId);
+        if (out.length === 0) {
+          console.log(`[YouTube] Piped ${base} returned data but parsed 0 valid videos`);
+          continue;
+        }
+        console.log(`[YouTube] Piped ${base} succeeded: ${out.length} videos found`);
+        return out;
+      } catch (err) {
+        console.log(`[YouTube] Piped ${base} failed: ${String(err)}`);
+      }
+    }
+    return [];
+  };
+
   const fetchFromInvidious = async (channelId: string): Promise<any[]> => {
     const instances = [
       "https://inv.nadeko.net",
@@ -884,9 +978,20 @@ export async function registerRoutes(
 
       if (videos.length === 0) {
         videos = await scrapeYtInitialData(
+          `https://www.youtube.com/channel/${channelId}/videos`,
+          "Channel ID page scrape",
+        );
+      }
+
+      if (videos.length === 0) {
+        videos = await scrapeYtInitialData(
           `https://www.youtube.com/playlist?list=${uploadsPlaylistId}`,
           "Uploads playlist scrape",
         );
+      }
+
+      if (videos.length === 0) {
+        videos = await fetchFromPiped(channelId);
       }
 
       if (videos.length === 0) {
@@ -1029,7 +1134,8 @@ export async function registerRoutes(
   app.get("/api/todayDetails/:date", async (req, res) => {
     try {
       const { date } = req.params;
-      
+      const cached = _c.todayDetails.get(date);
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/todayDetails/${date}`, {
         headers: {
           "Content-Type": "application/json",
@@ -1056,6 +1162,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.todayDetails.set(date, data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching today details:", error);
@@ -1066,6 +1173,8 @@ export async function registerRoutes(
   // Accommodation API routes
   app.get("/api/onlineInventory", async (req, res) => {
     try {
+      const cached = _c.onlineInventory.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/onlineInventory`, {
         headers: {
           "Content-Type": "application/json",
@@ -1093,6 +1202,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.onlineInventory.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching inventory:", error);
@@ -1102,6 +1212,8 @@ export async function registerRoutes(
 
   app.get("/api/govtIdTypes", async (req, res) => {
     try {
+      const cached = _c.govtIdTypes.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/govtIdTypes`, {
         headers: {
           "Content-Type": "application/json",
@@ -1128,6 +1240,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.govtIdTypes.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching govt ID types:", error);
@@ -1347,6 +1460,8 @@ export async function registerRoutes(
   // Donation API routes
   app.get("/api/donationHeading", async (req, res) => {
     try {
+      const cached = _c.donationHeading.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/donationHeading`, {
         headers: {
           "Content-Type": "application/json",
@@ -1373,6 +1488,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.donationHeading.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching donation headings:", error);
@@ -1382,6 +1498,8 @@ export async function registerRoutes(
 
   app.get("/api/donationCategory", async (req, res) => {
     try {
+      const cached = _c.donationCategory.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/donationCategory`, {
         headers: {
           "Content-Type": "application/json",
@@ -1408,6 +1526,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.donationCategory.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching donation categories:", error);
@@ -1502,6 +1621,11 @@ export async function registerRoutes(
   app.get("/api/donationSubCategory/:categoryId", async (req, res) => {
     try {
       const { categoryId } = req.params;
+      const cachedAll = _c.donationSubCats.get("v");
+      if (cachedAll !== null) {
+        const filtered = Array.isArray(cachedAll) ? cachedAll.filter((sub: any) => String(sub.donationCategoryId) === String(categoryId)) : [];
+        return res.json(filtered);
+      }
       const response = await fetch(`${SRINGERI_API_URL}/api/donationSubCategories`, {
         headers: {
           "Content-Type": "application/json",
@@ -1528,6 +1652,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.donationSubCats.set("v", allSubs);
       const filtered = Array.isArray(allSubs)
         ? allSubs.filter((sub: any) => String(sub.donationCategoryId) === String(categoryId))
         : [];
@@ -1540,6 +1665,8 @@ export async function registerRoutes(
 
   app.get("/api/postageOptionsDonation", async (req, res) => {
     try {
+      const cached = _c.postageOptionsDon.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/postageOptionsDonation`, {
         headers: {
           "Content-Type": "application/json",
@@ -1566,6 +1693,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.postageOptionsDon.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching postage options:", error);
@@ -1575,6 +1703,8 @@ export async function registerRoutes(
 
   app.get("/api/calendarTypes", async (req, res) => {
     try {
+      const cached = _c.calendarTypes.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/calendarTypes`, {
         headers: {
           "Content-Type": "application/json",
@@ -1601,6 +1731,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.calendarTypes.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching calendar types:", error);
@@ -1610,6 +1741,8 @@ export async function registerRoutes(
 
   app.get("/api/tithis", async (req, res) => {
     try {
+      const cached = _c.tithis.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/tithis`, {
         headers: {
           "Content-Type": "application/json",
@@ -1636,6 +1769,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.tithis.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching tithis:", error);
@@ -1645,6 +1779,8 @@ export async function registerRoutes(
 
   app.get("/api/chandraMasas", async (req, res) => {
     try {
+      const cached = _c.chandraMasas.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/chandraMasas`, {
         headers: {
           "Content-Type": "application/json",
@@ -1671,6 +1807,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.chandraMasas.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching chandra masas:", error);
@@ -1680,6 +1817,8 @@ export async function registerRoutes(
 
   app.get("/api/souraMasas", async (req, res) => {
     try {
+      const cached = _c.souraMasas.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/souraMasas`, {
         headers: {
           "Content-Type": "application/json",
@@ -1706,6 +1845,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.souraMasas.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching soura masas:", error);
@@ -1715,6 +1855,8 @@ export async function registerRoutes(
 
   app.get("/api/nakshatras", async (req, res) => {
     try {
+      const cached = _c.nakshatras.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/nakshatras`, {
         headers: {
           "Content-Type": "application/json",
@@ -1741,6 +1883,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.nakshatras.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching nakshatras:", error);
@@ -2196,6 +2339,8 @@ export async function registerRoutes(
   // Seva Booking API routes
   app.get("/api/centres", async (req, res) => {
     try {
+      const cached = _c.centres.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/centres`, {
         headers: {
           "Content-Type": "application/json",
@@ -2222,6 +2367,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.centres.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching centres:", error);
@@ -2232,6 +2378,8 @@ export async function registerRoutes(
   app.get("/api/centreSevas", async (req, res) => {
     try {
       const endpoint = req.query.endpoint as string;
+      const cached = endpoint ? _c.centreSevas.get(endpoint) : null;
+      if (cached !== null) return res.json(cached);
       if (!endpoint) {
         return res.status(400).json({ error: "Endpoint URL is required" });
       }
@@ -2274,6 +2422,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      if (endpoint) _c.centreSevas.set(endpoint, data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching centre sevas:", error);
@@ -2391,6 +2540,8 @@ export async function registerRoutes(
 
   app.get("/api/onlineFrequentSevas", async (req, res) => {
     try {
+      const cached = _c.onlineFrequentSevas.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/onlineFrequentSevas`, {
         headers: {
           "Content-Type": "application/json",
@@ -2417,6 +2568,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.onlineFrequentSevas.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching frequent sevas:", error);
@@ -2426,6 +2578,8 @@ export async function registerRoutes(
 
   app.get("/api/rashis", async (req, res) => {
     try {
+      const cached = _c.rashis.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/rashis`, {
         headers: {
           "Content-Type": "application/json",
@@ -2452,6 +2606,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.rashis.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching rashis:", error);
@@ -2464,6 +2619,10 @@ export async function registerRoutes(
     if (!text) return res.json({ transliteration: "" });
     const lang = "kn";
 
+    // Serve from cache if available (deterministic: same input → same output)
+    const xlitHit = _xlitCache.get(text);
+    if (xlitHit !== undefined) return res.json({ transliteration: xlitHit });
+
     // Primary: unofficial gtx endpoint (free, no key needed)
     try {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(text)}`;
@@ -2473,7 +2632,14 @@ export async function registerRoutes(
         const translated = Array.isArray(data) && Array.isArray(data[0])
           ? data[0].map((s: any) => (Array.isArray(s) ? s[0] : "")).join("")
           : "";
-        if (translated) return res.json({ transliteration: translated });
+        if (translated) {
+          if (_xlitCache.size >= XLIT_MAX) {
+            const firstKey = _xlitCache.keys().next().value;
+            if (firstKey !== undefined) _xlitCache.delete(firstKey);
+          }
+          _xlitCache.set(text, translated);
+          return res.json({ transliteration: translated });
+        }
       }
     } catch {
       // gtx failed or timed out — fall through to official API
@@ -2495,6 +2661,13 @@ export async function registerRoutes(
       if (!response.ok) return res.json({ transliteration: "" });
       const data = await response.json();
       const translated = data?.data?.translations?.[0]?.translatedText || "";
+      if (translated) {
+        if (_xlitCache.size >= XLIT_MAX) {
+          const firstKey = _xlitCache.keys().next().value;
+          if (firstKey !== undefined) _xlitCache.delete(firstKey);
+        }
+        _xlitCache.set(text, translated);
+      }
       return res.json({ transliteration: translated });
     } catch (error) {
       console.error("Transliteration fallback error:", error);
@@ -2504,6 +2677,8 @@ export async function registerRoutes(
 
   app.get("/api/postageOptions", async (req, res) => {
     try {
+      const cached = _c.postageOptions.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/postageOptions`, {
         headers: {
           "Content-Type": "application/json",
@@ -2530,6 +2705,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.postageOptions.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching postage options:", error);
@@ -2539,6 +2715,8 @@ export async function registerRoutes(
 
   app.get("/api/recurrenceTypes", async (req, res) => {
     try {
+      const cached = _c.recurrenceTypes.get("v");
+      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/recurrenceTypes`, {
         headers: {
           "Content-Type": "application/json",
@@ -2565,6 +2743,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
+      _c.recurrenceTypes.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching recurrence types:", error);
