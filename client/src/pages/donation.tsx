@@ -1269,7 +1269,7 @@ export default function Donation() {
             <Button
               className="w-full h-12 text-base font-semibold"
               onClick={validatePayeeAndSubmit}
-              disabled={submitting || !donationForm.confirmInfo}
+              disabled={submitting || !donationForm.confirmInfo || (donationForm.country !== "India" && !donationForm.foreignSourceDecl)}
               data-testid="button-submit-donation"
             >
               {submitting ? (
