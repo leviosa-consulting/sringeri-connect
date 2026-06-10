@@ -43,8 +43,6 @@ export async function registerRoutes(
     postageOptions:      makeCache(3600_000),
     postageOptionsDon:   makeCache(3600_000),
     centres:             makeCache(3600_000),
-    centreSevas:         makeCache(30 * 60_000),          // 30 min; keyed by endpoint URL
-    onlineFrequentSevas: makeCache(30 * 60_000),
     onlineInventory:     makeCache(2 * 60_000),           // 2 min — availability
     todayDetails:        makeCache(6 * 3600_000),         // 6 hr; keyed by date
   };
@@ -2378,8 +2376,6 @@ export async function registerRoutes(
   app.get("/api/centreSevas", async (req, res) => {
     try {
       const endpoint = req.query.endpoint as string;
-      const cached = endpoint ? _c.centreSevas.get(endpoint) : null;
-      if (cached !== null) return res.json(cached);
       if (!endpoint) {
         return res.status(400).json({ error: "Endpoint URL is required" });
       }
@@ -2422,7 +2418,6 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
-      if (endpoint) _c.centreSevas.set(endpoint, data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching centre sevas:", error);
@@ -2540,8 +2535,6 @@ export async function registerRoutes(
 
   app.get("/api/onlineFrequentSevas", async (req, res) => {
     try {
-      const cached = _c.onlineFrequentSevas.get("v");
-      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/onlineFrequentSevas`, {
         headers: {
           "Content-Type": "application/json",
@@ -2568,7 +2561,6 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
-      _c.onlineFrequentSevas.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching frequent sevas:", error);
