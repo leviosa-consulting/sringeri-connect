@@ -150,6 +150,7 @@ interface DonationForm {
   claim80G: number;
   pan: string;
   confirmInfo: boolean;
+  foreignSourceDecl: boolean;
 }
 
 interface PostageOption {
@@ -464,6 +465,7 @@ export default function Donation() {
     claim80G: 0,
     pan: "",
     confirmInfo: false,
+    foreignSourceDecl: false,
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -820,6 +822,8 @@ export default function Donation() {
       errors.push("Please select a postage option.");
     if (!donationForm.confirmInfo)
       errors.push("Please confirm the information is correct.");
+    if (donationForm.country && donationForm.country !== "India" && !donationForm.foreignSourceDecl)
+      errors.push("Please declare that the donation is through Indian sources.");
 
     if (errors.length > 0) {
       setValidationErrors(errors);
@@ -1178,6 +1182,23 @@ export default function Donation() {
               </label>
             </CardContent>
           </Card>
+
+          {donationForm.country && donationForm.country !== "India" && (
+            <Card>
+              <CardContent className="p-5">
+                <label className="flex gap-2 text-xs text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={donationForm.foreignSourceDecl}
+                    onChange={(e) => updatePayeeField("foreignSourceDecl", e.target.checked)}
+                    className="mt-0.5 accent-primary"
+                    data-testid="checkbox-foreign-source"
+                  />
+                  <span>I declare that the money donated to Sri Sri Jagadguru Shankaracharya Mahasamsthanam Dakshinamnaya Sri Sharada Peetham Sringeri is through <strong>INDIAN SOURCES</strong></span>
+                </label>
+              </CardContent>
+            </Card>
+          )}
 
           {has80GInCart && (
             <Card>
