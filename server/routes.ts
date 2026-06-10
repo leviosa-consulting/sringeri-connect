@@ -42,8 +42,6 @@ export async function registerRoutes(
     donationSubCats:     makeCache(3600_000),             // full list; filtered per request
     postageOptions:      makeCache(3600_000),
     postageOptionsDon:   makeCache(3600_000),
-    onlineInventory:     makeCache(2 * 60_000),           // 2 min — availability
-    todayDetails:        makeCache(6 * 3600_000),         // 6 hr; keyed by date
   };
   // Transliterate cache: same input always gives same output
   const _xlitCache = new Map<string, string>();
@@ -1131,8 +1129,6 @@ export async function registerRoutes(
   app.get("/api/todayDetails/:date", async (req, res) => {
     try {
       const { date } = req.params;
-      const cached = _c.todayDetails.get(date);
-      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/todayDetails/${date}`, {
         headers: {
           "Content-Type": "application/json",
@@ -1159,7 +1155,6 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
-      _c.todayDetails.set(date, data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching today details:", error);
@@ -1170,8 +1165,6 @@ export async function registerRoutes(
   // Accommodation API routes
   app.get("/api/onlineInventory", async (req, res) => {
     try {
-      const cached = _c.onlineInventory.get("v");
-      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/onlineInventory`, {
         headers: {
           "Content-Type": "application/json",
@@ -1199,7 +1192,6 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
-      _c.onlineInventory.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching inventory:", error);
