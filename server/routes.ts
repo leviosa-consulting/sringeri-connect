@@ -42,7 +42,6 @@ export async function registerRoutes(
     donationSubCats:     makeCache(3600_000),             // full list; filtered per request
     postageOptions:      makeCache(3600_000),
     postageOptionsDon:   makeCache(3600_000),
-    centres:             makeCache(3600_000),
     onlineInventory:     makeCache(2 * 60_000),           // 2 min — availability
     todayDetails:        makeCache(6 * 3600_000),         // 6 hr; keyed by date
   };
@@ -2337,8 +2336,6 @@ export async function registerRoutes(
   // Seva Booking API routes
   app.get("/api/centres", async (req, res) => {
     try {
-      const cached = _c.centres.get("v");
-      if (cached !== null) return res.json(cached);
       const response = await fetch(`${SRINGERI_API_URL}/api/centres`, {
         headers: {
           "Content-Type": "application/json",
@@ -2365,7 +2362,6 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Invalid API response" });
       }
 
-      _c.centres.set("v", data);
       res.json(data);
     } catch (error) {
       console.error("Error fetching centres:", error);
