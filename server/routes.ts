@@ -132,7 +132,8 @@ export async function registerRoutes(
         }
         uid = userRecord.uid;
       } catch (err: any) {
-        if (err?.code === "auth/user-not-found") {
+        const code = err?.code || err?.errorInfo?.code || "";
+        if (code === "auth/user-not-found" || code === "auth/invalid-email" || !code) {
           return res.status(404).json({ error: "No account found for that email address." });
         }
         throw err;
