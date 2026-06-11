@@ -51,36 +51,40 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Login} />
-        <Route path="/home">{() => <ProtectedRoute component={Home} />}</Route>
-        <Route path="/updates">{() => <ProtectedRoute component={Updates} />}</Route>
-        <Route path="/devotee">{() => <ProtectedRoute component={DevoteeCorner} />}</Route>
-        <Route path="/profile">{() => <ProtectedRoute component={Profile} />}</Route>
-        <Route path="/accommodation">{() => <ProtectedRoute component={Accommodation} />}</Route>
-        <Route path="/donation">{() => <ProtectedRoute component={Donation} />}</Route>
-        <Route path="/seva">{() => <ProtectedRoute component={Seva} />}</Route>
-        <Route path="/knowledge">{() => <ProtectedRoute component={Knowledge} />}</Route>
-        <Route path="/knowledge/:id">{() => <ProtectedRoute component={Knowledge} />}</Route>
-        <Route path="/fastline" component={Fastline} />
-        <Route path="/payment-result" component={PaymentResult} />
-        <Route path="/analytics" component={Analytics} />
-        <Route path="/admin" component={AdminHub} />
-        <Route path="/admin/quizzes">{() => <ProtectedRoute component={AdminQuizzes} />}</Route>
-        <Route path="/admin/quiz-analytics" component={AdminQuizAnalytics} />
-        <Route path="/admin/reconciliation" component={AdminReconciliation} />
-        <Route path="/admin/all-transactions" component={AdminAllTransactions} />
-        <Route path="/admin/reconciliation-logs" component={AdminReconciliationLogs} />
-        <Route path="/admin/support" component={AdminSupport} />
-        <Route path="/admin/launch" component={AdminLaunch} />
-        <Route path="/admin/launch/reset" component={AdminLaunchReset} />
-        <Route path="/terms" component={Terms} />
-        <Route path="/privacy" component={Privacy} />
-        <Route path="/reset-password" component={ResetPassword} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      <Route path="/reset-password" component={ResetPassword} />
+      <Route>
+        <Layout>
+          <Switch>
+            <Route path="/" component={Login} />
+            <Route path="/home">{() => <ProtectedRoute component={Home} />}</Route>
+            <Route path="/updates">{() => <ProtectedRoute component={Updates} />}</Route>
+            <Route path="/devotee">{() => <ProtectedRoute component={DevoteeCorner} />}</Route>
+            <Route path="/profile">{() => <ProtectedRoute component={Profile} />}</Route>
+            <Route path="/accommodation">{() => <ProtectedRoute component={Accommodation} />}</Route>
+            <Route path="/donation">{() => <ProtectedRoute component={Donation} />}</Route>
+            <Route path="/seva">{() => <ProtectedRoute component={Seva} />}</Route>
+            <Route path="/knowledge">{() => <ProtectedRoute component={Knowledge} />}</Route>
+            <Route path="/knowledge/:id">{() => <ProtectedRoute component={Knowledge} />}</Route>
+            <Route path="/fastline" component={Fastline} />
+            <Route path="/payment-result" component={PaymentResult} />
+            <Route path="/analytics" component={Analytics} />
+            <Route path="/admin" component={AdminHub} />
+            <Route path="/admin/quizzes">{() => <ProtectedRoute component={AdminQuizzes} />}</Route>
+            <Route path="/admin/quiz-analytics" component={AdminQuizAnalytics} />
+            <Route path="/admin/reconciliation" component={AdminReconciliation} />
+            <Route path="/admin/all-transactions" component={AdminAllTransactions} />
+            <Route path="/admin/reconciliation-logs" component={AdminReconciliationLogs} />
+            <Route path="/admin/support" component={AdminSupport} />
+            <Route path="/admin/launch" component={AdminLaunch} />
+            <Route path="/admin/launch/reset" component={AdminLaunchReset} />
+            <Route path="/terms" component={Terms} />
+            <Route path="/privacy" component={Privacy} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 
