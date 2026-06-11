@@ -10,7 +10,6 @@ import {
   OAuthProvider,
   signOut, 
   onAuthStateChanged, 
-  sendPasswordResetEmail,
   User,
   updateProfile
 } from "firebase/auth";
@@ -268,7 +267,15 @@ export async function logout() {
 }
 
 export async function sendPasswordReset(email: string) {
-  return sendPasswordResetEmail(auth, email);
+  const res = await fetch("/api/auth/send-password-reset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to send password reset email.");
+  }
 }
 
 export function subscribeToAuthState(callback: (user: User | null) => void) {

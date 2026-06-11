@@ -105,6 +105,30 @@ export async function registerRoutes(
     }
   }
 
+  app.post("/api/auth/send-password-reset", async (req, res) => {
+    const { email } = req.body;
+    if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return res.status(400).json({ error: "A valid email address is required." });
+    }
+    try {
+      const { sendPasswordResetEmail: sendResetEmail, isEmailServiceConfigured } = await import("./email-service.js");
+      if (!isEmailServiceConfigured()) {
+        return res.status(503).json({ error: "Email service is not configured." });
+      }
+      const resetLink = await adminAuthEarly.generatePasswordResetLink(email.trim().toLowerCase());
+      await sendResetEmail(email.trim().toLowerCase(), resetLink);
+      res.json({ success: true });
+    } catch (err: any) {
+      const code = err?.code || "";
+      if (code === "auth/user-not-found" || code === "auth/invalid-email") {
+        // Return success anyway to avoid email enumeration
+        return res.json({ success: true });
+      }
+      console.error("[PasswordReset] Failed to send reset email:", err);
+      res.status(500).json({ error: "Failed to send password reset email. Please try again." });
+    }
+  });
+
   app.get("/api/launch-status", async (_req, res) => {
     try {
       const cached = _c.launchStatus.get("v");
