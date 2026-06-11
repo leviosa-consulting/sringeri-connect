@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { initializeApp as initializeFirebaseApp, getApps } from "firebase/app";
 import { getFirestore, collection, getDocs, query, orderBy, limit, where, Timestamp } from "firebase/firestore";
@@ -113,15 +114,37 @@ export async function registerRoutes(
   const FIREBASE_REST_KEY = process.env.SRINGERI_NET_FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY || "";
   const hasServiceAccount = !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
-  app.post("/api/auth/request-password-reset", async (req, res) => {
+  const passwordResetIpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many password reset attempts. Please wait 15 minutes before trying again." },
+    keyGenerator: (req) => {
+      const forwarded = req.headers["x-forwarded-for"];
+      const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",")[0]) || req.socket.remoteAddress || "unknown";
+      return ip;
+    },
+  });
+
+  const passwordResetEmailCooldown = new Map<string, number>();
+  const EMAIL_COOLDOWN_MS = 2 * 60 * 1000;
+
+  app.post("/api/auth/request-password-reset", passwordResetIpLimiter, async (req, res) => {
     const { email } = req.body;
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return res.status(400).json({ error: "A valid email address is required." });
     }
     const normalizedEmail = email.trim().toLowerCase();
+
+    const lastSent = passwordResetEmailCooldown.get(normalizedEmail);
+    if (lastSent && Date.now() - lastSent < EMAIL_COOLDOWN_MS) {
+      const secsLeft = Math.ceil((EMAIL_COOLDOWN_MS - (Date.now() - lastSent)) / 1000);
+      return res.status(429).json({ error: `A reset link was already sent. Please wait ${secsLeft} seconds before requesting another.` });
+    }
+
     try {
       if (hasServiceAccount) {
-        // Full custom flow: Admin SDK for lookup + link generation, nodemailer for email
         const { sendPasswordResetEmail: sendResetEmail, isEmailServiceConfigured } = await import("./email-service.js");
         if (!isEmailServiceConfigured()) {
           return res.status(503).json({ error: "Email service is not configured." });
@@ -146,13 +169,22 @@ export async function registerRoutes(
             error: `This email is registered via ${providerNames || "a social login"}. Please sign in using that method instead.`,
           });
         }
-        // Generate Firebase reset link, extract oobCode, build our own link
-        const firebaseLink = await adminAuthEarly.generatePasswordResetLink(normalizedEmail);
+        let firebaseLink: string;
+        try {
+          firebaseLink = await adminAuthEarly.generatePasswordResetLink(normalizedEmail);
+        } catch (err: any) {
+          const code = err?.code || err?.errorInfo?.code || "";
+          if (code === "auth/too-many-requests") {
+            return res.status(429).json({ error: "Too many requests. Please try again in a few minutes." });
+          }
+          throw err;
+        }
         const oobCode = new URL(firebaseLink).searchParams.get("oobCode") || "";
         const host = req.headers.host || "sringeri.app";
         const proto = (req.headers["x-forwarded-proto"] as string) || (host.includes("localhost") ? "http" : "https");
         const resetLink = `${proto}://${host}/reset-password?oobCode=${encodeURIComponent(oobCode)}`;
         await sendResetEmail(normalizedEmail, resetLink);
+        passwordResetEmailCooldown.set(normalizedEmail, Date.now());
         return res.json({ success: true });
       }
 
@@ -196,8 +228,12 @@ export async function registerRoutes(
         if (errCode === "EMAIL_NOT_FOUND") {
           return res.status(404).json({ error: "No account found for that email address." });
         }
+        if (errCode === "TOO_MANY_ATTEMPTS_TRY_LATER") {
+          return res.status(429).json({ error: "Too many requests. Please try again in a few minutes." });
+        }
         throw new Error(errCode || "Failed to send reset email");
       }
+      passwordResetEmailCooldown.set(normalizedEmail, Date.now());
       res.json({ success: true });
     } catch (err: any) {
       console.error("[PasswordReset] Failed to send reset email:", err);

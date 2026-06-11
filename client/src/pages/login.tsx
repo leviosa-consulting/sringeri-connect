@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +33,12 @@ export default function Login() {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+  const [resetCooldown, setResetCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
+  }, []);
   const { login, signUp, signInWithGoogle, signInWithApple, signInAsGuest, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [guestLoading, setGuestLoading] = useState(false);
@@ -137,6 +143,17 @@ export default function Login() {
     }
   };
 
+  const startResetCooldown = () => {
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    setResetCooldown(60);
+    cooldownRef.current = setInterval(() => {
+      setResetCooldown((s) => {
+        if (s <= 1) { clearInterval(cooldownRef.current!); cooldownRef.current = null; return 0; }
+        return s - 1;
+      });
+    }, 1000);
+  };
+
   const handleSendReset = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = resetEmail.trim();
@@ -155,6 +172,7 @@ export default function Login() {
         title: "Reset link sent — check your inbox",
         description: "Follow the link in the email to reset your password.",
       });
+      startResetCooldown();
       setResetOpen(false);
     } catch (error: any) {
       console.error("Password reset error:", error);
@@ -404,11 +422,11 @@ export default function Login() {
               <Button
                 type="submit"
                 className="bg-primary hover:bg-primary/90 text-white"
-                disabled={resetLoading}
+                disabled={resetLoading || resetCooldown > 0}
                 data-testid="button-reset-send"
               >
                 {resetLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Send reset link
+                {resetCooldown > 0 ? `Resend in ${resetCooldown}s` : "Send reset link"}
               </Button>
             </DialogFooter>
           </form>
