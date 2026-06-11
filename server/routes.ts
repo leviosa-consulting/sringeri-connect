@@ -120,9 +120,22 @@ export async function registerRoutes(
       let uid: string;
       try {
         const userRecord = await adminAuthEarly.getUserByEmail(normalizedEmail);
+        const providers = (userRecord.providerData || []).map((p: any) => p.providerId);
+        const hasPassword = providers.includes("password");
+        if (!hasPassword) {
+          const providerNames = providers
+            .map((p: string) => p === "google.com" ? "Google" : p === "apple.com" ? "Apple" : p)
+            .join(" / ");
+          return res.status(400).json({
+            error: `This email is registered via ${providerNames || "a social login"}. Please sign in using that method instead.`,
+          });
+        }
         uid = userRecord.uid;
-      } catch {
-        return res.json({ success: true });
+      } catch (err: any) {
+        if (err?.code === "auth/user-not-found") {
+          return res.status(404).json({ error: "No account found for that email address." });
+        }
+        throw err;
       }
       const { randomBytes } = await import("crypto");
       const token = randomBytes(32).toString("hex");

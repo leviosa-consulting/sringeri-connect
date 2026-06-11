@@ -158,16 +158,7 @@ export default function Login() {
       setResetOpen(false);
     } catch (error: any) {
       console.error("Password reset error:", error);
-      let message = "Could not send reset email. Please try again.";
-      if (error?.code === "auth/invalid-email") {
-        message = "Please enter a valid email address.";
-      } else if (error?.code === "auth/user-not-found") {
-        message = "No account found for that email.";
-      } else if (error?.code === "auth/too-many-requests") {
-        message = "Too many attempts. Please wait a few minutes and try again.";
-      } else if (error?.code === "auth/missing-email") {
-        message = "Please enter your email address.";
-      }
+      const message = error?.message || "Could not send reset email. Please try again.";
       toast({
         title: "Reset Failed",
         description: message,
