@@ -120,11 +120,6 @@ export async function registerRoutes(
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many password reset attempts. Please wait 15 minutes before trying again." },
-    keyGenerator: (req) => {
-      const forwarded = req.headers["x-forwarded-for"];
-      const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",")[0]) || req.socket.remoteAddress || "unknown";
-      return ip;
-    },
   });
 
   const passwordResetEmailCooldown = new Map<string, number>();
