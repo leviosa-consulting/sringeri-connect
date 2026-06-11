@@ -105,48 +105,58 @@ export async function registerRoutes(
     }
   }
 
+  const FIREBASE_REST_KEY = process.env.SRINGERI_NET_FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY || "";
+
   app.post("/api/auth/request-password-reset", async (req, res) => {
     const { email } = req.body;
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return res.status(400).json({ error: "A valid email address is required." });
     }
     const normalizedEmail = email.trim().toLowerCase();
-    // Always respond success to avoid email enumeration
     try {
-      const { sendPasswordResetEmail: sendResetEmail, isEmailServiceConfigured } = await import("./email-service.js");
-      if (!isEmailServiceConfigured()) {
-        return res.status(503).json({ error: "Email service is not configured." });
+      if (!FIREBASE_REST_KEY) {
+        return res.status(503).json({ error: "Authentication service is not configured." });
       }
-      let uid: string;
-      try {
-        const userRecord = await adminAuthEarly.getUserByEmail(normalizedEmail);
-        const providers = (userRecord.providerData || []).map((p: any) => p.providerId);
-        const hasPassword = providers.includes("password");
-        if (!hasPassword) {
-          const providerNames = providers
-            .map((p: string) => p === "google.com" ? "Google" : p === "apple.com" ? "Apple" : p)
-            .join(" / ");
-          return res.status(400).json({
-            error: `This email is registered via ${providerNames || "a social login"}. Please sign in using that method instead.`,
-          });
+      // Step 1: check if email is registered and which providers it uses
+      const checkRes = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=${FIREBASE_REST_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier: normalizedEmail, continueUri: "https://example.com" }),
         }
-        uid = userRecord.uid;
-      } catch (err: any) {
-        const code = err?.code || err?.errorInfo?.code || "";
-        if (code === "auth/user-not-found" || code === "auth/invalid-email" || !code) {
+      );
+      const checkData = await checkRes.json() as { registered?: boolean; signinMethods?: string[]; allProviders?: string[] };
+      if (!checkData.registered) {
+        return res.status(404).json({ error: "No account found for that email address." });
+      }
+      const providers: string[] = checkData.signinMethods || checkData.allProviders || [];
+      const hasPassword = providers.includes("password") || providers.includes("emailLink");
+      if (!hasPassword) {
+        const providerNames = providers
+          .map((p) => p === "google.com" ? "Google" : p === "apple.com" ? "Apple" : p)
+          .join(" / ");
+        return res.status(400).json({
+          error: `This email is registered via ${providerNames || "a social login"}. Please sign in using that method instead.`,
+        });
+      }
+      // Step 2: trigger Firebase password reset email
+      const sendRes = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_REST_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestType: "PASSWORD_RESET", email: normalizedEmail }),
+        }
+      );
+      if (!sendRes.ok) {
+        const errData = await sendRes.json() as any;
+        const code = errData?.error?.message || "";
+        if (code === "EMAIL_NOT_FOUND") {
           return res.status(404).json({ error: "No account found for that email address." });
         }
-        throw err;
+        throw new Error(code || "Failed to send reset email");
       }
-      const { randomBytes } = await import("crypto");
-      const token = randomBytes(32).toString("hex");
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-      await storage.deleteExpiredPasswordResetTokens();
-      await storage.createPasswordResetToken(token, uid, normalizedEmail, expiresAt);
-      const host = req.headers.host || "sringeri.app";
-      const proto = req.headers["x-forwarded-proto"] || (host.includes("localhost") ? "http" : "https");
-      const resetLink = `${proto}://${host}/reset-password?token=${token}`;
-      await sendResetEmail(normalizedEmail, resetLink);
       res.json({ success: true });
     } catch (err: any) {
       console.error("[PasswordReset] Failed to send reset email:", err);
@@ -155,24 +165,36 @@ export async function registerRoutes(
   });
 
   app.post("/api/auth/confirm-password-reset", async (req, res) => {
-    const { token, password } = req.body;
-    if (!token || typeof token !== "string") {
-      return res.status(400).json({ error: "Reset token is required." });
+    const { oobCode, password } = req.body;
+    if (!oobCode || typeof oobCode !== "string") {
+      return res.status(400).json({ error: "Reset code is required." });
     }
     if (!password || typeof password !== "string" || password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters." });
     }
     try {
-      const record = await storage.getPasswordResetToken(token);
-      if (!record) {
-        return res.status(400).json({ error: "This reset link is invalid or has already been used." });
+      if (!FIREBASE_REST_KEY) {
+        return res.status(503).json({ error: "Authentication service is not configured." });
       }
-      if (new Date() > record.expiresAt) {
-        await storage.deletePasswordResetToken(token);
-        return res.status(400).json({ error: "This reset link has expired. Please request a new one." });
+      const resetRes = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=${FIREBASE_REST_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ oobCode, newPassword: password }),
+        }
+      );
+      if (!resetRes.ok) {
+        const errData = await resetRes.json() as any;
+        const code = errData?.error?.message || "";
+        if (code === "EXPIRED_OOB_CODE") {
+          return res.status(400).json({ error: "This reset link has expired. Please request a new one." });
+        }
+        if (code === "INVALID_OOB_CODE") {
+          return res.status(400).json({ error: "This reset link is invalid or has already been used." });
+        }
+        throw new Error(code || "Failed to update password");
       }
-      await adminAuthEarly.updateUser(record.uid, { password });
-      await storage.deletePasswordResetToken(token);
       res.json({ success: true });
     } catch (err: any) {
       console.error("[PasswordReset] Failed to confirm password reset:", err);

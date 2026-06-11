@@ -8,18 +8,19 @@ import { Loader2, KeyRound, CheckCircle2, XCircle } from "lucide-react";
 export default function ResetPassword() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [token, setToken] = useState("");
+  const [oobCode, setOobCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-  const [tokenError, setTokenError] = useState(false);
+  const [codeError, setCodeError] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const t = params.get("token") || "";
-    if (!t) setTokenError(true);
-    setToken(t);
+    // Firebase puts `oobCode` in the URL; also handle `mode` param Firebase uses
+    const code = params.get("oobCode") || "";
+    if (!code) setCodeError(true);
+    setOobCode(code);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,7 +38,7 @@ export default function ResetPassword() {
       const res = await fetch("/api/auth/confirm-password-reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ oobCode, password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -60,7 +61,7 @@ export default function ResetPassword() {
           <h1 className="text-white text-xl font-bold font-serif mt-1">Sringeri App</h1>
         </div>
         <div className="px-6 py-8">
-          {tokenError ? (
+          {codeError ? (
             <div className="text-center">
               <XCircle className="h-12 w-12 text-destructive mx-auto mb-3" />
               <h2 className="text-lg font-semibold mb-2">Invalid link</h2>
