@@ -32,6 +32,7 @@ import PaymentResult from "@/pages/payment-result";
 import ComingSoon from "@/pages/coming-soon";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
+import ResetPassword from "@/pages/reset-password";
 import { PageLoader } from "@/components/rangoli-loader";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -76,6 +77,7 @@ function Router() {
         <Route path="/admin/launch/reset" component={AdminLaunchReset} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
@@ -107,6 +109,7 @@ function LaunchGate() {
       <Route path="/admin/launch/reset" component={AdminLaunchReset} />
       <Route path="/fastline" component={Fastline} />
       <Route path="/payment-result" component={PaymentResult} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route component={ComingSoon} />
     </Switch>
   );

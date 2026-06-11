@@ -180,3 +180,13 @@ export interface ReconciliationDetail {
 
 export type ReconciliationLog = typeof reconciliationLogs.$inferSelect;
 export type InsertReconciliationLog = typeof reconciliationLogs.$inferInsert;
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  uid: text("uid").notNull(),
+  email: text("email").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

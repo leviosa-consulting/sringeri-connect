@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog } from "@shared/schema";
+import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, passwordResetTokens, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog, type PasswordResetToken } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql, eq, and, gte, lte, desc, asc, count, countDistinct, avg } from "drizzle-orm";
@@ -47,6 +47,10 @@ export interface IStorage {
   replySupportMessage(id: number, reply: string): Promise<SupportMessage>;
   insertReconciliationLog(log: InsertReconciliationLog): Promise<ReconciliationLog>;
   getReconciliationLogs(from: Date, to: Date): Promise<ReconciliationLog[]>;
+  createPasswordResetToken(token: string, uid: string, email: string, expiresAt: Date): Promise<void>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  deletePasswordResetToken(token: string): Promise<void>;
+  deleteExpiredPasswordResetTokens(): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -119,6 +123,18 @@ export class MemStorage implements IStorage {
   async getSupportMessage(id: number): Promise<SupportMessage | undefined> { return this.supportMsgs.find(m => m.id === id); }
   async insertReconciliationLog(_log: InsertReconciliationLog): Promise<ReconciliationLog> { throw new Error("Not implemented"); }
   async getReconciliationLogs(_from: Date, _to: Date): Promise<ReconciliationLog[]> { return []; }
+  private _resetTokens = new Map<string, PasswordResetToken>();
+  async createPasswordResetToken(token: string, uid: string, email: string, expiresAt: Date): Promise<void> {
+    this._resetTokens.set(token, { id: Date.now(), token, uid, email, expiresAt, createdAt: new Date() });
+  }
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    return this._resetTokens.get(token);
+  }
+  async deletePasswordResetToken(token: string): Promise<void> { this._resetTokens.delete(token); }
+  async deleteExpiredPasswordResetTokens(): Promise<void> {
+    const now = new Date();
+    for (const [k, v] of this._resetTokens) { if (v.expiresAt < now) this._resetTokens.delete(k); }
+  }
   async replySupportMessage(id: number, reply: string): Promise<SupportMessage> {
     const msg = this.supportMsgs.find(m => m.id === id);
     if (!msg) throw new Error("Not found");
@@ -610,6 +626,23 @@ if (process.env.DATABASE_URL) {
       return db.select().from(reconciliationLogs)
         .where(and(gte(reconciliationLogs.ranAt, from), lte(reconciliationLogs.ranAt, to)))
         .orderBy(desc(reconciliationLogs.ranAt));
+    }
+
+    async createPasswordResetToken(token: string, uid: string, email: string, expiresAt: Date): Promise<void> {
+      await db.insert(passwordResetTokens).values({ token, uid, email, expiresAt });
+    }
+
+    async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+      const [row] = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token));
+      return row;
+    }
+
+    async deletePasswordResetToken(token: string): Promise<void> {
+      await db.delete(passwordResetTokens).where(eq(passwordResetTokens.token, token));
+    }
+
+    async deleteExpiredPasswordResetTokens(): Promise<void> {
+      await db.delete(passwordResetTokens).where(sql`${passwordResetTokens.expiresAt} < now()`);
     }
   }
 

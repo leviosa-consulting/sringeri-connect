@@ -105,27 +105,64 @@ export async function registerRoutes(
     }
   }
 
-  app.post("/api/auth/send-password-reset", async (req, res) => {
+  app.post("/api/auth/request-password-reset", async (req, res) => {
     const { email } = req.body;
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return res.status(400).json({ error: "A valid email address is required." });
     }
+    const normalizedEmail = email.trim().toLowerCase();
+    // Always respond success to avoid email enumeration
     try {
       const { sendPasswordResetEmail: sendResetEmail, isEmailServiceConfigured } = await import("./email-service.js");
       if (!isEmailServiceConfigured()) {
         return res.status(503).json({ error: "Email service is not configured." });
       }
-      const resetLink = await adminAuthEarly.generatePasswordResetLink(email.trim().toLowerCase());
-      await sendResetEmail(email.trim().toLowerCase(), resetLink);
-      res.json({ success: true });
-    } catch (err: any) {
-      const code = err?.code || "";
-      if (code === "auth/user-not-found" || code === "auth/invalid-email") {
-        // Return success anyway to avoid email enumeration
+      let uid: string;
+      try {
+        const userRecord = await adminAuthEarly.getUserByEmail(normalizedEmail);
+        uid = userRecord.uid;
+      } catch {
         return res.json({ success: true });
       }
+      const { randomBytes } = await import("crypto");
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      await storage.deleteExpiredPasswordResetTokens();
+      await storage.createPasswordResetToken(token, uid, normalizedEmail, expiresAt);
+      const host = req.headers.host || "sringeri.app";
+      const proto = req.headers["x-forwarded-proto"] || (host.includes("localhost") ? "http" : "https");
+      const resetLink = `${proto}://${host}/reset-password?token=${token}`;
+      await sendResetEmail(normalizedEmail, resetLink);
+      res.json({ success: true });
+    } catch (err: any) {
       console.error("[PasswordReset] Failed to send reset email:", err);
       res.status(500).json({ error: "Failed to send password reset email. Please try again." });
+    }
+  });
+
+  app.post("/api/auth/confirm-password-reset", async (req, res) => {
+    const { token, password } = req.body;
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ error: "Reset token is required." });
+    }
+    if (!password || typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters." });
+    }
+    try {
+      const record = await storage.getPasswordResetToken(token);
+      if (!record) {
+        return res.status(400).json({ error: "This reset link is invalid or has already been used." });
+      }
+      if (new Date() > record.expiresAt) {
+        await storage.deletePasswordResetToken(token);
+        return res.status(400).json({ error: "This reset link has expired. Please request a new one." });
+      }
+      await adminAuthEarly.updateUser(record.uid, { password });
+      await storage.deletePasswordResetToken(token);
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("[PasswordReset] Failed to confirm password reset:", err);
+      res.status(500).json({ error: "Failed to update password. Please try again." });
     }
   });
 

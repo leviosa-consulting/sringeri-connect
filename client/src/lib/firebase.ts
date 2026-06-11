@@ -267,7 +267,7 @@ export async function logout() {
 }
 
 export async function sendPasswordReset(email: string) {
-  const res = await fetch("/api/auth/send-password-reset", {
+  const res = await fetch("/api/auth/request-password-reset", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
