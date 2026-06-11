@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { getAuth, confirmPasswordReset } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +18,6 @@ export default function ResetPassword() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    // Firebase puts `oobCode` in the URL; also handle `mode` param Firebase uses
     const code = params.get("oobCode") || "";
     if (!code) setCodeError(true);
     setOobCode(code);
@@ -35,19 +35,22 @@ export default function ResetPassword() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/confirm-password-reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ oobCode, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast({ title: "Reset failed", description: data.error || "This link may have expired. Please request a new one.", variant: "destructive" });
-        return;
-      }
+      const auth = getAuth();
+      await confirmPasswordReset(auth, oobCode, password);
       setDone(true);
-    } catch {
-      toast({ title: "Something went wrong", description: "Please try again.", variant: "destructive" });
+    } catch (err: any) {
+      const code = err?.code || "";
+      let message = "This link may have expired. Please request a new one.";
+      if (code === "auth/expired-action-code") {
+        message = "This reset link has expired. Please request a new one.";
+      } else if (code === "auth/invalid-action-code") {
+        message = "This reset link is invalid or has already been used.";
+      } else if (code === "auth/user-disabled") {
+        message = "This account has been disabled.";
+      } else if (code === "auth/weak-password") {
+        message = "Password is too weak. Please choose a stronger password.";
+      }
+      toast({ title: "Reset failed", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
