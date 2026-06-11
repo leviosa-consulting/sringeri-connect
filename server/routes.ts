@@ -49,7 +49,12 @@ export async function registerRoutes(
 
   const firebaseAdminMod = await import("firebase-admin");
   if (!firebaseAdminMod.default.apps.length) {
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    const credential = serviceAccountJson
+      ? firebaseAdminMod.default.credential.cert(JSON.parse(serviceAccountJson) as object)
+      : undefined;
     firebaseAdminMod.default.initializeApp({
+      credential,
       projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.SRINGERI_NET_FIREBASE_PROJECT_ID || undefined,
     });
   }
@@ -106,6 +111,7 @@ export async function registerRoutes(
   }
 
   const FIREBASE_REST_KEY = process.env.SRINGERI_NET_FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY || "";
+  const hasServiceAccount = !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
   app.post("/api/auth/request-password-reset", async (req, res) => {
     const { email } = req.body;
@@ -114,10 +120,46 @@ export async function registerRoutes(
     }
     const normalizedEmail = email.trim().toLowerCase();
     try {
+      if (hasServiceAccount) {
+        // Full custom flow: Admin SDK for lookup + link generation, nodemailer for email
+        const { sendPasswordResetEmail: sendResetEmail, isEmailServiceConfigured } = await import("./email-service.js");
+        if (!isEmailServiceConfigured()) {
+          return res.status(503).json({ error: "Email service is not configured." });
+        }
+        let userRecord: any;
+        try {
+          userRecord = await adminAuthEarly.getUserByEmail(normalizedEmail);
+        } catch (err: any) {
+          const code = err?.code || err?.errorInfo?.code || "";
+          if (code === "auth/user-not-found" || code === "auth/invalid-email") {
+            return res.status(404).json({ error: "No account found for that email address." });
+          }
+          throw err;
+        }
+        const providers: string[] = (userRecord.providerData || []).map((p: any) => p.providerId);
+        const hasPassword = providers.includes("password");
+        if (!hasPassword) {
+          const providerNames = providers
+            .map((p: string) => p === "google.com" ? "Google" : p === "apple.com" ? "Apple" : p)
+            .join(" / ");
+          return res.status(400).json({
+            error: `This email is registered via ${providerNames || "a social login"}. Please sign in using that method instead.`,
+          });
+        }
+        // Generate Firebase reset link, extract oobCode, build our own link
+        const firebaseLink = await adminAuthEarly.generatePasswordResetLink(normalizedEmail);
+        const oobCode = new URL(firebaseLink).searchParams.get("oobCode") || "";
+        const host = req.headers.host || "sringeri.app";
+        const proto = (req.headers["x-forwarded-proto"] as string) || (host.includes("localhost") ? "http" : "https");
+        const resetLink = `${proto}://${host}/reset-password?oobCode=${encodeURIComponent(oobCode)}`;
+        await sendResetEmail(normalizedEmail, resetLink);
+        return res.json({ success: true });
+      }
+
+      // Fallback (no service account): use Firebase REST API
       if (!FIREBASE_REST_KEY) {
         return res.status(503).json({ error: "Authentication service is not configured." });
       }
-      // Step 1: check if email is registered and which providers it uses
       const checkRes = await fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=${FIREBASE_REST_KEY}`,
         {
@@ -140,7 +182,6 @@ export async function registerRoutes(
           error: `This email is registered via ${providerNames || "a social login"}. Please sign in using that method instead.`,
         });
       }
-      // Step 2: trigger Firebase password reset email
       const sendRes = await fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_REST_KEY}`,
         {
@@ -151,11 +192,11 @@ export async function registerRoutes(
       );
       if (!sendRes.ok) {
         const errData = await sendRes.json() as any;
-        const code = errData?.error?.message || "";
-        if (code === "EMAIL_NOT_FOUND") {
+        const errCode = errData?.error?.message || "";
+        if (errCode === "EMAIL_NOT_FOUND") {
           return res.status(404).json({ error: "No account found for that email address." });
         }
-        throw new Error(code || "Failed to send reset email");
+        throw new Error(errCode || "Failed to send reset email");
       }
       res.json({ success: true });
     } catch (err: any) {
