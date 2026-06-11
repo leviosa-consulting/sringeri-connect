@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, KeyRound, CheckCircle2, XCircle } from "lucide-react";
+import sringeriLogo from "/sringeri-logo.png";
 
 export default function ResetPassword() {
   const [, setLocation] = useLocation();
@@ -59,9 +60,8 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen bg-[#F7F2EC] flex items-center justify-center px-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-md overflow-hidden">
-        <div className="bg-[#FF6600] px-6 py-5 text-center">
-          <p className="text-white/80 text-xs uppercase tracking-widest font-serif">Sri Sringeri Sharada Peetham</p>
-          <h1 className="text-white text-xl font-bold font-serif mt-1">Sringeri App</h1>
+        <div className="bg-[#FFF8F0] border-b border-[#f0e0cc] px-6 py-5 flex items-center justify-center">
+          <img src={sringeriLogo} alt="Online Services, Sringeri Sharada Peetham" className="h-10 w-auto" />
         </div>
         <div className="px-6 py-8">
           {codeError ? (

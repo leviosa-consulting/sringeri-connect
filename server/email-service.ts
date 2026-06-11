@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import fs from "fs";
+import path from "path";
 
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
@@ -16,15 +18,31 @@ function createTransporter() {
   });
 }
 
+function getLogoAttachment() {
+  const logoPath = path.join(process.cwd(), "client", "public", "sringeri-logo.png");
+  if (fs.existsSync(logoPath)) {
+    return {
+      filename: "sringeri-logo.png",
+      path: logoPath,
+      cid: "sringeri-logo",
+    };
+  }
+  return null;
+}
+
 export async function sendPasswordResetEmail(toEmail: string, resetLink: string): Promise<void> {
   const transporter = createTransporter();
-  const from = `"Sringeri App" <${GMAIL_USER}>`;
+  const from = `"Online Services, Sringeri Sharada Peetham" <${GMAIL_USER}>`;
+  const logoAttachment = getLogoAttachment();
+  const logoHtml = logoAttachment
+    ? `<img src="cid:sringeri-logo" alt="Online Services, Sringeri Sharada Peetham" style="height:44px;width:auto;display:block;"/>`
+    : `<p style="margin:0;color:#FF6600;font-size:14px;font-weight:bold;font-family:Georgia,serif;">Online Services, Sringeri Sharada Peetham</p>`;
 
   await transporter.sendMail({
     from,
     to: toEmail,
-    subject: "Reset your password — Sringeri App",
-    text: `Namaste,\n\nWe received a request to reset the password for your Sringeri App account.\n\nClick the link below to choose a new password (valid for 1 hour):\n${resetLink}\n\nIf you did not request this, you can safely ignore this email.\n\nRegards,\nOnline Services Team`,
+    subject: "Reset your password — Online Services, Sringeri Sharada Peetham",
+    text: `Namaste,\n\nWe received a request to reset the password for your account.\n\nClick the link below to choose a new password (valid for 1 hour):\n${resetLink}\n\nIf you did not request this, you can safely ignore this email.\n\nRegards,\nOnline Services Team\nSringeri Sharada Peetham`,
     html: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
@@ -34,9 +52,8 @@ export async function sendPasswordResetEmail(toEmail: string, resetLink: string)
       <td align="center">
         <table width="100%" style="max-width:520px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
           <tr>
-            <td style="background:#FF6600;padding:24px 32px;text-align:center;">
-              <p style="margin:0;color:#ffffff;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-family:Georgia,serif;">Sri Sringeri Sharada Peetham</p>
-              <h1 style="margin:4px 0 0;color:#ffffff;font-size:22px;font-family:Georgia,serif;font-weight:bold;">Sringeri App</h1>
+            <td style="background:#FFF8F0;border-bottom:1px solid #f0e0cc;padding:20px 32px;text-align:center;">
+              ${logoHtml}
             </td>
           </tr>
           <tr>
@@ -61,6 +78,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetLink: string)
               <p style="margin:0 0 28px;word-break:break-all;"><a href="${resetLink}" style="color:#FF6600;font-size:13px;">${resetLink}</a></p>
               <p style="margin:0 0 4px;color:#3D2B1F;font-size:14px;">Regards,</p>
               <p style="margin:0;color:#3D2B1F;font-size:14px;font-weight:bold;">Online Services Team</p>
+              <p style="margin:0;color:#7A6152;font-size:13px;">Sringeri Sharada Peetham</p>
             </td>
           </tr>
         </table>
@@ -69,6 +87,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetLink: string)
   </table>
 </body>
 </html>`,
+    attachments: logoAttachment ? [logoAttachment] : [],
   });
 }
 
