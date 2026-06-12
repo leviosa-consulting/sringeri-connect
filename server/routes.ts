@@ -538,10 +538,12 @@ export async function registerRoutes(
       const ownershipRes = await fetch(`${SRINGERI_API_URL}/api/devoteeKarta/${verifiedUid}`, {
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
           ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
         },
       });
       if (!ownershipRes.ok) {
+        console.error(`[devoteeKarta update] ownership fetch failed: status=${ownershipRes.status} uid=${verifiedUid}`);
         return res.status(403).json({ error: "Forbidden" });
       }
       let ownershipData: any;
@@ -550,12 +552,18 @@ export async function registerRoutes(
         const start = ownershipText.search(/[\[{]/);
         ownershipData = start !== -1 ? JSON.parse(ownershipText.substring(start)) : JSON.parse(ownershipText);
       } catch {
+        console.error(`[devoteeKarta update] ownership JSON parse failed for uid=${verifiedUid}`);
         return res.status(403).json({ error: "Forbidden" });
       }
-      const ownedIds: number[] = (Array.isArray(ownershipData) ? ownershipData : [ownershipData])
-        .map((r: any) => r?.id)
-        .filter((v: any) => v !== undefined && v !== null);
+      const kartaOwnershipArray = Array.isArray(ownershipData) ? ownershipData : [ownershipData];
+      console.log(`[devoteeKarta update] ownership sample keys:`, kartaOwnershipArray[0] ? Object.keys(kartaOwnershipArray[0]) : "empty", `requestedId=${id}`);
+      const ownedIds: number[] = kartaOwnershipArray
+        .map((r: any) => r?.id ?? r?.kartaId ?? r?.sevaKartaId ?? r?.karta_id)
+        .filter((v: any) => v !== undefined && v !== null)
+        .map(Number);
+      console.log(`[devoteeKarta update] ownedIds=${JSON.stringify(ownedIds)}`);
       if (!ownedIds.includes(Number(id))) {
+        console.error(`[devoteeKarta update] karta ${id} not in ownedIds for uid=${verifiedUid}`);
         return res.status(403).json({ error: "Forbidden" });
       }
 
@@ -2232,10 +2240,12 @@ export async function registerRoutes(
       const ownershipRes = await fetch(`${SRINGERI_API_URL}/api/devoteeAddress/${verifiedUid}`, {
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
           ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
         },
       });
       if (!ownershipRes.ok) {
+        console.error(`[devoteeAddress update] ownership fetch failed: status=${ownershipRes.status} uid=${verifiedUid}`);
         return res.status(403).json({ error: "Forbidden" });
       }
       let ownershipData: any;
@@ -2244,12 +2254,18 @@ export async function registerRoutes(
         const start = ownershipText.search(/[\[{]/);
         ownershipData = start !== -1 ? JSON.parse(ownershipText.substring(start)) : JSON.parse(ownershipText);
       } catch {
+        console.error(`[devoteeAddress update] ownership JSON parse failed for uid=${verifiedUid}`);
         return res.status(403).json({ error: "Forbidden" });
       }
-      const ownedIds: number[] = (Array.isArray(ownershipData) ? ownershipData : [ownershipData])
-        .map((r: any) => r?.id)
-        .filter((v: any) => v !== undefined && v !== null);
+      const addrOwnershipArray = Array.isArray(ownershipData) ? ownershipData : [ownershipData];
+      console.log(`[devoteeAddress update] ownership sample keys:`, addrOwnershipArray[0] ? Object.keys(addrOwnershipArray[0]) : "empty", `requestedId=${id}`);
+      const ownedIds: number[] = addrOwnershipArray
+        .map((r: any) => r?.id ?? r?.addressId ?? r?.addresseeId ?? r?.address_id)
+        .filter((v: any) => v !== undefined && v !== null)
+        .map(Number);
+      console.log(`[devoteeAddress update] ownedIds=${JSON.stringify(ownedIds)}`);
       if (!ownedIds.includes(Number(id))) {
+        console.error(`[devoteeAddress update] address ${id} not in ownedIds for uid=${verifiedUid}`);
         return res.status(403).json({ error: "Forbidden" });
       }
 
