@@ -549,6 +549,7 @@ export async function registerRoutes(
       let ownershipData: any;
       try {
         const ownershipText = await ownershipRes.text();
+        console.log(`[devoteeKarta update] ownership raw response (first 300):`, ownershipText.substring(0, 300));
         const start = ownershipText.search(/[\[{]/);
         ownershipData = start !== -1 ? JSON.parse(ownershipText.substring(start)) : JSON.parse(ownershipText);
       } catch {
