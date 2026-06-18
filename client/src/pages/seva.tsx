@@ -62,6 +62,8 @@ interface SevaType {
 interface Sannidhi {
   id: number;
   name: string;
+  preset?: string;
+  attend?: number | string;
 }
 
 interface DeitySeva {
@@ -71,6 +73,8 @@ interface DeitySeva {
   postageCharges?: number;
   receiptTypeId?: number;
   branchId?: number;
+  preset?: string;
+  attend?: number | string;
 }
 
 interface SevaAvailabilityDate {
@@ -608,7 +612,7 @@ export default function Seva() {
   // Normalise to Number() because the API may return attend as a string ("1", "2").
   useEffect(() => {
     if (!selectedSeva && !selectedSannidhi) return;
-    const raw = (selectedSeva as any)?.attend ?? (selectedSannidhi as any)?.attend;
+    const raw = selectedSeva?.attend ?? selectedSannidhi?.attend;
     const attend = Number(raw ?? 0);
     if (attend === 1) {
       setInAbsentia("0");
@@ -2535,8 +2539,7 @@ export default function Seva() {
 
           {selectedSeva && selectedSevaType?.id === 2 && (() => {
             const isToday = sevaDate === new Date().toISOString().split("T")[0];
-            const attendRaw = (selectedSeva as any)?.attend ?? (selectedSannidhi as any)?.attend;
-            const attend = Number(attendRaw ?? 0);
+            const attend = Number(selectedSeva?.attend ?? selectedSannidhi?.attend ?? 0);
             const showInPerson = attend !== 2;
             const showInAbsentia = attend !== 1;
             return (
@@ -2548,8 +2551,9 @@ export default function Seva() {
                     {showInPerson && (
                       <button
                         onClick={() => { if (attend !== 0) return; setInAbsentia("0"); setReceivePrasadam(""); setPostageId(""); setPostageCharges(0); }}
-                        disabled={attend !== 0}
-                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${attend !== 0 || inAbsentia === "0" ? "bg-primary text-white" : "bg-white border border-border"} ${attend !== 0 ? "cursor-default" : ""}`}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          ${attend !== 0 || inAbsentia === "0" ? "bg-primary text-white" : "bg-white border border-border"}
+                          ${attend !== 0 ? "pointer-events-none cursor-default" : ""}`}
                         data-testid="button-in-person">
                         In Person
                       </button>
@@ -2557,8 +2561,11 @@ export default function Seva() {
                     {showInAbsentia && (
                       <button
                         onClick={() => { if (attend !== 0 || isToday) return; setInAbsentia("1"); }}
-                        disabled={attend !== 0 || isToday}
-                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${attend !== 0 || inAbsentia === "1" ? "bg-primary text-white" : "bg-white border border-border"} ${attend !== 0 || isToday ? "opacity-100 cursor-default" : ""}`}
+                        disabled={attend === 0 && isToday}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          ${attend !== 0 || inAbsentia === "1" ? "bg-primary text-white" : "bg-white border border-border"}
+                          ${attend !== 0 ? "pointer-events-none cursor-default" : ""}
+                          ${attend === 0 && isToday ? "opacity-40 cursor-not-allowed" : ""}`}
                         data-testid="button-in-absentia">
                         In Absentia
                       </button>
