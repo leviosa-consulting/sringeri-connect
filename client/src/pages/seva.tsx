@@ -2546,16 +2546,19 @@ export default function Seva() {
                   <label className="text-xs text-muted-foreground mb-2 block">Attending</label>
                   <div className="flex gap-2">
                     {showInPerson && (
-                      <button onClick={() => { setInAbsentia("0"); setReceivePrasadam(""); setPostageId(""); setPostageCharges(0); }}
-                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${inAbsentia === "0" ? "bg-primary text-white" : "bg-white border border-border"}`}
+                      <button
+                        onClick={() => { if (attend !== 0) return; setInAbsentia("0"); setReceivePrasadam(""); setPostageId(""); setPostageCharges(0); }}
+                        disabled={attend !== 0}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${attend !== 0 || inAbsentia === "0" ? "bg-primary text-white" : "bg-white border border-border"} ${attend !== 0 ? "cursor-default" : ""}`}
                         data-testid="button-in-person">
                         In Person
                       </button>
                     )}
                     {showInAbsentia && (
-                      <button onClick={() => !isToday && setInAbsentia("1")}
-                        disabled={isToday}
-                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${inAbsentia === "1" ? "bg-primary text-white" : "bg-white border border-border"} ${isToday ? "opacity-40 cursor-not-allowed" : ""}`}
+                      <button
+                        onClick={() => { if (attend !== 0 || isToday) return; setInAbsentia("1"); }}
+                        disabled={attend !== 0 || isToday}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${attend !== 0 || inAbsentia === "1" ? "bg-primary text-white" : "bg-white border border-border"} ${attend !== 0 || isToday ? "opacity-100 cursor-default" : ""}`}
                         data-testid="button-in-absentia">
                         In Absentia
                       </button>
