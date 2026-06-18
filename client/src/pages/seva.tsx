@@ -239,7 +239,7 @@ function formatDate(dateString: string): string {
 }
 
 export default function Seva() {
-  const { user, devoteeData, loading: authLoading, login, signInWithGoogle, signInWithApple } = useAuth();
+  const { user, devoteeData, loading: authLoading, login, signInWithGoogle, signInWithApple, signInAsGuest } = useAuth();
   const [, navigate] = useLocation();
   const params = useParams<{ preset?: string }>();
   const preset = params.preset || "";
@@ -274,6 +274,7 @@ export default function Seva() {
   const [overlayEmailLoading, setOverlayEmailLoading] = useState(false);
   const [overlayGoogleLoading, setOverlayGoogleLoading] = useState(false);
   const [overlayAppleLoading, setOverlayAppleLoading] = useState(false);
+  const [overlayGuestLoading, setOverlayGuestLoading] = useState(false);
 
   const [kartaName, setKartaName] = useState("");
   const [kartaNakshatraId, setKartaNakshatraId] = useState("");
@@ -3194,6 +3195,27 @@ export default function Seva() {
                 </Button>
               </form>
             )}
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-muted-foreground">Or</span></div>
+            </div>
+
+            <button
+              type="button"
+              className="w-full h-11 flex items-center justify-center gap-2 rounded-lg font-medium text-sm border border-border bg-muted/40 hover:bg-muted/70 transition-colors disabled:opacity-60"
+              onClick={async () => {
+                setOverlayGuestLoading(true);
+                try { await signInAsGuest(); } catch (e: any) {
+                  toast({ title: "Could not continue as guest", description: e?.message || "Please try again.", variant: "destructive" });
+                } finally { setOverlayGuestLoading(false); }
+              }}
+              disabled={overlayAppleLoading || overlayGoogleLoading || overlayEmailLoading || overlayGuestLoading}
+              data-testid="button-overlay-guest"
+            >
+              {overlayGuestLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Continue as Guest
+            </button>
 
             <p className="text-center text-xs text-muted-foreground">By continuing, you agree to our Terms of Service & Privacy Policy</p>
           </div>
