@@ -1483,8 +1483,12 @@ export default function Seva() {
                   </div>
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">Mobile *</label>
-                    <input type="tel" inputMode="numeric" autoComplete="tel" name="mobile"
-                      value={payeeMobile} onChange={(e) => setPayeeMobile(e.target.value.replace(/\D/g, ""))}
+                    <input type="tel" inputMode="numeric" autoComplete="tel" name="mobile" maxLength={10}
+                      value={payeeMobile} onChange={(e) => {
+                        let v = e.target.value.replace(/\D/g, "");
+                        if (v.length > 10 && v.startsWith("91")) v = v.slice(2);
+                        setPayeeMobile(v.replace(/^0+/, "").slice(0, 10));
+                      }}
                       className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                       data-testid="input-payee-mobile" />
                   </div>
@@ -2032,8 +2036,12 @@ export default function Seva() {
             </div>
 
             <div className="mt-4">
-              <input type="tel" inputMode="numeric" autoComplete="tel" name="mobile"
-                value={payeeMobile} onChange={(e) => setPayeeMobile(e.target.value.replace(/\D/g, ""))}
+              <input type="tel" inputMode="numeric" autoComplete="tel" name="mobile" maxLength={10}
+                value={payeeMobile} onChange={(e) => {
+                  let v = e.target.value.replace(/\D/g, "");
+                  if (v.length > 10 && v.startsWith("91")) v = v.slice(2);
+                  setPayeeMobile(v.replace(/^0+/, "").slice(0, 10));
+                }}
                 placeholder="Mobile Number"
                 className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 focus:outline-none focus:ring-0 transition-colors"
                 data-testid="input-fl-mobile" />

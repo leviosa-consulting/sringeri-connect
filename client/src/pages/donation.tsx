@@ -1037,7 +1037,12 @@ export default function Donation() {
                       autoComplete="tel"
                       name="mobile"
                       value={donationForm.mobileNumber}
-                      onChange={(e) => updatePayeeField("mobileNumber", e.target.value.replace(/\D/g, ""))}
+                      maxLength={10}
+                      onChange={(e) => {
+                        let v = e.target.value.replace(/\D/g, "");
+                        if (v.length > 10 && v.startsWith("91")) v = v.slice(2);
+                        updatePayeeField("mobileNumber", v.replace(/^0+/, "").slice(0, 10));
+                      }}
                       className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                       data-testid="input-mobile"
                     />
