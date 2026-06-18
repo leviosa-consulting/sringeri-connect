@@ -604,10 +604,12 @@ export default function Seva() {
   }, [deitySevas, preset]);
 
   // Step D — honour the `attend` field: 0=both, 1=in-person only, 2=in-absentia only
-  // Normalise to Number() because the API may return attend as a string ("1", "2")
+  // `attend` may be on the deity (sannidhi) or the seva object — check both, seva takes priority.
+  // Normalise to Number() because the API may return attend as a string ("1", "2").
   useEffect(() => {
-    if (!selectedSeva) return;
-    const attend = Number((selectedSeva as any).attend ?? 0);
+    if (!selectedSeva && !selectedSannidhi) return;
+    const raw = (selectedSeva as any)?.attend ?? (selectedSannidhi as any)?.attend;
+    const attend = Number(raw ?? 0);
     if (attend === 1) {
       setInAbsentia("0");
       setReceivePrasadam("");
@@ -616,7 +618,7 @@ export default function Seva() {
     } else if (attend === 2) {
       setInAbsentia("1");
     }
-  }, [selectedSeva]);
+  }, [selectedSeva, selectedSannidhi]);
 
   const kartas = devoteeData?.kartas || [];
   const addresses = devoteeData?.addresses || [];
@@ -2533,7 +2535,8 @@ export default function Seva() {
 
           {selectedSeva && selectedSevaType?.id === 2 && (() => {
             const isToday = sevaDate === new Date().toISOString().split("T")[0];
-            const attend = Number((selectedSeva as any).attend ?? 0);
+            const attendRaw = (selectedSeva as any)?.attend ?? (selectedSannidhi as any)?.attend;
+            const attend = Number(attendRaw ?? 0);
             const showInPerson = attend !== 2;
             const showInAbsentia = attend !== 1;
             return (
