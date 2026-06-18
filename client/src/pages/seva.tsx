@@ -2972,7 +2972,7 @@ export default function Seva() {
 
       <div className="px-4 mt-4 space-y-4">
         {!selectedCentre && (
-          <div>
+          <div className="space-y-4">
             <h3 className="font-serif font-bold text-sm px-1 mb-3">Select Seva Location</h3>
             <div className="grid grid-cols-2 gap-3">
               {SEVA_CENTRES.map((centre) => {
@@ -2997,6 +2997,23 @@ export default function Seva() {
                 );
               })}
             </div>
+            <button
+              onClick={() => navigate("/seva/kashmir")}
+              className="w-full text-left"
+              data-testid="button-preset-kashmir"
+            >
+              <Card className="w-full hover:shadow-md transition-shadow border-primary/20">
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="rounded-xl w-12 h-12 flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-amber-500 to-primary">
+                    <Star className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold block">Kashmir Sharadamba Varshikotsava</span>
+                    <span className="text-[11px] text-primary font-medium">Special Event Sevas →</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </button>
           </div>
         )}
 
