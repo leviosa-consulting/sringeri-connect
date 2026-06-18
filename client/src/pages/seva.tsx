@@ -1655,7 +1655,16 @@ export default function Seva() {
                     <p className="font-medium text-sm">{seva.deitySevaName}</p>
                     <p className="text-xs text-muted-foreground mt-1">{seva.sannidhiName}</p>
                     <p className="text-xs text-muted-foreground">Devotee: {seva.name}</p>
-                    {seva.sevaDate && <p className="text-xs text-muted-foreground">Date: {formatDate(seva.sevaDate)}</p>}
+                    {seva.sevaDate && <p className="text-xs text-muted-foreground">Seva Date: {formatDate(seva.sevaDate)}</p>}
+                    <p className="text-xs text-muted-foreground">Mode: {seva.inAbsentia === 1 ? "In Absentia" : "In Person"}</p>
+                    {seva.receivePrasadam === "true" && (() => {
+                      const opt = postageOptions.find((p) => String(p.id) === String(seva.postageId));
+                      return (
+                        <p className="text-xs text-muted-foreground">
+                          Prasadam Postage: {opt ? `${opt.name} — ₹${opt.amount}` : seva.postageCharges > 0 ? `₹${seva.postageCharges}` : "No postage"}
+                        </p>
+                      );
+                    })()}
                     {seva.sevaCount && seva.sevaCount >= 1 && (
                       <p className="text-xs text-muted-foreground">Occurrences: {seva.sevaCount}</p>
                     )}
