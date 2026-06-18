@@ -63,6 +63,7 @@ function Router() {
             <Route path="/profile">{() => <ProtectedRoute component={Profile} />}</Route>
             <Route path="/accommodation">{() => <ProtectedRoute component={Accommodation} />}</Route>
             <Route path="/donation">{() => <ProtectedRoute component={Donation} />}</Route>
+            <Route path="/seva/:preset" component={Seva} />
             <Route path="/seva">{() => <ProtectedRoute component={Seva} />}</Route>
             <Route path="/knowledge">{() => <ProtectedRoute component={Knowledge} />}</Route>
             <Route path="/knowledge/:id">{() => <ProtectedRoute component={Knowledge} />}</Route>
@@ -80,6 +81,7 @@ function Router() {
             <Route path="/admin/launch/reset" component={AdminLaunchReset} />
             <Route path="/terms" component={Terms} />
             <Route path="/privacy" component={Privacy} />
+            <Route path="/kashmir">{() => <Redirect to="/seva/kashmir" />}</Route>
             <Route component={NotFound} />
           </Switch>
         </Layout>
