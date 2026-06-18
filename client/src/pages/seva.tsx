@@ -574,20 +574,40 @@ export default function Seva() {
   useEffect(() => {
     if (!preset || !sannidhis.length || selectedSannidhi) return;
     const match = sannidhis.find((d: any) => d.preset === preset);
-    if (match) setSelectedSannidhi(match);
+    if (match) {
+      setSelectedSannidhi(match);
+      setSannidhiSearch(match.name);
+      setShowSannidhiDropdown(false);
+      setSelectedSeva(null);
+      setSevaSearch("");
+      setSevaDate("");
+      setShowSevaDropdown(true);
+    }
   }, [sannidhis, preset]);
 
   // Step C — auto-select the seva whose preset matches, but stay on select step (user still picks date & mode)
   useEffect(() => {
     if (!preset || !deitySevas.length || selectedSeva) return;
-    const match = deitySevas.find((s: any) => (s as any).preset === preset);
-    if (match) setSelectedSeva(match);
+    const match = deitySevas.find((s: any) => s.preset === preset);
+    if (match) {
+      setSelectedSeva(match);
+      setSevaSearch(`${match.name} — ₹${formatNumber(match.price)}`);
+      setShowSevaDropdown(false);
+      if ((match as any).postageCharges === 0) {
+        setHideCalendarPostage(true);
+        setPostageCharges(0);
+        setPostageId("");
+      } else {
+        setHideCalendarPostage(false);
+      }
+    }
   }, [deitySevas, preset]);
 
   // Step D — honour the `attend` field: 0=both, 1=in-person only, 2=in-absentia only
+  // Normalise to Number() because the API may return attend as a string ("1", "2")
   useEffect(() => {
     if (!selectedSeva) return;
-    const attend = (selectedSeva as any).attend;
+    const attend = Number((selectedSeva as any).attend ?? 0);
     if (attend === 1) {
       setInAbsentia("0");
       setReceivePrasadam("");
@@ -2513,7 +2533,7 @@ export default function Seva() {
 
           {selectedSeva && selectedSevaType?.id === 2 && (() => {
             const isToday = sevaDate === new Date().toISOString().split("T")[0];
-            const attend = (selectedSeva as any).attend ?? 0;
+            const attend = Number((selectedSeva as any).attend ?? 0);
             const showInPerson = attend !== 2;
             const showInAbsentia = attend !== 1;
             return (
