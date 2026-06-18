@@ -283,6 +283,7 @@ export default function Seva() {
   const [kartaCity, setKartaCity] = useState("");
   const [showKartaList, setShowKartaList] = useState(false);
   const [showFlKartaList, setShowFlKartaList] = useState(false);
+  const [showBasketKartaPicker, setShowBasketKartaPicker] = useState(false);
 
   const [fromDate, setFromDate] = useState(getTomorrowDate());
   const [toDate, setToDate] = useState("");
@@ -1871,9 +1872,51 @@ export default function Seva() {
               <div className="space-y-3">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs text-muted-foreground">Devotee Name *</label>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-muted-foreground">Devotee Name *</label>
+                      {cart.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowBasketKartaPicker(!showBasketKartaPicker)}
+                          className="text-[11px] text-primary underline underline-offset-2"
+                          data-testid="button-basket-karta">
+                          Same as in other Seva
+                        </button>
+                      )}
+                    </div>
                     {kannadaName && <span className="text-xs font-medium text-orange-500">{kannadaName}</span>}
                   </div>
+                  {showBasketKartaPicker && cart.length > 0 && (() => {
+                    const uniqueBasketKartas = cart.filter((item, idx, arr) =>
+                      arr.findIndex(a => a.name === item.name) === idx
+                    );
+                    return (
+                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-2 mb-2">
+                        {uniqueBasketKartas.map((item, i) => {
+                          const nak = (nakshatras as any[]).find(n => String(n.id) === item.nakshatraId);
+                          return (
+                            <button key={i} type="button"
+                              className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-primary/10 flex items-center justify-between"
+                              data-testid={`button-basket-karta-${i}`}
+                              onClick={() => {
+                                setKartaName(item.name);
+                                setKannadaName(item.nameK || "");
+                                setKartaNakshatraId(item.nakshatraId || "");
+                                setKartaRashiId(item.rashiId || "");
+                                setKartaGotra(item.gotra || "");
+                                setKartaGotraK(item.gotraK || "");
+                                setKartaCity(item.city || "");
+                                setKannadaCity(item.kannadaCity || "");
+                                setShowBasketKartaPicker(false);
+                              }}>
+                              <span className="font-medium">{item.name}</span>
+                              {nak && <span className="text-muted-foreground">{nak.name}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                   <input type="text" value={kartaName} onChange={(e) => setKartaName(e.target.value)}
                     className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                     data-testid="input-karta-name" />
