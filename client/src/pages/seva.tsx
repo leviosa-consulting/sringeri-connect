@@ -612,8 +612,9 @@ export default function Seva() {
   // Normalise to Number() because the API may return attend as a string ("1", "2").
   useEffect(() => {
     if (!selectedSeva && !selectedSannidhi) return;
-    const raw = selectedSeva?.attend ?? selectedSannidhi?.attend;
-    const attend = Number(raw ?? 0);
+    const sannidhiAttend = Number(selectedSannidhi?.attend ?? 0);
+    const sevaAttend = Number(selectedSeva?.attend ?? 0);
+    const attend = sannidhiAttend !== 0 ? sannidhiAttend : sevaAttend;
     if (attend === 1) {
       setInAbsentia("0");
       setReceivePrasadam("");
@@ -2539,7 +2540,9 @@ export default function Seva() {
 
           {selectedSeva && selectedSevaType?.id === 2 && (() => {
             const isToday = sevaDate === new Date().toISOString().split("T")[0];
-            const attend = Number(selectedSeva?.attend ?? selectedSannidhi?.attend ?? 0);
+            const sannidhiAttend = Number(selectedSannidhi?.attend ?? 0);
+            const sevaAttend = Number(selectedSeva?.attend ?? 0);
+            const attend = sannidhiAttend !== 0 ? sannidhiAttend : sevaAttend;
             const showInPerson = attend !== 2;
             const showInAbsentia = attend !== 1;
             return (
