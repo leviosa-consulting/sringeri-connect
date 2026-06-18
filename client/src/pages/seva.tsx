@@ -1483,7 +1483,8 @@ export default function Seva() {
                   </div>
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">Mobile *</label>
-                    <input type="text" value={payeeMobile} onChange={(e) => setPayeeMobile(e.target.value)}
+                    <input type="tel" inputMode="numeric" autoComplete="tel" name="mobile"
+                      value={payeeMobile} onChange={(e) => setPayeeMobile(e.target.value.replace(/\D/g, ""))}
                       className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                       data-testid="input-payee-mobile" />
                   </div>
@@ -2031,7 +2032,8 @@ export default function Seva() {
             </div>
 
             <div className="mt-4">
-              <input type="text" value={payeeMobile} onChange={(e) => setPayeeMobile(e.target.value)}
+              <input type="tel" inputMode="numeric" autoComplete="tel" name="mobile"
+                value={payeeMobile} onChange={(e) => setPayeeMobile(e.target.value.replace(/\D/g, ""))}
                 placeholder="Mobile Number"
                 className="w-full text-sm text-primary placeholder:italic placeholder:text-primary/40 border-0 border-b border-primary/30 focus:border-primary bg-transparent px-1 py-2.5 focus:outline-none focus:ring-0 transition-colors"
                 data-testid="input-fl-mobile" />

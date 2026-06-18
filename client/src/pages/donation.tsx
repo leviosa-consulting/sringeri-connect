@@ -1032,9 +1032,12 @@ export default function Donation() {
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">Mobile *</label>
                     <input
-                      type="text"
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      name="mobile"
                       value={donationForm.mobileNumber}
-                      onChange={(e) => updatePayeeField("mobileNumber", e.target.value)}
+                      onChange={(e) => updatePayeeField("mobileNumber", e.target.value.replace(/\D/g, ""))}
                       className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                       data-testid="input-mobile"
                     />
