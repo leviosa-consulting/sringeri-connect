@@ -35,6 +35,7 @@ interface NormalizedTxn {
   _mobile: string;
   _sevaName: string;
   _donationCategory: string;
+  _donationSubCategory: string;
   _building: string;
 }
 
@@ -99,7 +100,8 @@ function normalize(t: Record<string, any>): NormalizedTxn {
     _orderId: gf(t, "paymentRef", "orderId", "orderID", "order_id", "txnId"),
     _mobile: gf(t, "mobile", "mobileNumber", "phone"),
     _sevaName: gf(t, "sevaName", "deitySevaName", "productName", "serviceName") || rawType,
-    _donationCategory: gf(t, "categoryName", "donationCategory", "heading", "headingName", "subCategoryName") || rawType,
+    _donationCategory: gf(t, "categoryName", "donationCategory", "heading", "headingName") || rawType,
+    _donationSubCategory: gf(t, "subCategoryName", "subCategory", "donationSubCategory", "subcategoryName", "subHeadingName"),
     _building: gf(t, "building", "buildingName", "roomType", "block", "roomCategory"),
   };
 }
@@ -182,6 +184,17 @@ function topByField(txns: NormalizedTxn[], field: keyof NormalizedTxn, n = 10) {
   return topN(Array.from(map.values()), v => v.amount, n);
 }
 
+function topByCount(txns: NormalizedTxn[], field: keyof NormalizedTxn, n = 10) {
+  const map = new Map<string, { name: string; amount: number; count: number }>();
+  for (const t of txns) {
+    const k = String(t[field] || "Unknown") || "Unknown";
+    if (!k || k === "Unknown" || k === "—") continue;
+    const prev = map.get(k) || { name: k, amount: 0, count: 0 };
+    map.set(k, { name: k, amount: prev.amount + t._amount, count: prev.count + 1 });
+  }
+  return topN(Array.from(map.values()), v => v.count, n);
+}
+
 function growthPct(curr: number, prev: number): number | null {
   if (prev === 0) return null;
   return Math.round(((curr - prev) / prev) * 100);
@@ -234,19 +247,36 @@ function NoData({ msg = "No data for this period" }: { msg?: string }) {
   );
 }
 
-function HBar({ data, valueKey = "amount", labelKey = "name", height }: { data: any[]; valueKey?: string; labelKey?: string; height?: number }) {
+function HBar({ data, valueKey = "amount", labelKey = "name", height, isCount }: { data: any[]; valueKey?: string; labelKey?: string; height?: number; isCount?: boolean }) {
   if (!data.length) return <NoData />;
   const h = height ?? Math.max(180, data.length * 36);
+  const fmtTick = isCount ? (v: number) => String(v) : (v: number) => `₹${(v / 1000).toFixed(0)}k`;
+  const fmtTt = isCount ? (v: any) => [`${v}`, "Count"] : (v: any) => [fmtCurr(Number(v)), "Amount"];
   return (
     <ResponsiveContainer width="100%" height={h}>
       <BarChart data={data} layout="vertical" margin={{ left: 0, right: 16, top: 4, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-        <XAxis type="number" tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+        <XAxis type="number" tickFormatter={fmtTick} tick={{ fontSize: 11 }} />
         <YAxis type="category" dataKey={labelKey} width={130} tick={{ fontSize: 11 }} />
-        <Tooltip formatter={(v: any) => fmtCurr(Number(v))} />
+        <Tooltip formatter={fmtTt} />
         <Bar dataKey={valueKey} radius={[0, 4, 4, 0]}>
           {data.map((_, i) => <Cell key={i} fill={CAT_COLORS[i % CAT_COLORS.length]} />)}
         </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function CountBarChart({ data, period }: { data: any[]; period: Period }) {
+  if (!data.length) return <NoData />;
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <BarChart data={data} margin={{ left: 0, right: 8, top: 4, bottom: 24 }}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={period === "month" ? -45 : 0} textAnchor={period === "month" ? "end" : "middle"} interval="preserveStartEnd" />
+        <YAxis tick={{ fontSize: 10 }} width={32} allowDecimals={false} />
+        <Tooltip formatter={(v: any) => [`${v}`, "Bookings"]} />
+        <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -408,6 +438,7 @@ export default function AdminStats() {
 
   const prevDonations = useMemo(() => prevTxns.filter(t => t._category === "donation"), [prevTxns]);
   const prevSevas = useMemo(() => prevTxns.filter(t => t._category === "seva"), [prevTxns]);
+  const prevFastline = useMemo(() => prevTxns.filter(t => t._category === "fastline"), [prevTxns]);
 
   const filteredDonations = useMemo(() => {
     if (donFilter === "80g") return donations.filter(t => t._is80G);
@@ -515,7 +546,7 @@ export default function AdminStats() {
           {activeSection === "donations" && <DonationsSection txns={filteredDonations} prevTxns={prevDonations} period={period} donFilter={donFilter} setDonFilter={setDonFilter} peakDay={peakDay(filteredDonations)} />}
           {activeSection === "seva" && <SevaSection txns={sevas} prevTxns={prevSevas} period={period} peakDay={peakDay(sevas)} />}
           {activeSection === "accommodation" && <AccommodationSection txns={accommodation} period={period} peakDay={peakDay(accommodation)} />}
-          {activeSection === "fastline" && <FastlineSection txns={fastline} period={period} peakDay={peakDay(fastline)} />}
+          {activeSection === "fastline" && <FastlineSection txns={fastline} prevTxns={prevFastline} period={period} peakDay={peakDay(fastline)} />}
           {activeSection === "seva-report" && <SevaReport getToken={getToken!} />}
           {activeSection === "donation-report" && <DonationReport getToken={getToken!} />}
         </>
@@ -566,7 +597,18 @@ function DonationsSection({ txns, prevTxns, period, donFilter, setDonFilter, pea
   const growth = growthPct(total, prevTotal);
   const timeSeries = useMemo(() => groupByDate(txns, period), [txns, period]);
   const byCat = useMemo(() => topByField(txns, "_donationCategory"), [txns]);
+  const bySubCat = useMemo(() => topByField(txns, "_donationSubCategory").filter(d => d.name && d.name !== txns[0]?._donationCategory), [txns]);
   const topDonors = useMemo(() => topContributors(txns), [txns]);
+
+  const catGrowth = useMemo(() => {
+    const prevMap = new Map<string, number>();
+    for (const t of prevTxns) prevMap.set(t._donationCategory, (prevMap.get(t._donationCategory) || 0) + t._amount);
+    return byCat.slice(0, 6).map(d => ({
+      name: d.name, amount: d.amount, count: d.count,
+      growth: growthPct(d.amount, prevMap.get(d.name) || 0),
+    }));
+  }, [byCat, prevTxns]);
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2 flex-wrap">
@@ -587,9 +629,55 @@ function DonationsSection({ txns, prevTxns, period, donFilter, setDonFilter, pea
       <SectionCard title="Donation Trend">
         <TimeBarChart data={timeSeries} period={period} />
       </SectionCard>
-      <SectionCard title="By Category (Top 10 by ₹)">
-        <HBar data={byCat.map(d => ({ name: d.name, amount: Math.round(d.amount) }))} />
-      </SectionCard>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <SectionCard title="By Category (Top 10 by ₹)">
+          <HBar data={byCat.map(d => ({ name: d.name, amount: Math.round(d.amount) }))} />
+        </SectionCard>
+        {bySubCat.length > 0 ? (
+          <SectionCard title="By Subcategory (Top 10 by ₹)">
+            <HBar data={bySubCat.map(d => ({ name: d.name, amount: Math.round(d.amount) }))} />
+          </SectionCard>
+        ) : (
+          <SectionCard title="By Category — Count">
+            <HBar data={byCat.map(d => ({ name: d.name, count: d.count }))} valueKey="count" isCount />
+          </SectionCard>
+        )}
+      </div>
+      {catGrowth.length > 0 && (
+        <SectionCard title="Category Performance — Avg &amp; vs Previous Period">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Category</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Count</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Total ₹</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Avg ₹</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Growth</th>
+                </tr>
+              </thead>
+              <tbody>
+                {catGrowth.map((r, i) => (
+                  <tr key={i} className="border-b last:border-0 hover:bg-muted/10">
+                    <td className="px-3 py-2.5 font-medium max-w-[160px] truncate">{r.name}</td>
+                    <td className="px-3 py-2.5 text-right text-muted-foreground">{r.count}</td>
+                    <td className="px-3 py-2.5 text-right">{fmtCurr(Math.round(r.amount))}</td>
+                    <td className="px-3 py-2.5 text-right text-muted-foreground">{fmtCurr(Math.round(r.amount / r.count))}</td>
+                    <td className="px-3 py-2.5 text-right">
+                      {r.growth === null ? <span className="text-muted-foreground text-xs">—</span> : (
+                        <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${r.growth > 0 ? "text-green-600" : r.growth < 0 ? "text-red-500" : "text-muted-foreground"}`}>
+                          {r.growth > 0 ? <TrendingUp className="h-3 w-3" /> : r.growth < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                          {r.growth > 0 ? "+" : ""}{r.growth}%
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
       <SectionCard title="Top Donors">
         <TopTable rows={topDonors} amtLabel="Total Donated" />
       </SectionCard>
@@ -602,9 +690,20 @@ function SevaSection({ txns, prevTxns, period, peakDay }: { txns: NormalizedTxn[
   const prevTotal = prevTxns.reduce((s, t) => s + t._amount, 0);
   const growth = growthPct(total, prevTotal);
   const timeSeries = useMemo(() => groupByDate(txns, period), [txns, period]);
-  const byName = useMemo(() => topByField(txns, "_sevaName"), [txns]);
-  const bySannidhi = useMemo(() => topByField(txns, "_type"), [txns]);
-  const topDevotees = useMemo(() => topContributors(txns), [txns]);
+  const byNameAmt = useMemo(() => topByField(txns, "_sevaName"), [txns]);
+  const byNameCnt = useMemo(() => topByCount(txns, "_sevaName"), [txns]);
+  const bySannidhiAmt = useMemo(() => topByField(txns, "_type"), [txns]);
+  const bySannidhiCnt = useMemo(() => topByCount(txns, "_type"), [txns]);
+  const topDevoteesByAmt = useMemo(() => topContributors(txns), [txns]);
+  const topDevoteesByCnt = useMemo(() => {
+    const map = new Map<string, { name: string; amount: number; count: number }>();
+    for (const t of txns) {
+      const k = t._name || "Unknown";
+      const prev = map.get(k) || { name: k, amount: 0, count: 0 };
+      map.set(k, { name: k, amount: prev.amount + t._amount, count: prev.count + 1 });
+    }
+    return topN(Array.from(map.values()), v => v.count, 10);
+  }, [txns]);
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -617,16 +716,29 @@ function SevaSection({ txns, prevTxns, period, peakDay }: { txns: NormalizedTxn[
         <DualAxisChart data={timeSeries} />
       </SectionCard>
       <div className="grid lg:grid-cols-2 gap-4">
-        <SectionCard title="By Seva Name (Top 10)">
-          <HBar data={byName.map(d => ({ name: d.name, amount: Math.round(d.amount) }))} />
+        <SectionCard title="By Seva Name — Top 10 by ₹">
+          <HBar data={byNameAmt.map(d => ({ name: d.name, amount: Math.round(d.amount) }))} />
         </SectionCard>
-        <SectionCard title="By Sannidhi / Type (Top 10)">
-          <HBar data={bySannidhi.map(d => ({ name: d.name, amount: Math.round(d.amount) }))} />
+        <SectionCard title="By Seva Name — Top 10 by Count">
+          <HBar data={byNameCnt.map(d => ({ name: d.name, count: d.count }))} valueKey="count" isCount />
         </SectionCard>
       </div>
-      <SectionCard title="Top Devotees by ₹">
-        <TopTable rows={topDevotees} amtLabel="Total Seva ₹" countLabel="Bookings" />
-      </SectionCard>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <SectionCard title="By Sannidhi / Type — Top 10 by ₹">
+          <HBar data={bySannidhiAmt.map(d => ({ name: d.name, amount: Math.round(d.amount) }))} />
+        </SectionCard>
+        <SectionCard title="By Sannidhi / Type — Top 10 by Count">
+          <HBar data={bySannidhiCnt.map(d => ({ name: d.name, count: d.count }))} valueKey="count" isCount />
+        </SectionCard>
+      </div>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <SectionCard title="Top Devotees by ₹">
+          <TopTable rows={topDevoteesByAmt} amtLabel="Total Seva ₹" countLabel="Bookings" />
+        </SectionCard>
+        <SectionCard title="Most Frequent Devotees (by Count)">
+          <TopTable rows={topDevoteesByCnt} amtLabel="Total Seva ₹" countLabel="Bookings" />
+        </SectionCard>
+      </div>
     </div>
   );
 }
@@ -659,20 +771,22 @@ function AccommodationSection({ txns, period, peakDay }: { txns: NormalizedTxn[]
   );
 }
 
-function FastlineSection({ txns, period, peakDay }: { txns: NormalizedTxn[]; period: Period; peakDay: string | null }) {
+function FastlineSection({ txns, prevTxns, period, peakDay }: { txns: NormalizedTxn[]; prevTxns: NormalizedTxn[]; period: Period; peakDay: string | null }) {
   const total = txns.reduce((s, t) => s + t._amount, 0);
+  const prevCount = prevTxns.length;
+  const countGrowth = growthPct(txns.length, prevCount);
   const timeSeries = useMemo(() => groupByDate(txns, period), [txns, period]);
   const topBookers = useMemo(() => topContributors(txns), [txns]);
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Total Revenue" value={fmtCurr(total)} />
-        <KpiCard label="Bookings" value={String(txns.length)} />
+        <KpiCard label="Bookings" value={String(txns.length)} growth={countGrowth} />
         <KpiCard label="Avg per Booking" value={fmtCurr(txns.length ? Math.round(total / txns.length) : 0)} />
         <KpiCard label="Peak Day" value={peakDay || "—"} />
       </div>
-      <SectionCard title="Fastline Bookings Trend">
-        <TimeBarChart data={timeSeries} period={period} />
+      <SectionCard title="Fastline Bookings Trend (Count)">
+        <CountBarChart data={timeSeries} period={period} />
       </SectionCard>
       <SectionCard title="Frequent Bookers">
         <TopTable rows={topBookers} amtLabel="Total Paid" countLabel="Bookings" />
@@ -821,6 +935,8 @@ function DonationReport({ getToken }: { getToken: () => Promise<string | null> }
   const [generated, setGenerated] = useState(false);
   const [donFilter, setDonFilter] = useState<DonFilter>("all");
   const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
+  const [selectedSubCats, setSelectedSubCats] = useState<Set<string>>(new Set());
+  const [groupBySubCat, setGroupBySubCat] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const donTxns = useMemo(() => {
@@ -831,11 +947,16 @@ function DonationReport({ getToken }: { getToken: () => Promise<string | null> }
   }, [allTxns, donFilter]);
 
   const catOptions = useMemo(() => Array.from(new Set(donTxns.map(t => t._donationCategory))).sort(), [donTxns]);
+  const subCatOptions = useMemo(() => {
+    const base = selectedCats.size > 0 ? donTxns.filter(t => selectedCats.has(t._donationCategory)) : donTxns;
+    return Array.from(new Set(base.map(t => t._donationSubCategory).filter(Boolean))).sort();
+  }, [donTxns, selectedCats]);
 
   async function fetchReport() {
     setLoading(true);
     setGenerated(false);
     setSelectedCats(new Set());
+    setSelectedSubCats(new Set());
     try {
       const token = await getToken();
       if (!token) throw new Error("Not authenticated");
@@ -847,23 +968,24 @@ function DonationReport({ getToken }: { getToken: () => Promise<string | null> }
   }
 
   const summary = useMemo(() => {
-    const map = new Map<string, { catName: string; count: number; amount: number; txns: NormalizedTxn[] }>();
-    const toShow = selectedCats.size > 0 ? donTxns.filter(t => selectedCats.has(t._donationCategory)) : donTxns;
+    let toShow = selectedCats.size > 0 ? donTxns.filter(t => selectedCats.has(t._donationCategory)) : donTxns;
+    if (selectedSubCats.size > 0) toShow = toShow.filter(t => selectedSubCats.has(t._donationSubCategory));
+    const map = new Map<string, { catName: string; subCatName: string; count: number; amount: number; txns: NormalizedTxn[] }>();
     for (const t of toShow) {
-      const k = t._donationCategory;
-      const prev = map.get(k) || { catName: k, count: 0, amount: 0, txns: [] };
+      const k = groupBySubCat ? `${t._donationCategory}::${t._donationSubCategory || "—"}` : t._donationCategory;
+      const prev = map.get(k) || { catName: t._donationCategory, subCatName: t._donationSubCategory || "", count: 0, amount: 0, txns: [] };
       map.set(k, { ...prev, count: prev.count + 1, amount: prev.amount + t._amount, txns: [...prev.txns, t] });
     }
     return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
-  }, [donTxns, selectedCats]);
+  }, [donTxns, selectedCats, selectedSubCats, groupBySubCat]);
 
   const grandTotal = summary.reduce((s, r) => ({ count: s.count + r.count, amount: s.amount + r.amount }), { count: 0, amount: 0 });
 
   function exportCsv() {
-    const rows: (string | number)[][] = [["Category", "80G", "Count", "Total ₹", "Avg ₹", "Order ID", "Donor", "Date", "Amount"]];
+    const rows: (string | number)[][] = [["Category", "Subcategory", "80G", "Count", "Total ₹", "Avg ₹", "Order ID", "Donor", "Date", "Amount"]];
     for (const row of summary) {
-      rows.push([row.catName, "", row.count, Math.round(row.amount), Math.round(row.amount / row.count), "", "", "", ""]);
-      for (const t of row.txns) rows.push(["", t._is80G ? "Yes" : "No", "", "", "", t._orderId, t._name, t._date, t._amount]);
+      rows.push([row.catName, row.subCatName, "", row.count, Math.round(row.amount), Math.round(row.amount / row.count), "", "", "", ""]);
+      for (const t of row.txns) rows.push(["", "", t._is80G ? "Yes" : "No", "", "", "", t._orderId, t._name, t._date, t._amount]);
     }
     downloadCsv(rows, `donation-report-${rfrom}-${rto}.csv`);
   }
@@ -893,8 +1015,24 @@ function DonationReport({ getToken }: { getToken: () => Promise<string | null> }
 
       {donTxns.length > 0 && !loading && (
         <div className="bg-card rounded-xl border border-border/50 p-4 space-y-3">
-          <div><label className="text-xs text-muted-foreground mb-1 block">Filter by Category ({catOptions.length} found)</label>
-            <MultiSelect options={catOptions} selected={selectedCats} onChange={setSelectedCats} placeholder="All categories" /></div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Filter by Category ({catOptions.length} found)</label>
+              <MultiSelect options={catOptions} selected={selectedCats} onChange={v => { setSelectedCats(v); setSelectedSubCats(new Set()); }} placeholder="All categories" />
+            </div>
+            {subCatOptions.length > 0 && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Filter by Subcategory ({subCatOptions.length} found)</label>
+                <MultiSelect options={subCatOptions} selected={selectedSubCats} onChange={setSelectedSubCats} placeholder="All subcategories" />
+              </div>
+            )}
+          </div>
+          {subCatOptions.length > 0 && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer" data-testid="toggle-group-subcat">
+              <input type="checkbox" checked={groupBySubCat} onChange={e => setGroupBySubCat(e.target.checked)} className="rounded" />
+              Group rows by Category → Subcategory
+            </label>
+          )}
           <div className="flex gap-2">
             <Button onClick={() => setGenerated(true)} data-testid="button-generate-don-report">Generate Report</Button>
             {generated && <Button variant="outline" size="sm" onClick={exportCsv} data-testid="button-export-don-csv">
@@ -912,37 +1050,45 @@ function DonationReport({ getToken }: { getToken: () => Promise<string | null> }
                 <tr className="border-b bg-muted/30">
                   <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground w-8"></th>
                   <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Category</th>
+                  {groupBySubCat && <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Subcategory</th>}
                   <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Count</th>
                   <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Total ₹</th>
                   <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Avg ₹</th>
                 </tr>
               </thead>
               <tbody>
-                {summary.map(row => (
-                  <Fragment key={row.catName}>
-                    <tr className="border-b hover:bg-muted/10 cursor-pointer" onClick={() => setExpanded(prev => { const n = new Set(prev); n.has(row.catName) ? n.delete(row.catName) : n.add(row.catName); return n; })} data-testid={`row-don-${row.catName}`}>
-                      <td className="px-3 py-2.5 text-muted-foreground">
-                        {expanded.has(row.catName) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                      </td>
-                      <td className="px-3 py-2.5 font-medium">{row.catName}</td>
-                      <td className="px-3 py-2.5 text-right">{row.count}</td>
-                      <td className="px-3 py-2.5 text-right font-semibold">{fmtCurr(Math.round(row.amount))}</td>
-                      <td className="px-3 py-2.5 text-right text-muted-foreground">{fmtCurr(Math.round(row.amount / row.count))}</td>
-                    </tr>
-                    {expanded.has(row.catName) && row.txns.map((t, i) => (
-                      <tr key={t._orderId || i} className="bg-muted/5 border-b text-xs">
-                        <td className="px-3 py-1.5"></td>
-                        <td className="px-3 py-1.5 pl-8 text-muted-foreground">{t._name || "—"} {t._is80G && <span className="ml-1 bg-green-100 text-green-700 px-1 rounded text-[10px]">80G</span>}</td>
-                        <td className="px-3 py-1.5 text-right text-muted-foreground">{t._date}</td>
-                        <td className="px-3 py-1.5 text-right">{fmtCurr(t._amount)}</td>
-                        <td className="px-3 py-1.5 text-right text-muted-foreground font-mono text-[10px] truncate max-w-[100px]">{t._orderId}</td>
+                {summary.map((row, ri) => {
+                  const rowKey = groupBySubCat ? `${row.catName}::${row.subCatName}` : row.catName;
+                  return (
+                    <Fragment key={ri}>
+                      <tr className="border-b hover:bg-muted/10 cursor-pointer" onClick={() => setExpanded(prev => { const n = new Set(prev); n.has(rowKey) ? n.delete(rowKey) : n.add(rowKey); return n; })} data-testid={`row-don-${ri}`}>
+                        <td className="px-3 py-2.5 text-muted-foreground">
+                          {expanded.has(rowKey) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </td>
+                        <td className="px-3 py-2.5 font-medium">{row.catName}</td>
+                        {groupBySubCat && <td className="px-3 py-2.5 text-muted-foreground">{row.subCatName || "—"}</td>}
+                        <td className="px-3 py-2.5 text-right">{row.count}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold">{fmtCurr(Math.round(row.amount))}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">{fmtCurr(Math.round(row.amount / row.count))}</td>
                       </tr>
-                    ))}
-                  </Fragment>
-                ))}
+                      {expanded.has(rowKey) && row.txns.map((t, i) => (
+                        <tr key={t._orderId || i} className="bg-muted/5 border-b text-xs">
+                          <td className="px-3 py-1.5"></td>
+                          <td className="px-3 py-1.5 pl-8 text-muted-foreground" colSpan={groupBySubCat ? 2 : 1}>
+                            {t._name || "—"} {t._is80G && <span className="ml-1 bg-green-100 text-green-700 px-1 rounded text-[10px]">80G</span>}
+                            {t._donationSubCategory && !groupBySubCat && <span className="ml-1 text-[10px] text-muted-foreground/70">{t._donationSubCategory}</span>}
+                          </td>
+                          <td className="px-3 py-1.5 text-right text-muted-foreground">{t._date}</td>
+                          <td className="px-3 py-1.5 text-right">{fmtCurr(t._amount)}</td>
+                          <td className="px-3 py-1.5 text-right text-muted-foreground font-mono text-[10px] truncate max-w-[100px]">{t._orderId}</td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
+                })}
                 <tr className="bg-primary/5 font-semibold">
                   <td className="px-3 py-2.5"></td>
-                  <td className="px-3 py-2.5">Total</td>
+                  <td className="px-3 py-2.5" colSpan={groupBySubCat ? 2 : 1}>Total</td>
                   <td className="px-3 py-2.5 text-right">{grandTotal.count}</td>
                   <td className="px-3 py-2.5 text-right text-primary">{fmtCurr(Math.round(grandTotal.amount))}</td>
                   <td className="px-3 py-2.5 text-right text-muted-foreground">{grandTotal.count ? fmtCurr(Math.round(grandTotal.amount / grandTotal.count)) : "—"}</td>
@@ -952,7 +1098,7 @@ function DonationReport({ getToken }: { getToken: () => Promise<string | null> }
           </div>
         </div>
       )}
-      {generated && summary.length === 0 && <NoData msg="No donation transactions found for the selected range and categories" />}
+      {generated && summary.length === 0 && <NoData msg="No donation transactions found for the selected range and filters" />}
     </div>
   );
 }
