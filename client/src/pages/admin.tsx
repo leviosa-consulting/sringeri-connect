@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/auth-context";
 import { RangoliLoader } from "@/components/rangoli-loader";
-import { Loader2, BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare, ClipboardList } from "lucide-react";
+import { Loader2, BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare, ClipboardList, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
 
 const ADMIN_UIDS = [
@@ -58,6 +58,13 @@ const adminTools = [
     icon: MessageSquare,
     path: "/admin/support",
     color: "bg-rose-50 text-rose-600",
+  },
+  {
+    title: "Revenue & Stats",
+    description: "Period-based revenue charts, category breakdowns, top contributors, and 360° Seva/Donation reports",
+    icon: TrendingUp,
+    path: "/admin/stats",
+    color: "bg-emerald-50 text-emerald-600",
   },
   {
     title: "Launch Control",

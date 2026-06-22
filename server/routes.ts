@@ -1012,12 +1012,61 @@ export async function registerRoutes(
     return [];
   };
 
+  const fetchFromRss2Json = async (channelId: string): Promise<any[]> => {
+    const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+    const proxies = [
+      `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}&count=10`,
+      `https://rss.app/feeds/v1.1/${encodeURIComponent(feedUrl)}.json`,
+    ];
+    for (const url of proxies) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        let res;
+        try {
+          res = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
+        } finally {
+          clearTimeout(timeout);
+        }
+        if (!res.ok) { console.log(`[YouTube] RSS2JSON proxy ${url.split("?")[0]} returned HTTP ${res.status}`); continue; }
+        const json = await res.json();
+        const items: any[] = json.items || json.entries || [];
+        if (!items.length) { console.log(`[YouTube] RSS2JSON proxy returned 0 items`); continue; }
+        const out = items.slice(0, 10).map((item: any) => {
+          const link = item.link || item.url || item.guid || "";
+          const videoId = link.match(/[?&]v=([^&]+)/)?.[1] || String(item.guid || "").split(":").pop() || "";
+          if (!videoId) return null;
+          const pubRaw = item.pubDate || item.published || item.date_published || "";
+          return {
+            videoId,
+            title: item.title || "",
+            published: pubRaw,
+            date: pubRaw ? new Date(pubRaw).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null,
+            thumbnail: item.thumbnail || item.enclosure?.link || `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+            url: `https://www.youtube.com/watch?v=${videoId}`,
+          };
+        }).filter(Boolean) as any[];
+        if (out.length > 0) {
+          console.log(`[YouTube] RSS2JSON proxy succeeded: ${out.length} videos found`);
+          return out;
+        }
+        console.log(`[YouTube] RSS2JSON proxy returned data but parsed 0 valid videos`);
+      } catch (err) {
+        console.log(`[YouTube] RSS2JSON proxy failed: ${String(err)}`);
+      }
+    }
+    return [];
+  };
+
   const fetchFromInvidious = async (channelId: string): Promise<any[]> => {
     const instances = [
       "https://inv.nadeko.net",
       "https://invidious.privacyredirect.com",
       "https://invidious.nerdvpn.de",
       "https://yt.cdaut.de",
+      "https://invidious.darkness.services",
+      "https://invidious.incogniweb.net",
+      "https://inv.tux.pizza",
     ];
     for (const base of instances) {
       try {
@@ -1115,6 +1164,10 @@ export async function registerRoutes(
         } catch (rssErr) {
           console.log(`[YouTube] RSS feed also failed: ${String(rssErr)}`);
         }
+      }
+
+      if (videos.length === 0) {
+        videos = await fetchFromRss2Json(channelId);
       }
 
       if (videos.length === 0) {
