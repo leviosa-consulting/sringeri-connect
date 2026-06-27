@@ -88,6 +88,7 @@ interface DonationCategory {
   id: number;
   name: string;
   donationHeadingId: number;
+  preset?: string;
   subcategories?: DonationSubCategory[];
 }
 
@@ -102,6 +103,7 @@ interface DonationSubCategory {
   hasUpload?: number;
   donationCategoryId?: number;
   isFeatured?: number;
+  preset?: string;
 }
 
 interface FeaturedDonationItem {
@@ -256,26 +258,6 @@ const CUSTOM_ICON_KEYWORDS: [string, string][] = [
   ["garden", environmentIcon],
   ["vanasampada", environmentIcon],
 ];
-
-// ---------------------------------------------------------------------------
-// Donation preset deep-link table
-// Add new entries here to support more short URLs (/gkvb, /annadanam, etc.)
-// Keys are the URL slug (lowercase). Use `subCategoryNameContains` for
-// purpose-level presets.
-// ---------------------------------------------------------------------------
-interface DonationPreset {
-  categoryNameContains: string;
-  subCategoryNameContains?: string;
-  label: string;
-}
-
-const DONATION_PRESETS: Record<string, DonationPreset> = {
-  gkvb:          { categoryNameContains: "kanike",           subCategoryNameContains: "guru kanike",  label: "Guru Kanike – Vajrotsava Bharati" },
-  gkvbp:         { categoryNameContains: "kanike",           subCategoryNameContains: "prarthana",    label: "Guru Kanike – Prarthana" },
-  annadanam:     { categoryNameContains: "annadanam",        label: "Annadanam" },
-  vedapatashala: { categoryNameContains: "veda patashala",   label: "Veda Patashala" },
-  goshala:       { categoryNameContains: "go samrakshanam",  label: "Go Samrakshanam" },
-};
 
 const ORANGE_FILTER = "brightness(0) saturate(100%) invert(43%) sepia(97%) saturate(2000%) hue-rotate(1deg) brightness(100%)";
 const WHITE_FILTER = "brightness(0) invert(1)";
@@ -444,14 +426,12 @@ export default function Donation() {
   const { isServicesMode, homeRoute } = useSubdomainMode();
   const params = useParams<{ preset?: string }>();
   const preset = (params.preset || "").toLowerCase();
-  const activePreset = preset ? DONATION_PRESETS[preset] ?? null : null;
 
   const [step, setStep] = useState<"select" | "review" | "payee">("select");
   const [selectedHeading, setSelectedHeading] = useState<DonationHeading | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<DonationCategory | null>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<DonationSubCategory | null>(null);
   const [presetBannerDismissed, setPresetBannerDismissed] = useState(false);
-  const [pendingPresetSubCat, setPendingPresetSubCat] = useState<string | null>(null);
   const [selectedAmount, setSelectedAmount] = useState<number>(0);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [donationInTheNameOf, setDonationInTheNameOf] = useState("");
@@ -652,30 +632,23 @@ export default function Donation() {
     }
   }, [subcategories]);
 
+  // Step A — auto-select the category whose preset field matches the URL slug
   useEffect(() => {
-    if (!activePreset || selectedCategory) return;
+    if (!preset || selectedCategory) return;
     if (categories.length === 0 || headings.length === 0) return;
-    const needle = activePreset.categoryNameContains.toLowerCase();
-    const matchedCat = categories.find((c) => c.name.toLowerCase().includes(needle));
+    const matchedCat = categories.find((c: any) => c.preset === preset);
     if (!matchedCat) return;
     const matchedHeading = headings.find((h) => h.id === matchedCat.donationHeadingId);
     if (matchedHeading) setSelectedHeading(matchedHeading);
     setSelectedCategory(matchedCat);
-    if (activePreset.subCategoryNameContains) {
-      setPendingPresetSubCat(activePreset.subCategoryNameContains.toLowerCase());
-    }
-  }, [categories, headings, activePreset]);
+  }, [categories, headings, preset]);
 
+  // Step B — auto-select the subcategory whose preset field matches the URL slug
   useEffect(() => {
-    if (!pendingPresetSubCat || subcategories.length === 0 || selectedSubCategory) return;
-    const match = subcategories.find((s) =>
-      s.name.toLowerCase().includes(pendingPresetSubCat)
-    );
-    if (match) {
-      handleSelectSubCategory(match);
-      setPendingPresetSubCat(null);
-    }
-  }, [subcategories, pendingPresetSubCat]);
+    if (!preset || subcategories.length === 0 || selectedSubCategory) return;
+    const match = subcategories.find((s: any) => s.preset === preset);
+    if (match) handleSelectSubCategory(match);
+  }, [subcategories, preset]);
 
   function getDaysInMonth(mId: string): number {
     const m = parseInt(mId);
@@ -1482,7 +1455,7 @@ export default function Donation() {
         label="donation"
       />
 
-      {activePreset && !presetBannerDismissed && selectedCategory && (
+      {preset && !presetBannerDismissed && selectedCategory && (
         <div className="mx-4 mt-3 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 shadow-sm" data-testid="banner-preset-deeplink">
           <span className="text-amber-700 text-sm flex-1">
             Quick link: <span className="font-semibold">{selectedSubCategory ? selectedSubCategory.name : selectedCategory.name}</span> selected for you
