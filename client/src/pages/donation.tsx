@@ -270,11 +270,11 @@ interface DonationPreset {
 }
 
 const DONATION_PRESETS: Record<string, DonationPreset> = {
-  gkvb:          { categoryNameContains: "guru kanike",     label: "Guru Kanike Vandanam" },
-  gkvbp:         { categoryNameContains: "guru kanike",     subCategoryNameContains: "prarthana", label: "Guru Kanike Vandanam – Prarthana" },
-  annadanam:     { categoryNameContains: "annadanam",       label: "Annadanam" },
-  vedapatashala: { categoryNameContains: "veda patashala",  label: "Veda Patashala" },
-  goshala:       { categoryNameContains: "go samrakshanam", label: "Go Samrakshanam" },
+  gkvb:          { categoryNameContains: "kanike",           subCategoryNameContains: "guru kanike",  label: "Guru Kanike – Vajrotsava Bharati" },
+  gkvbp:         { categoryNameContains: "kanike",           subCategoryNameContains: "prarthana",    label: "Guru Kanike – Prarthana" },
+  annadanam:     { categoryNameContains: "annadanam",        label: "Annadanam" },
+  vedapatashala: { categoryNameContains: "veda patashala",   label: "Veda Patashala" },
+  goshala:       { categoryNameContains: "go samrakshanam",  label: "Go Samrakshanam" },
 };
 
 const ORANGE_FILTER = "brightness(0) saturate(100%) invert(43%) sepia(97%) saturate(2000%) hue-rotate(1deg) brightness(100%)";
@@ -1485,7 +1485,7 @@ export default function Donation() {
       {activePreset && !presetBannerDismissed && selectedCategory && (
         <div className="mx-4 mt-3 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 shadow-sm" data-testid="banner-preset-deeplink">
           <span className="text-amber-700 text-sm flex-1">
-            Quick link: <span className="font-semibold">{selectedCategory.name}</span> selected for you
+            Quick link: <span className="font-semibold">{selectedSubCategory ? selectedSubCategory.name : selectedCategory.name}</span> selected for you
           </span>
           <button
             onClick={() => setPresetBannerDismissed(true)}
