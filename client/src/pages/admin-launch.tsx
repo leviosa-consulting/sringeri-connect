@@ -6,10 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getIdToken, loginWithEmail } from "@/lib/firebase";
 
-const ADMIN_UIDS = (import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
-
 export default function AdminLaunch() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, hasAdminRole } = useAuth();
   const [launching, setLaunching] = useState(false);
   const [alreadyLaunched, setAlreadyLaunched] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
@@ -83,7 +81,7 @@ export default function AdminLaunch() {
     );
   }
 
-  if (!ADMIN_UIDS.includes(user.uid)) {
+  if (!hasAdminRole("super_admin")) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F2EC] px-6 text-center gap-4">
         <ShieldAlert className="w-16 h-16 text-muted-foreground/40" />

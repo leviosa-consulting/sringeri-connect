@@ -86,6 +86,29 @@ export async function registerRoutes(
     return verifyFirebaseTokenWithEmail(token);
   }
 
+  const ALL_FALLBACK_UIDS = [...new Set([
+    ...(process.env.ANALYTICS_ADMIN_UIDS || "").split(","),
+    ...(process.env.QUIZ_ADMIN_UIDS || "").split(","),
+  ])].map(s => s.trim()).filter(Boolean);
+
+  async function getUidAndAdminRoles(req: any): Promise<{ uid: string | null; roles: string[] }> {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) return { uid: null, roles: [] };
+    const token = authHeader.slice(7);
+    const uid = await verifyFirebaseTokenEarly(token);
+    if (!uid) return { uid: null, roles: [] };
+    if (ALL_FALLBACK_UIDS.includes(uid)) return { uid, roles: ["super_admin"] };
+    const roles = await storage.getAdminRolesForUser(uid);
+    return { uid, roles };
+  }
+
+  async function requireRole(req: any, ...allowedRoles: string[]): Promise<boolean> {
+    const { uid, roles } = await getUidAndAdminRoles(req);
+    if (!uid) return false;
+    if (roles.includes("super_admin")) return true;
+    return allowedRoles.some(r => roles.includes(r));
+  }
+
   const DEMO_USER_EMAIL = (process.env.DEMO_USER_EMAIL || "demo@dssps.app").toLowerCase();
   function isDemoEmail(email: string | null | undefined): boolean {
     return !!email && email.toLowerCase() === DEMO_USER_EMAIL;
@@ -289,19 +312,8 @@ export async function registerRoutes(
 
   app.post("/api/launch", async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      const token = authHeader.split(" ")[1];
-      const uid = await verifyFirebaseTokenEarly(token);
-      if (!uid) return res.status(401).json({ error: "Invalid token" });
-
-      const LAUNCH_ADMIN_UIDS = (process.env.ANALYTICS_ADMIN_UIDS || "").split(",").map(s => s.trim()).filter(Boolean);
-      if (!LAUNCH_ADMIN_UIDS.includes(uid)) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
-
+      if (!await requireRole(req, "super_admin")) return res.status(403).json({ error: "Forbidden" });
+      const { uid } = await getUidAndAdminRoles(req);
       await storage.setAppSetting("isLaunched", "true");
       console.log(`[Launch] App launched by admin UID: ${uid}`);
       res.json({ success: true, isLaunched: true });
@@ -313,19 +325,8 @@ export async function registerRoutes(
 
   app.post("/api/launch/reset", async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      const token = authHeader.split(" ")[1];
-      const uid = await verifyFirebaseTokenEarly(token);
-      if (!uid) return res.status(401).json({ error: "Invalid token" });
-
-      const LAUNCH_ADMIN_UIDS = (process.env.ANALYTICS_ADMIN_UIDS || "").split(",").map(s => s.trim()).filter(Boolean);
-      if (!LAUNCH_ADMIN_UIDS.includes(uid)) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
-
+      if (!await requireRole(req, "super_admin")) return res.status(403).json({ error: "Forbidden" });
+      const { uid } = await getUidAndAdminRoles(req);
       await storage.setAppSetting("isLaunched", "false");
       console.log(`[Launch] App reset to pre-launch by admin UID: ${uid}`);
       res.json({ success: true, isLaunched: false });
@@ -3357,7 +3358,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/allTransactions/:fromDate/:toDate", async (req, res) => {
     try {
-      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
       const { fromDate, toDate } = req.params;
       const r = await fetch(`${SRINGERI_API_URL}/api/fetchAllTransactions/${fromDate}/${toDate}`, {
         method: "GET",
@@ -3389,7 +3390,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/reconciliation/pending", async (req, res) => {
     try {
-      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
       const r = await fetch(`${SRINGERI_API_URL}/api/fetchPendingTransactions`, {
         method: "GET",
         headers: {
@@ -3420,7 +3421,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/reconciliation/check-status", async (req, res) => {
     try {
-      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
       const { orderId } = req.body || {};
       if (!orderId || typeof orderId !== "string") {
         return res.status(400).json({ error: "orderId is required" });
@@ -3454,7 +3455,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/reconciliation/ack", async (req, res) => {
     try {
-      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
       const { orderId } = req.body || {};
       if (!orderId || typeof orderId !== "string") {
         return res.status(400).json({ error: "orderId is required" });
@@ -3517,7 +3518,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/reconciliation/mark-failed", async (req, res) => {
     try {
-      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
       const { orderId } = req.body || {};
       if (!orderId || typeof orderId !== "string") {
         return res.status(400).json({ error: "orderId is required" });
@@ -3588,7 +3589,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/reconciliation-logs", async (req, res) => {
     try {
-      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
       const { from, to } = req.query as { from?: string; to?: string };
       const fromDate = from ? new Date(from + "T00:00:00.000Z") : new Date(new Date().setHours(0, 0, 0, 0));
       const toDate = to ? new Date(to + "T23:59:59.999Z") : new Date(new Date().setHours(23, 59, 59, 999));
@@ -3602,7 +3603,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/cron-status", async (req, res) => {
     try {
-      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
       const val = await storage.getAppSetting("recon_cron_enabled");
       res.json({ enabled: val !== "false" });
     } catch (error) {
@@ -3613,7 +3614,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/cron-toggle", async (req, res) => {
     try {
-      if (!await isReconciliationAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
       const current = await storage.getAppSetting("recon_cron_enabled");
       const nowEnabled = current === "false"; // toggle
       await storage.setAppSetting("recon_cron_enabled", nowEnabled ? "true" : "false");
@@ -4050,7 +4051,7 @@ export async function registerRoutes(
 
   app.get("/api/analytics/summary", async (req, res) => {
     try {
-      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "analytics")) return res.status(403).json({ error: "Forbidden" });
       const from = (req.query.from as string) || new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
       const to = (req.query.to as string) || new Date().toISOString().split("T")[0];
       const page = req.query.page as string | undefined;
@@ -4064,7 +4065,7 @@ export async function registerRoutes(
 
   app.get("/api/analytics/top-elements", async (req, res) => {
     try {
-      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "analytics")) return res.status(403).json({ error: "Forbidden" });
       const from = (req.query.from as string) || new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
       const to = (req.query.to as string) || new Date().toISOString().split("T")[0];
       const page = req.query.page as string | undefined;
@@ -4079,7 +4080,7 @@ export async function registerRoutes(
 
   app.get("/api/analytics/page-stats", async (req, res) => {
     try {
-      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "analytics")) return res.status(403).json({ error: "Forbidden" });
       const from = (req.query.from as string) || new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
       const to = (req.query.to as string) || new Date().toISOString().split("T")[0];
       const result = await storage.getPageStats(from, to);
@@ -4092,7 +4093,7 @@ export async function registerRoutes(
 
   app.get("/api/analytics/live", async (req, res) => {
     try {
-      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "analytics")) return res.status(403).json({ error: "Forbidden" });
       const count = await storage.getLiveSessionCount();
       res.json({ activeSessions: count });
     } catch (error) {
@@ -4103,7 +4104,7 @@ export async function registerRoutes(
 
   app.post("/api/analytics/aggregate", async (req, res) => {
     try {
-      if (!await isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "analytics")) return res.status(403).json({ error: "Forbidden" });
       const { date } = req.body;
       if (!date) return res.status(400).json({ error: "date is required (YYYY-MM-DD)" });
       await storage.aggregateDailySummary(date);
@@ -4171,7 +4172,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/support-messages", async (req, res) => {
     try {
-      if (!(await isAdmin(req))) return res.status(403).json({ error: "Admin access required" });
+      if (!(await requireRole(req, "support"))) return res.status(403).json({ error: "Admin access required" });
       const type = req.query.type as string | undefined;
       const status = req.query.status as string | undefined;
       const messages = await storage.listAllSupportMessages(
@@ -4187,7 +4188,7 @@ export async function registerRoutes(
 
   app.patch("/api/support-messages/:id/reply", async (req, res) => {
     try {
-      if (!(await isAdmin(req))) {
+      if (!(await requireRole(req, "support"))) {
         return res.status(403).json({ error: "Admin access required" });
       }
       const id = parseInt(req.params.id, 10);
@@ -4270,7 +4271,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/quizzes", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const allQuizzes = await storage.listQuizzes();
       res.json(allQuizzes);
     } catch (error) {
@@ -4281,7 +4282,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/quiz-groups", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const allQuizzes = await storage.listQuizzes();
       const groups = [...new Set(allQuizzes.map(q => q.groupName).filter(Boolean))] as string[];
       groups.sort();
@@ -4294,7 +4295,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/quizzes", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const quiz = await storage.createQuiz(req.body);
       res.json(quiz);
     } catch (error) {
@@ -4305,7 +4306,7 @@ export async function registerRoutes(
 
   app.put("/api/admin/quizzes/:id", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const quiz = await storage.updateQuiz(Number(req.params.id), req.body);
       if (!quiz) return res.status(404).json({ error: "Quiz not found" });
       res.json(quiz);
@@ -4317,7 +4318,7 @@ export async function registerRoutes(
 
   app.delete("/api/admin/quizzes/:id", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       await storage.deleteQuiz(Number(req.params.id));
       res.json({ success: true });
     } catch (error) {
@@ -4328,7 +4329,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/quizzes/:id", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const quiz = await storage.getQuizById(Number(req.params.id));
       if (!quiz) return res.status(404).json({ error: "Quiz not found" });
       const questions = await storage.getQuestionsByQuizId(quiz.id);
@@ -4341,7 +4342,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/quizzes/:id/questions", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const question = await storage.createQuestion({ ...req.body, quizId: Number(req.params.id) });
       res.json(question);
     } catch (error) {
@@ -4352,7 +4353,7 @@ export async function registerRoutes(
 
   app.put("/api/admin/questions/:id", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const question = await storage.updateQuestion(Number(req.params.id), req.body);
       if (!question) return res.status(404).json({ error: "Question not found" });
       res.json(question);
@@ -4364,7 +4365,7 @@ export async function registerRoutes(
 
   app.delete("/api/admin/questions/:id", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       await storage.deleteQuestion(Number(req.params.id));
       res.json({ success: true });
     } catch (error) {
@@ -4375,7 +4376,7 @@ export async function registerRoutes(
 
   app.put("/api/admin/quizzes/:id/questions/bulk", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const quizId = Number(req.params.id);
       const { questions } = req.body;
       if (!Array.isArray(questions)) return res.status(400).json({ error: "questions array required" });
@@ -4394,7 +4395,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/quiz-analytics/summary", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const summary = await storage.getQuizAnalyticsSummary();
       res.json(summary);
     } catch (error) {
@@ -4405,7 +4406,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/quiz-analytics/per-quiz", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const perQuiz = await storage.getQuizAnalyticsPerQuiz();
       res.json(perQuiz);
     } catch (error) {
@@ -4416,7 +4417,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/quiz-analytics/attempts", async (req, res) => {
     try {
-      if (!await isQuizAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const page = Math.max(1, Number(req.query.page) || 1);
       const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
       const result = await storage.getQuizAnalyticsAttempts(page, limit);
@@ -4932,6 +4933,59 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting account data:", error);
       res.status(500).json({ error: "Failed to delete account data" });
+    }
+  });
+
+
+  app.get("/api/admin/my-roles", async (req, res) => {
+    try {
+      const { uid, roles } = await getUidAndAdminRoles(req);
+      if (!uid) return res.status(401).json({ error: "Unauthorized" });
+      res.json({ roles });
+    } catch (error) {
+      console.error("Error fetching my roles:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/roles", async (req, res) => {
+    try {
+      if (!await requireRole(req, "super_admin")) return res.status(403).json({ error: "Forbidden" });
+      const allRoles = await storage.listAllAdminRoles();
+      res.json(allRoles);
+    } catch (error) {
+      console.error("Error listing admin roles:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/roles", async (req, res) => {
+    try {
+      if (!await requireRole(req, "super_admin")) return res.status(403).json({ error: "Forbidden" });
+      const { uid: grantedByUid } = await getUidAndAdminRoles(req);
+      const { firebaseUid, email, role } = req.body;
+      if (!firebaseUid || typeof firebaseUid !== "string") return res.status(400).json({ error: "firebaseUid is required" });
+      if (!email || typeof email !== "string") return res.status(400).json({ error: "email is required" });
+      const validRoles = ["super_admin", "accounts", "support", "quiz", "analytics"];
+      if (!validRoles.includes(role)) return res.status(400).json({ error: "Invalid role" });
+      const row = await storage.grantAdminRole(firebaseUid, email, role, grantedByUid!);
+      res.status(201).json(row);
+    } catch (error) {
+      console.error("Error granting admin role:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/admin/roles/:id", async (req, res) => {
+    try {
+      if (!await requireRole(req, "super_admin")) return res.status(403).json({ error: "Forbidden" });
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      await storage.revokeAdminRole(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error revoking admin role:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 

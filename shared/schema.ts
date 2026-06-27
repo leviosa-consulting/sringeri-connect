@@ -190,3 +190,19 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+export const adminRoles = pgTable("admin_roles", {
+  id: serial("id").primaryKey(),
+  firebaseUid: text("firebase_uid").notNull(),
+  email: text("email").notNull(),
+  role: text("role").notNull(),
+  grantedByUid: text("granted_by_uid"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("admin_roles_uid_role_idx").on(table.firebaseUid, table.role),
+  index("admin_roles_uid_idx").on(table.firebaseUid),
+]);
+
+export const insertAdminRoleSchema = createInsertSchema(adminRoles).omit({ id: true, createdAt: true });
+export type InsertAdminRole = z.infer<typeof insertAdminRoleSchema>;
+export type AdminRole = typeof adminRoles.$inferSelect;

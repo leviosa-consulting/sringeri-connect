@@ -6,11 +6,6 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-const ADMIN_UIDS = [
-  ...(import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(","),
-  ...(import.meta.env.VITE_QUIZ_ADMIN_UIDS || "").split(","),
-].map((s: string) => s.trim()).filter(Boolean);
-
 interface PendingTxn {
   orderId?: string;
   orderID?: string;
@@ -59,9 +54,9 @@ function getName(t: PendingTxn): string {
 }
 
 export default function AdminReconciliation() {
-  const { user, loading: authLoading, getToken } = useAuth();
+  const { user, loading: authLoading, getToken, hasAdminRole } = useAuth();
   const { toast } = useToast();
-  const isAdmin = user && ADMIN_UIDS.includes(user.uid);
+  const isAdmin = hasAdminRole("accounts");
 
   const [transactions, setTransactions] = useState<PendingTxn[]>([]);
   const [loading, setLoading] = useState(true);

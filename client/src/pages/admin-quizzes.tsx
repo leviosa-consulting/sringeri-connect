@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-const ADMIN_UIDS = (import.meta.env.VITE_QUIZ_ADMIN_UIDS || import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
 
 interface QuizOption {
   text: string;
@@ -38,8 +37,8 @@ interface Quiz {
 }
 
 export default function AdminQuizzes() {
-  const { user, getToken } = useAuth();
-  const isAdmin = user && ADMIN_UIDS.includes(user.uid);
+  const { user, getToken, hasAdminRole } = useAuth();
+  const isAdmin = hasAdminRole("quiz");
 
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);

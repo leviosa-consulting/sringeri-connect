@@ -28,6 +28,7 @@ import AdminReconciliationLogs from "@/pages/admin-reconciliation-logs";
 import AdminSupport from "@/pages/admin-support";
 import AdminLaunch from "@/pages/admin-launch";
 import AdminLaunchReset from "@/pages/admin-launch-reset";
+import AdminRoles from "@/pages/admin-roles";
 import AdminStats from "@/pages/admin-stats";
 import PaymentResult from "@/pages/payment-result";
 import ComingSoon from "@/pages/coming-soon";
@@ -82,6 +83,7 @@ function Router() {
             <Route path="/admin/launch" component={AdminLaunch} />
             <Route path="/admin/launch/reset" component={AdminLaunchReset} />
             <Route path="/admin/stats" component={AdminStats} />
+            <Route path="/admin/roles" component={AdminRoles} />
             <Route path="/terms" component={Terms} />
             <Route path="/privacy" component={Privacy} />
             <Route path="/kashmir">{() => <Redirect to="/seva/kashmir" />}</Route>

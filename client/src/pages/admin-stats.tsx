@@ -11,10 +11,6 @@ import {
   ComposedChart, Line, CartesianGrid,
 } from "recharts";
 
-const ADMIN_UIDS = [
-  ...(import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(","),
-  ...(import.meta.env.VITE_QUIZ_ADMIN_UIDS || "").split(","),
-].map((s: string) => s.trim()).filter(Boolean);
 
 const CAT_COLORS = ["#c2440f", "#e07b39", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#06b6d4", "#84cc16", "#f97316"];
 
@@ -394,9 +390,9 @@ function MultiSelect({ options, selected, onChange, placeholder = "Select itemsâ
 }
 
 export default function AdminStats() {
-  const { user, loading: authLoading, getToken } = useAuth();
+  const { user, loading: authLoading, getToken, hasAdminRole } = useAuth();
   const { toast } = useToast();
-  const isAdmin = user && ADMIN_UIDS.includes(user.uid);
+  const isAdmin = hasAdminRole("accounts");
 
   const [period, setPeriod] = useState<Period>("month");
   const [activeSection, setActiveSection] = useState<Section>("overview");

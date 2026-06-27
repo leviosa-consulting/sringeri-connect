@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, passwordResetTokens, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog, type PasswordResetToken } from "@shared/schema";
+import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, passwordResetTokens, adminRoles, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog, type PasswordResetToken, type AdminRole } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql, eq, and, gte, lte, desc, asc, count, countDistinct, avg } from "drizzle-orm";
@@ -51,6 +51,10 @@ export interface IStorage {
   getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
   deletePasswordResetToken(token: string): Promise<void>;
   deleteExpiredPasswordResetTokens(): Promise<void>;
+  getAdminRolesForUser(firebaseUid: string): Promise<string[]>;
+  listAllAdminRoles(): Promise<AdminRole[]>;
+  grantAdminRole(firebaseUid: string, email: string, role: string, grantedByUid: string): Promise<AdminRole>;
+  revokeAdminRole(id: number): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -140,6 +144,24 @@ export class MemStorage implements IStorage {
     if (!msg) throw new Error("Not found");
     msg.adminReply = reply; msg.status = "replied"; msg.repliedAt = new Date();
     return msg;
+  }
+  private _adminRoles: AdminRole[] = [];
+  private _adminRoleIdCounter = 1;
+  async getAdminRolesForUser(firebaseUid: string): Promise<string[]> {
+    return this._adminRoles.filter(r => r.firebaseUid === firebaseUid).map(r => r.role);
+  }
+  async listAllAdminRoles(): Promise<AdminRole[]> {
+    return [...this._adminRoles].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  async grantAdminRole(firebaseUid: string, email: string, role: string, grantedByUid: string): Promise<AdminRole> {
+    const existing = this._adminRoles.find(r => r.firebaseUid === firebaseUid && r.role === role);
+    if (existing) return existing;
+    const record: AdminRole = { id: this._adminRoleIdCounter++, firebaseUid, email, role, grantedByUid, createdAt: new Date() };
+    this._adminRoles.push(record);
+    return record;
+  }
+  async revokeAdminRole(id: number): Promise<void> {
+    this._adminRoles = this._adminRoles.filter(r => r.id !== id);
   }
 }
 
@@ -643,6 +665,27 @@ if (process.env.DATABASE_URL) {
 
     async deleteExpiredPasswordResetTokens(): Promise<void> {
       await db.delete(passwordResetTokens).where(sql`${passwordResetTokens.expiresAt} < now()`);
+    }
+
+    async getAdminRolesForUser(firebaseUid: string): Promise<string[]> {
+      const rows = await db.select({ role: adminRoles.role }).from(adminRoles).where(eq(adminRoles.firebaseUid, firebaseUid));
+      return rows.map(r => r.role);
+    }
+
+    async listAllAdminRoles(): Promise<AdminRole[]> {
+      return db.select().from(adminRoles).orderBy(desc(adminRoles.createdAt));
+    }
+
+    async grantAdminRole(firebaseUid: string, email: string, role: string, grantedByUid: string): Promise<AdminRole> {
+      const [result] = await db.insert(adminRoles).values({ firebaseUid, email, role, grantedByUid }).onConflictDoUpdate({
+        target: [adminRoles.firebaseUid, adminRoles.role],
+        set: { email, grantedByUid },
+      }).returning();
+      return result;
+    }
+
+    async revokeAdminRole(id: number): Promise<void> {
+      await db.delete(adminRoles).where(eq(adminRoles.id, id));
     }
   }
 

@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { BarChart3, Eye, Clock, ArrowDown, Users, Activity, RefreshCw, Loader2, ShieldX } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
 
-const ADMIN_UIDS = (import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
 
 function formatDate(d: Date): string {
   return d.toISOString().split("T")[0];
@@ -30,7 +29,7 @@ async function fetchAnalytics(url: string, idToken: string) {
 }
 
 export default function Analytics() {
-  const { user, loading: authLoading, getToken } = useAuth();
+  const { user, loading: authLoading, getToken, hasAdminRole } = useAuth();
   const [period, setPeriod] = useState("7d");
   const [pageFilter, setPageFilter] = useState("all");
   const [pageStats, setPageStats] = useState<any[]>([]);
@@ -40,7 +39,7 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const isAdmin = user && ADMIN_UIDS.includes(user.uid);
+  const isAdmin = hasAdminRole("analytics");
   const { from, to } = useMemo(() => getDateRange(period), [period]);
 
   const totals = useMemo(() => {

@@ -1,13 +1,7 @@
 import { useAuth } from "@/contexts/auth-context";
 import { RangoliLoader } from "@/components/rangoli-loader";
-import { Loader2, BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare, ClipboardList, TrendingUp } from "lucide-react";
+import { BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare, ClipboardList, TrendingUp, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
-
-const ADMIN_UIDS = [
-  ...(import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(","),
-  ...(import.meta.env.VITE_QUIZ_ADMIN_UIDS || "").split(","),
-].map((s: string) => s.trim()).filter(Boolean);
-
 
 const adminTools = [
   {
@@ -16,6 +10,7 @@ const adminTools = [
     icon: BarChart3,
     path: "/analytics",
     color: "bg-blue-50 text-blue-600",
+    role: "analytics",
   },
   {
     title: "Quiz Management",
@@ -23,6 +18,7 @@ const adminTools = [
     icon: BookOpenCheck,
     path: "/admin/quizzes",
     color: "bg-green-50 text-green-600",
+    role: "quiz",
   },
   {
     title: "Quiz Analytics",
@@ -30,6 +26,7 @@ const adminTools = [
     icon: Brain,
     path: "/admin/quiz-analytics",
     color: "bg-purple-50 text-purple-600",
+    role: "quiz",
   },
   {
     title: "Transaction Reconciliation",
@@ -37,6 +34,7 @@ const adminTools = [
     icon: RefreshCw,
     path: "/admin/reconciliation",
     color: "bg-amber-50 text-amber-600",
+    role: "accounts",
   },
   {
     title: "All Transactions",
@@ -44,6 +42,7 @@ const adminTools = [
     icon: ScrollText,
     path: "/admin/all-transactions",
     color: "bg-teal-50 text-teal-600",
+    role: "accounts",
   },
   {
     title: "Reconciliation Logs",
@@ -51,6 +50,7 @@ const adminTools = [
     icon: ClipboardList,
     path: "/admin/reconciliation-logs",
     color: "bg-indigo-50 text-indigo-600",
+    role: "accounts",
   },
   {
     title: "Support & Feedback",
@@ -58,6 +58,7 @@ const adminTools = [
     icon: MessageSquare,
     path: "/admin/support",
     color: "bg-rose-50 text-rose-600",
+    role: "support",
   },
   {
     title: "Revenue & Stats",
@@ -65,6 +66,7 @@ const adminTools = [
     icon: TrendingUp,
     path: "/admin/stats",
     color: "bg-emerald-50 text-emerald-600",
+    role: "accounts",
   },
   {
     title: "Launch Control",
@@ -72,12 +74,21 @@ const adminTools = [
     icon: Rocket,
     path: "/admin/launch",
     color: "bg-orange-50 text-orange-600",
+    role: "super_admin",
+  },
+  {
+    title: "Role Management",
+    description: "Grant or revoke admin roles for users of this portal",
+    icon: ShieldCheck,
+    path: "/admin/roles",
+    color: "bg-slate-50 text-slate-600",
+    role: "super_admin",
   },
 ];
 
 export default function Admin() {
-  const { user, loading: authLoading } = useAuth();
-  const isAdmin = user && ADMIN_UIDS.includes(user.uid);
+  const { loading: authLoading, hasAdminRole } = useAuth();
+  const isAnyAdmin = adminTools.some(t => hasAdminRole(t.role));
 
   if (authLoading) {
     return (
@@ -87,7 +98,7 @@ export default function Admin() {
     );
   }
 
-  if (!user || !isAdmin) {
+  if (!isAnyAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2" data-testid="text-access-denied">
@@ -97,6 +108,8 @@ export default function Admin() {
       </div>
     );
   }
+
+  const visibleTools = adminTools.filter(t => hasAdminRole(t.role));
 
   return (
     <div className="px-4 py-6 pb-24 lg:pb-8 space-y-6 max-w-3xl mx-auto" data-testid="admin-hub-page">
@@ -111,7 +124,7 @@ export default function Admin() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {adminTools.map((tool) => (
+        {visibleTools.map((tool) => (
           <Link
             key={tool.path}
             href={tool.path}

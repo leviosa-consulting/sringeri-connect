@@ -5,7 +5,6 @@ import { Loader2, ArrowLeft, Users, Target, Trophy, Hash, ChevronLeft, ChevronRi
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 
-const ADMIN_UIDS = (import.meta.env.VITE_QUIZ_ADMIN_UIDS || import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
 
 interface Summary {
   totalAttempts: number;
@@ -42,8 +41,8 @@ async function authFetch(url: string, getToken: () => Promise<string | null>) {
 }
 
 export default function AdminQuizAnalytics() {
-  const { user, loading: authLoading, getToken } = useAuth();
-  const isAdmin = user && ADMIN_UIDS.includes(user.uid);
+  const { user, loading: authLoading, getToken, hasAdminRole } = useAuth();
+  const isAdmin = hasAdminRole("quiz");
 
   const [summary, setSummary] = useState<Summary | null>(null);
   const [perQuiz, setPerQuiz] = useState<PerQuiz[]>([]);

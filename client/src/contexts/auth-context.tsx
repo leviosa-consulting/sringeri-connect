@@ -128,6 +128,8 @@ interface AuthContextType {
   loading: boolean;
   devoteeLoading: boolean;
   avatarUrl: string | null;
+  adminRoles: string[];
+  hasAdminRole: (role: string) => boolean;
   login: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -159,6 +161,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [devoteeLoading, setDevoteeLoading] = useState(false);
   const [localAvatar, setLocalAvatar] = useState<string | null>(null);
   const [pendingOrderIds, setPendingOrderIds] = useState<string[]>([]);
+  const [adminRoles, setAdminRoles] = useState<string[]>([]);
+
+  const fetchAdminRoles = async (firebaseUser: User) => {
+    try {
+      const idToken = await firebaseUser.getIdToken();
+      const res = await fetch("/api/admin/my-roles", {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdminRoles(Array.isArray(data.roles) ? data.roles : []);
+      } else {
+        setAdminRoles([]);
+      }
+    } catch {
+      setAdminRoles([]);
+    }
+  };
 
   const fetchDevoteeData = async (firebaseUser: User) => {
     setDevoteeLoading(true);
@@ -245,7 +265,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLocalAvatar(getLocalAvatar(firebaseUser.uid));
         
         if (!firebaseUser.isAnonymous) {
-          await fetchDevoteeData(firebaseUser);
+          await Promise.all([
+            fetchDevoteeData(firebaseUser),
+            fetchAdminRoles(firebaseUser),
+          ]);
         }
       } else {
         setProfile(null);
@@ -300,6 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
     setDevoteeData(null);
     setPendingOrderIds([]);
+    setAdminRoles([]);
     try { sessionStorage.removeItem("ssp_pending_checked"); } catch {}
   };
 
@@ -322,6 +346,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading, 
       devoteeLoading,
       avatarUrl: localAvatar || user?.photoURL || null,
+      adminRoles,
+      hasAdminRole: (role: string) => adminRoles.includes("super_admin") || adminRoles.includes(role),
       login, 
       signUp, 
       signInWithGoogle, 

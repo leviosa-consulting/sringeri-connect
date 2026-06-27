@@ -7,10 +7,6 @@ import { ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Send, Check } from "l
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-const ADMIN_UIDS = [
-  ...(import.meta.env.VITE_ANALYTICS_ADMIN_UIDS || "").split(","),
-  ...(import.meta.env.VITE_QUIZ_ADMIN_UIDS || "").split(","),
-].map((s: string) => s.trim()).filter(Boolean);
 
 type SupportMessage = {
   id: number;
@@ -152,8 +148,8 @@ function MessageRow({ msg, token }: { msg: SupportMessage; token: string }) {
 }
 
 export default function AdminSupport() {
-  const { user, loading: authLoading } = useAuth();
-  const isAdmin = user && ADMIN_UIDS.includes(user.uid);
+  const { user, loading: authLoading, hasAdminRole } = useAuth();
+  const isAdmin = hasAdminRole("support");
   const [typeFilter, setTypeFilter] = useState<"" | "support" | "feedback">("");
   const [statusFilter, setStatusFilter] = useState<"" | "open" | "replied">("");
   const [search, setSearch] = useState("");
