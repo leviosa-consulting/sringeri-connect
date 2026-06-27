@@ -651,6 +651,31 @@ export default function Donation() {
     }
   }, [subcategories]);
 
+  useEffect(() => {
+    if (!activePreset || selectedCategory) return;
+    if (categories.length === 0 || headings.length === 0) return;
+    const needle = activePreset.categoryNameContains.toLowerCase();
+    const matchedCat = categories.find((c) => c.name.toLowerCase().includes(needle));
+    if (!matchedCat) return;
+    const matchedHeading = headings.find((h) => h.id === matchedCat.donationHeadingId);
+    if (matchedHeading) setSelectedHeading(matchedHeading);
+    setSelectedCategory(matchedCat);
+    if (activePreset.subCategoryNameContains) {
+      setPendingPresetSubCat(activePreset.subCategoryNameContains.toLowerCase());
+    }
+  }, [categories, headings, activePreset]);
+
+  useEffect(() => {
+    if (!pendingPresetSubCat || subcategories.length === 0 || selectedSubCategory) return;
+    const match = subcategories.find((s) =>
+      s.name.toLowerCase().includes(pendingPresetSubCat)
+    );
+    if (match) {
+      setSelectedSubCategory(match);
+      setPendingPresetSubCat(null);
+    }
+  }, [subcategories, pendingPresetSubCat]);
+
   function getDaysInMonth(mId: string): number {
     const m = parseInt(mId);
     if (m === 2) return 28;
@@ -1455,6 +1480,22 @@ export default function Donation() {
         sessionKey="ssp_pending_donation_checked"
         label="donation"
       />
+
+      {activePreset && !presetBannerDismissed && selectedCategory && (
+        <div className="mx-4 mt-3 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 shadow-sm" data-testid="banner-preset-deeplink">
+          <span className="text-amber-700 text-sm flex-1">
+            Quick link: <span className="font-semibold">{selectedCategory.name}</span> selected for you
+          </span>
+          <button
+            onClick={() => setPresetBannerDismissed(true)}
+            className="shrink-0 p-1 rounded-full hover:bg-amber-100 transition-colors"
+            aria-label="Dismiss"
+            data-testid="button-dismiss-preset-banner"
+          >
+            <X className="h-4 w-4 text-amber-600" />
+          </button>
+        </div>
+      )}
 
       <div className="px-4 mt-4 space-y-4">
         {donationDataLoading && (
