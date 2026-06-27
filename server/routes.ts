@@ -1851,6 +1851,80 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/donationPreset/:preset", async (req, res) => {
+    try {
+      const { preset } = req.params;
+      if (!preset) return res.status(400).json({ error: "preset required" });
+
+      let allSubs: any[] = [];
+      const cachedSubs = _c.donationSubCats.get("v");
+      if (cachedSubs !== null && Array.isArray(cachedSubs)) {
+        allSubs = cachedSubs;
+      } else {
+        const subRes = await fetch(`${SRINGERI_API_URL}/api/donationSubCategories`, {
+          headers: { "Content-Type": "application/json", ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }) },
+        });
+        if (!subRes.ok) return res.status(subRes.status).json({ error: "Failed to fetch subcategories" });
+        try {
+          const t = await subRes.text();
+          const s = t.indexOf('[');
+          allSubs = s !== -1 ? JSON.parse(t.substring(s)) : JSON.parse(t);
+          if (Array.isArray(allSubs)) _c.donationSubCats.set("v", allSubs);
+        } catch { return res.status(500).json({ error: "Invalid API response" }); }
+      }
+
+      const sub = allSubs.find((s: any) => s.preset === preset);
+      if (!sub) return res.status(404).json({ error: "Preset not found" });
+
+      let categories: any[] = [];
+      const cachedCats = _c.donationCategory.get("v");
+      if (cachedCats !== null && Array.isArray(cachedCats)) {
+        categories = cachedCats;
+      } else {
+        const catRes = await fetch(`${SRINGERI_API_URL}/api/donationCategory`, {
+          headers: { "Content-Type": "application/json", ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }) },
+        });
+        if (catRes.ok) {
+          try {
+            const t = await catRes.text();
+            const s = t.indexOf('[');
+            categories = s !== -1 ? JSON.parse(t.substring(s)) : JSON.parse(t);
+          } catch {}
+        }
+      }
+
+      const cat = categories.find((c: any) => String(c.id) === String(sub.donationCategoryId));
+      if (!cat) return res.status(404).json({ error: "Category not found for preset" });
+
+      let headings: any[] = [];
+      const cachedH = _c.donationHeading.get("v");
+      if (cachedH !== null && Array.isArray(cachedH)) {
+        headings = cachedH;
+      } else {
+        const hRes = await fetch(`${SRINGERI_API_URL}/api/donationHeading`, {
+          headers: { "Content-Type": "application/json", ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }) },
+        });
+        if (hRes.ok) {
+          try {
+            const t = await hRes.text();
+            const s = t.indexOf('[');
+            headings = s !== -1 ? JSON.parse(t.substring(s)) : JSON.parse(t);
+          } catch {}
+        }
+      }
+
+      const heading = headings.find((h: any) => String(h.id) === String(cat.donationHeadingId)) || null;
+      res.json({
+        subcategory: sub,
+        category: { id: cat.id, name: cat.name, donationHeadingId: cat.donationHeadingId },
+        heading: heading || null,
+      });
+    } catch (error) {
+      console.error("Error fetching donation preset:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/postageOptionsDonation", async (req, res) => {
     try {
       const cached = _c.postageOptionsDon.get("v");

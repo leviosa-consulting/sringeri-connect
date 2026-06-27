@@ -632,18 +632,29 @@ export default function Donation() {
     }
   }, [subcategories]);
 
-  // Step A — auto-select the category whose preset field matches the URL slug
-  useEffect(() => {
-    if (!preset || selectedCategory) return;
-    if (categories.length === 0 || headings.length === 0) return;
-    const matchedCat = categories.find((c: any) => c.preset === preset);
-    if (!matchedCat) return;
-    const matchedHeading = headings.find((h) => h.id === matchedCat.donationHeadingId);
-    if (matchedHeading) setSelectedHeading(matchedHeading);
-    setSelectedCategory(matchedCat);
-  }, [categories, headings, preset]);
+  const { data: presetData } = useQuery<{
+    subcategory: DonationSubCategory;
+    category: { id: number; name: string; donationHeadingId: number };
+    heading: DonationHeading | null;
+  } | null>({
+    queryKey: ["donationPreset", preset],
+    queryFn: async () => {
+      const res = await fetch(`/api/donationPreset/${encodeURIComponent(preset)}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!preset,
+    staleTime: 30 * 60 * 1000,
+  });
 
-  // Step B — auto-select the subcategory whose preset field matches the URL slug
+  // Step A — when preset data resolves, auto-select the heading + category
+  useEffect(() => {
+    if (!presetData || selectedCategory) return;
+    if (presetData.heading) setSelectedHeading(presetData.heading);
+    setSelectedCategory(presetData.category as DonationCategory);
+  }, [presetData, selectedCategory]);
+
+  // Step B — once the per-category subcategory list loads, auto-select by preset field
   useEffect(() => {
     if (!preset || subcategories.length === 0 || selectedSubCategory) return;
     const match = subcategories.find((s: any) => s.preset === preset);
