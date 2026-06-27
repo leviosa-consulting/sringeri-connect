@@ -63,6 +63,7 @@ function Router() {
             <Route path="/devotee">{() => <ProtectedRoute component={DevoteeCorner} />}</Route>
             <Route path="/profile">{() => <ProtectedRoute component={Profile} />}</Route>
             <Route path="/accommodation">{() => <ProtectedRoute component={Accommodation} />}</Route>
+            <Route path="/donation/:preset">{() => <ProtectedRoute component={Donation} />}</Route>
             <Route path="/donation">{() => <ProtectedRoute component={Donation} />}</Route>
             <Route path="/seva/:preset" component={Seva} />
             <Route path="/seva">{() => <ProtectedRoute component={Seva} />}</Route>
@@ -84,6 +85,10 @@ function Router() {
             <Route path="/terms" component={Terms} />
             <Route path="/privacy" component={Privacy} />
             <Route path="/kashmir">{() => <Redirect to="/seva/kashmir" />}</Route>
+            <Route path="/gkvb">{() => <Redirect to="/donation/gkvb" />}</Route>
+            <Route path="/annadanam">{() => <Redirect to="/donation/annadanam" />}</Route>
+            <Route path="/vedapatashala">{() => <Redirect to="/donation/vedapatashala" />}</Route>
+            <Route path="/goshala">{() => <Redirect to="/donation/goshala" />}</Route>
             <Route component={NotFound} />
           </Switch>
         </Layout>

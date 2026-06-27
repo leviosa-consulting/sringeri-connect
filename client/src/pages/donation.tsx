@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { PendingTransactionBanner } from "@/components/pending-transaction-banner";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { useSubdomainMode } from "@/contexts/subdomain-mode-context";
 import {
   ArrowLeft,
@@ -257,6 +257,25 @@ const CUSTOM_ICON_KEYWORDS: [string, string][] = [
   ["vanasampada", environmentIcon],
 ];
 
+// ---------------------------------------------------------------------------
+// Donation preset deep-link table
+// Add new entries here to support more short URLs (/gkvb, /annadanam, etc.)
+// Keys are the URL slug (lowercase). Use `subCategoryNameContains` for
+// purpose-level presets.
+// ---------------------------------------------------------------------------
+interface DonationPreset {
+  categoryNameContains: string;
+  subCategoryNameContains?: string;
+  label: string;
+}
+
+const DONATION_PRESETS: Record<string, DonationPreset> = {
+  gkvb:          { categoryNameContains: "guru kanike",      label: "Guru Kanike Vandanam" },
+  annadanam:     { categoryNameContains: "annadanam",        label: "Annadanam" },
+  vedapatashala: { categoryNameContains: "veda patashala",   label: "Veda Patashala" },
+  goshala:       { categoryNameContains: "go samrakshanam",  label: "Go Samrakshanam" },
+};
+
 const ORANGE_FILTER = "brightness(0) saturate(100%) invert(43%) sepia(97%) saturate(2000%) hue-rotate(1deg) brightness(100%)";
 const WHITE_FILTER = "brightness(0) invert(1)";
 
@@ -422,11 +441,16 @@ export default function Donation() {
   const { user, devoteeData } = useAuth();
   const [, navigate] = useLocation();
   const { isServicesMode, homeRoute } = useSubdomainMode();
+  const params = useParams<{ preset?: string }>();
+  const preset = (params.preset || "").toLowerCase();
+  const activePreset = preset ? DONATION_PRESETS[preset] ?? null : null;
 
   const [step, setStep] = useState<"select" | "review" | "payee">("select");
   const [selectedHeading, setSelectedHeading] = useState<DonationHeading | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<DonationCategory | null>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<DonationSubCategory | null>(null);
+  const [presetBannerDismissed, setPresetBannerDismissed] = useState(false);
+  const [pendingPresetSubCat, setPendingPresetSubCat] = useState<string | null>(null);
   const [selectedAmount, setSelectedAmount] = useState<number>(0);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [donationInTheNameOf, setDonationInTheNameOf] = useState("");
