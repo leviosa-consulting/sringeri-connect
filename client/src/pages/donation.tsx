@@ -421,7 +421,7 @@ function getIconForName(name: string): LucideIcon {
 
 
 export default function Donation() {
-  const { user, devoteeData } = useAuth();
+  const { user, devoteeData, loading: authLoading, login, signInWithGoogle, signInWithApple, signInAsGuest } = useAuth();
   const [, navigate] = useLocation();
   const { isServicesMode, homeRoute } = useSubdomainMode();
   const params = useParams<{ preset?: string }>();
@@ -432,6 +432,13 @@ export default function Donation() {
   const [selectedCategory, setSelectedCategory] = useState<DonationCategory | null>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<DonationSubCategory | null>(null);
   const [presetBannerDismissed, setPresetBannerDismissed] = useState(false);
+  const [overlayAppleLoading, setOverlayAppleLoading] = useState(false);
+  const [overlayGoogleLoading, setOverlayGoogleLoading] = useState(false);
+  const [overlayEmailLoading, setOverlayEmailLoading] = useState(false);
+  const [overlayGuestLoading, setOverlayGuestLoading] = useState(false);
+  const [overlayEmailExpanded, setOverlayEmailExpanded] = useState(false);
+  const [overlayEmail, setOverlayEmail] = useState("");
+  const [overlayPassword, setOverlayPassword] = useState("");
   const [selectedAmount, setSelectedAmount] = useState<number>(0);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [donationInTheNameOf, setDonationInTheNameOf] = useState("");
@@ -1936,6 +1943,112 @@ export default function Donation() {
           </div>
         </div>
       )}
+
+      <Dialog open={!!preset && !user && !authLoading}>
+        <DialogContent className="max-w-sm mx-auto rounded-2xl border-none shadow-2xl p-0 [&>button]:hidden" data-testid="dialog-preset-login" aria-describedby="donation-overlay-desc">
+          <DialogTitle className="sr-only">Sign in to donate</DialogTitle>
+          <DialogDescription id="donation-overlay-desc" className="sr-only">Sign in with Apple, Google, or email to continue with your donation.</DialogDescription>
+          <div className="p-6 space-y-5">
+            <div className="flex flex-col items-center gap-3 pb-1">
+              <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-14 w-auto object-contain" />
+              <p className="text-sm font-medium text-primary/80 text-center">Sign in to continue with your donation</p>
+            </div>
+
+            {!/android/i.test(navigator.userAgent) && (
+              <button
+                type="button"
+                className="w-full h-12 flex items-center justify-center gap-2 rounded-lg font-medium text-sm bg-black text-white hover:bg-black/90 disabled:opacity-60"
+                onClick={async () => {
+                  setOverlayAppleLoading(true);
+                  try { await signInWithApple(); } catch (e: any) {
+                    if (!e?.message?.includes('cancelled')) toast({ title: "Apple Sign-In Failed", description: e?.message || "Please try again.", variant: "destructive" });
+                  } finally { setOverlayAppleLoading(false); }
+                }}
+                disabled={overlayAppleLoading || overlayGoogleLoading || overlayEmailLoading}
+                data-testid="button-overlay-apple"
+              >
+                {overlayAppleLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>}
+                Sign in with Apple
+              </button>
+            )}
+
+            <button
+              type="button"
+              className="w-full h-12 flex items-center justify-center gap-2 rounded-lg font-medium text-sm border-2 hover:bg-gray-50 disabled:opacity-60 bg-white"
+              onClick={async () => {
+                setOverlayGoogleLoading(true);
+                try { await signInWithGoogle(); } catch (e: any) {
+                  toast({ title: "Google Sign-In Failed", description: e?.message || "Please try again.", variant: "destructive" });
+                } finally { setOverlayGoogleLoading(false); }
+              }}
+              disabled={overlayAppleLoading || overlayGoogleLoading || overlayEmailLoading}
+              data-testid="button-overlay-google"
+            >
+              {overlayGoogleLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <svg className="h-5 w-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>}
+              Continue with Google
+            </button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-muted-foreground">Or</span></div>
+            </div>
+
+            <button
+              type="button"
+              className="w-full flex items-center justify-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              onClick={() => setOverlayEmailExpanded(!overlayEmailExpanded)}
+              data-testid="button-overlay-toggle-email"
+            >
+              Sign in with Email
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${overlayEmailExpanded ? "rotate-180" : ""}`} />
+            </button>
+
+            {overlayEmailExpanded && (
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setOverlayEmailLoading(true);
+                try { await login(overlayEmail, overlayPassword); } catch (err: any) {
+                  let msg = "Something went wrong. Please try again.";
+                  if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") msg = "Invalid email or password.";
+                  else if (err.code === "auth/invalid-email") msg = "Please enter a valid email address.";
+                  toast({ title: "Login Failed", description: msg, variant: "destructive" });
+                } finally { setOverlayEmailLoading(false); }
+              }} className="space-y-3">
+                <input type="email" placeholder="Email Address" required value={overlayEmail} onChange={(e) => setOverlayEmail(e.target.value)}
+                  className="w-full h-10 px-3 rounded-lg border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" data-testid="input-overlay-email" />
+                <input type="password" placeholder="Password" required value={overlayPassword} onChange={(e) => setOverlayPassword(e.target.value)}
+                  className="w-full h-10 px-3 rounded-lg border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" data-testid="input-overlay-password" />
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white" disabled={overlayEmailLoading} data-testid="button-overlay-submit">
+                  {overlayEmailLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Sign In
+                </Button>
+              </form>
+            )}
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-muted-foreground">Or</span></div>
+            </div>
+
+            <button
+              type="button"
+              className="w-full h-11 flex items-center justify-center gap-2 rounded-lg font-medium text-sm border border-border bg-muted/40 hover:bg-muted/70 transition-colors disabled:opacity-60"
+              onClick={async () => {
+                setOverlayGuestLoading(true);
+                try { await signInAsGuest(); } catch (e: any) {
+                  toast({ title: "Could not continue as guest", description: e?.message || "Please try again.", variant: "destructive" });
+                } finally { setOverlayGuestLoading(false); }
+              }}
+              disabled={overlayAppleLoading || overlayGoogleLoading || overlayEmailLoading || overlayGuestLoading}
+              data-testid="button-overlay-guest"
+            >
+              {overlayGuestLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Continue as Guest
+            </button>
+
+            <p className="text-center text-xs text-muted-foreground">By continuing, you agree to our Terms of Service &amp; Privacy Policy</p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={show80GWarning} onOpenChange={setShow80GWarning}>
         <AlertDialogContent>

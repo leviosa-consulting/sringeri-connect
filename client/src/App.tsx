@@ -63,7 +63,7 @@ function Router() {
             <Route path="/devotee">{() => <ProtectedRoute component={DevoteeCorner} />}</Route>
             <Route path="/profile">{() => <ProtectedRoute component={Profile} />}</Route>
             <Route path="/accommodation">{() => <ProtectedRoute component={Accommodation} />}</Route>
-            <Route path="/donation/:preset">{() => <ProtectedRoute component={Donation} />}</Route>
+            <Route path="/donation/:preset" component={Donation} />
             <Route path="/donation">{() => <ProtectedRoute component={Donation} />}</Route>
             <Route path="/seva/:preset" component={Seva} />
             <Route path="/seva">{() => <ProtectedRoute component={Seva} />}</Route>
