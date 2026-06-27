@@ -86,6 +86,7 @@ function Router() {
             <Route path="/privacy" component={Privacy} />
             <Route path="/kashmir">{() => <Redirect to="/seva/kashmir" />}</Route>
             <Route path="/gkvb">{() => <Redirect to="/donation/gkvb" />}</Route>
+            <Route path="/gkvbp">{() => <Redirect to="/donation/gkvbp" />}</Route>
             <Route path="/annadanam">{() => <Redirect to="/donation/annadanam" />}</Route>
             <Route path="/vedapatashala">{() => <Redirect to="/donation/vedapatashala" />}</Route>
             <Route path="/goshala">{() => <Redirect to="/donation/goshala" />}</Route>

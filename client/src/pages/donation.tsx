@@ -270,10 +270,11 @@ interface DonationPreset {
 }
 
 const DONATION_PRESETS: Record<string, DonationPreset> = {
-  gkvb:          { categoryNameContains: "guru kanike",      label: "Guru Kanike Vandanam" },
-  annadanam:     { categoryNameContains: "annadanam",        label: "Annadanam" },
-  vedapatashala: { categoryNameContains: "veda patashala",   label: "Veda Patashala" },
-  goshala:       { categoryNameContains: "go samrakshanam",  label: "Go Samrakshanam" },
+  gkvb:          { categoryNameContains: "guru kanike",     label: "Guru Kanike Vandanam" },
+  gkvbp:         { categoryNameContains: "guru kanike",     subCategoryNameContains: "prarthana", label: "Guru Kanike Vandanam – Prarthana" },
+  annadanam:     { categoryNameContains: "annadanam",       label: "Annadanam" },
+  vedapatashala: { categoryNameContains: "veda patashala",  label: "Veda Patashala" },
+  goshala:       { categoryNameContains: "go samrakshanam", label: "Go Samrakshanam" },
 };
 
 const ORANGE_FILTER = "brightness(0) saturate(100%) invert(43%) sepia(97%) saturate(2000%) hue-rotate(1deg) brightness(100%)";
@@ -671,7 +672,7 @@ export default function Donation() {
       s.name.toLowerCase().includes(pendingPresetSubCat)
     );
     if (match) {
-      setSelectedSubCategory(match);
+      handleSelectSubCategory(match);
       setPendingPresetSubCat(null);
     }
   }, [subcategories, pendingPresetSubCat]);
