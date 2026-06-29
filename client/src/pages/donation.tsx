@@ -493,6 +493,7 @@ export default function Donation() {
   const [showKartaList, setShowKartaList] = useState(false);
   const [showAddressList, setShowAddressList] = useState(false);
   const [show80GWarning, setShow80GWarning] = useState(false);
+  const [pendingSubCategory, setPendingSubCategory] = useState<DonationSubCategory | null>(null);
   const [pendingFocusSubcategoryId, setPendingFocusSubcategoryId] = useState<number | null>(null);
   const [expandedDescs, setExpandedDescs] = useState<Set<number>>(new Set());
   const [showFocusInfo, setShowFocusInfo] = useState<number | null>(null);
@@ -637,7 +638,11 @@ export default function Donation() {
     if (pendingFocusSubcategoryId !== null && subcategories.length > 0) {
       const match = subcategories.find((s) => s.id === pendingFocusSubcategoryId);
       if (match) {
-        handleSelectSubCategory(match);
+        setSelectedSubCategory(match);
+        setSelectedAmount(0);
+        setCustomAmount("");
+        setValidationErrors([]);
+        setTimeout(() => { subCategoryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
       }
       setPendingFocusSubcategoryId(null);
     }
@@ -645,7 +650,11 @@ export default function Donation() {
 
   useEffect(() => {
     if (subcategories.length === 1 && !selectedSubCategory) {
-      handleSelectSubCategory(subcategories[0]);
+      setSelectedSubCategory(subcategories[0]);
+      setSelectedAmount(0);
+      setCustomAmount("");
+      setValidationErrors([]);
+      setTimeout(() => { subCategoryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
     }
   }, [subcategories]);
 
@@ -675,7 +684,13 @@ export default function Donation() {
   useEffect(() => {
     if (!preset || subcategories.length === 0 || selectedSubCategory) return;
     const match = subcategories.find((s: any) => s.preset === preset);
-    if (match) handleSelectSubCategory(match);
+    if (match) {
+      setSelectedSubCategory(match);
+      setSelectedAmount(0);
+      setCustomAmount("");
+      setValidationErrors([]);
+      setTimeout(() => { subCategoryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
+    }
   }, [subcategories, preset]);
 
   function getDaysInMonth(mId: string): number {
@@ -732,12 +747,14 @@ export default function Donation() {
   };
 
   const handleSelectHeading = (heading: DonationHeading) => {
+    if (preset) navigate("/donation");
     setSelectedHeading(heading);
     setSelectedCategory(null);
     resetSelection();
   };
 
   const handleSelectCategory = (category: DonationCategory) => {
+    if (preset) navigate("/donation");
     setSelectedCategory(category);
     resetSelection();
     setTimeout(() => {
@@ -748,9 +765,11 @@ export default function Donation() {
   const handleSelectSubCategory = (sub: DonationSubCategory) => {
     const isAdding80G = Number(sub.is80G) === 1;
     if ((has80GInCart && !isAdding80G) || (hasNon80GInCart && isAdding80G)) {
+      setPendingSubCategory(sub);
       setShow80GWarning(true);
       return;
     }
+    if (preset) navigate("/donation");
     setSelectedSubCategory(sub);
     setSelectedAmount(0);
     setCustomAmount("");
@@ -2060,16 +2079,38 @@ export default function Donation() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={show80GWarning} onOpenChange={setShow80GWarning}>
+      <AlertDialog open={show80GWarning} onOpenChange={(open) => { if (!open) { setShow80GWarning(false); setPendingSubCategory(null); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cannot Mix Donation Types</AlertDialogTitle>
             <AlertDialogDescription>
-              Donations for 80G and non-80G causes cannot be added in a single transaction due to statutory reasons. Please complete the current donations first or clear your cart.
+              80G and non-80G causes cannot be combined in one transaction. You can clear your current cart and add this cause, or keep your cart and proceed separately.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-80g-cancel">OK</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel
+              data-testid="button-80g-keep"
+              onClick={() => { setShow80GWarning(false); setPendingSubCategory(null); }}
+            >
+              Keep Cart
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-80g-clear"
+              onClick={() => {
+                setCart([]);
+                if (pendingSubCategory) {
+                  setSelectedSubCategory(pendingSubCategory);
+                  setSelectedAmount(0);
+                  setCustomAmount("");
+                  setValidationErrors([]);
+                  setTimeout(() => { subCategoryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
+                }
+                setPendingSubCategory(null);
+                setShow80GWarning(false);
+              }}
+            >
+              Clear Cart & Continue
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
