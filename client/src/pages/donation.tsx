@@ -688,6 +688,7 @@ export default function Donation() {
       setSelectedAmount(0);
       setCustomAmount("");
       setValidationErrors([]);
+      setExpandedDescs(prev => new Set([...prev, match.id]));
       setTimeout(() => { subCategoryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
     }
   }, [subcategories, preset]);
