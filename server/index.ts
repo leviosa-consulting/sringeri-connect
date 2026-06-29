@@ -112,7 +112,9 @@ app.use((req, res, next) => {
 
 // Subdomain redirects — runs after maintenance gate so bypass works
 // fastline.* → /fastline (all paths)
-// seva.* / donate.* / yatri.* / yatra.* → respective page when /home is hit by mistake
+// donate.* → /donation[/rest-of-path]  (e.g. donate.x/suvarnamala → /donation/suvarnamala)
+// seva.* → /seva[/rest-of-path]
+// yatri.* / yatra.* → /accommodation[/rest-of-path]
 app.use((req, res, next) => {
   const host = req.hostname || req.headers.host || "";
   const skipPaths = ["/api", "/fastline", "/payment-result", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules"];
@@ -126,10 +128,26 @@ app.use((req, res, next) => {
     return res.redirect(301, "/fastline");
   }
 
-  if (req.path === "/home" || req.path === "/home/") {
-    if (host.startsWith("seva.")) return res.redirect(302, "/seva");
-    if (host.startsWith("donate.")) return res.redirect(302, "/donation");
-    if (host.startsWith("yatri.") || host.startsWith("yatra.")) return res.redirect(302, "/accommodation");
+  // Helper: redirect subdomain paths to their canonical base route
+  // e.g. donate.* /suvarnamala → /donation/suvarnamala
+  //      donate.* /           → /donation
+  //      donate.* /donation/x → skip (already correct)
+  const subdomainMap: Array<[string, string]> = [
+    ["donate.", "/donation"],
+    ["seva.", "/seva"],
+    ["yatri.", "/accommodation"],
+    ["yatra.", "/accommodation"],
+  ];
+
+  for (const [prefix, base] of subdomainMap) {
+    if (!host.startsWith(prefix)) continue;
+    if (skipPaths.some(p => req.path.startsWith(p))) break;
+    // Already under the canonical base — don't loop-redirect
+    if (req.path === base || req.path.startsWith(base + "/")) break;
+    // Map the path: strip leading slash (if any) and append to base
+    const rest = req.path === "/" || req.path === "" ? "" : "/" + req.path.replace(/^\//, "");
+    const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+    return res.redirect(302, `${base}${rest}${qs}`);
   }
 
   next();
