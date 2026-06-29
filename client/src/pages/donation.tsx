@@ -14,6 +14,12 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { PendingTransactionBanner } from "@/components/pending-transaction-banner";
 import { useLocation, useParams } from "wouter";
