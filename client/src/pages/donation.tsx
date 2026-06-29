@@ -670,7 +670,6 @@ export default function Donation() {
       return res.json();
     },
     enabled: !!preset,
-    staleTime: 30 * 60 * 1000,
   });
 
   // Step A — when preset data resolves, auto-select the heading + category
