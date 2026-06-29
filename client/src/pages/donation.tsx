@@ -547,11 +547,15 @@ export default function Donation() {
     ? selectedCategory.subcategories
     : apiSubcategories;
 
-  const subcategories = rawSubcategories.map((sub) => ({
+  const subcategories = rawSubcategories.map((sub: any) => ({
     ...sub,
-    amountOptions: sub.amountOptions
+    desc: sub.desc || sub.description || "",
+    amountOptions: sub.amountOptions && sub.amountOptions.length
       ? sub.amountOptions.map((a: any) => Number(a)).filter((a: number) => !isNaN(a) && a > 0)
+      : sub.allowedAmount
+      ? String(sub.allowedAmount).split(",").map((a: string) => Number(a.trim())).filter((a: number) => !isNaN(a) && a > 0)
       : [],
+    anyAmount: sub.anyAmount ?? (Number(sub.isVariableAmount) === 1),
   }));
 
   const { data: postageOptions = [] } = useQuery<PostageOption[]>({
