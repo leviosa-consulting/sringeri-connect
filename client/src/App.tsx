@@ -24,6 +24,7 @@ import AdminHub from "@/pages/admin";
 import AdminQuizAnalytics from "@/pages/admin-quiz-analytics";
 import AdminReconciliation from "@/pages/admin-reconciliation";
 import AdminAllTransactions from "@/pages/admin-all-transactions";
+import AdminCorrections from "@/pages/admin-corrections";
 import AdminReconciliationLogs from "@/pages/admin-reconciliation-logs";
 import AdminSupport from "@/pages/admin-support";
 import AdminLaunch from "@/pages/admin-launch";
@@ -78,6 +79,7 @@ function Router() {
             <Route path="/admin/quiz-analytics" component={AdminQuizAnalytics} />
             <Route path="/admin/reconciliation" component={AdminReconciliation} />
             <Route path="/admin/all-transactions" component={AdminAllTransactions} />
+            <Route path="/admin/corrections" component={AdminCorrections} />
             <Route path="/admin/reconciliation-logs" component={AdminReconciliationLogs} />
             <Route path="/admin/support" component={AdminSupport} />
             <Route path="/admin/launch" component={AdminLaunch} />

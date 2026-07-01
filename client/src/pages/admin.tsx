@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { RangoliLoader } from "@/components/rangoli-loader";
-import { BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare, ClipboardList, TrendingUp, ShieldCheck, Loader2, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
+import { BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare, ClipboardList, TrendingUp, ShieldCheck, Loader2, ChevronDown, ChevronUp, Eye, EyeOff, FileEdit } from "lucide-react";
 import { Link } from "wouter";
 
 const adminTools = [
@@ -43,6 +43,14 @@ const adminTools = [
     icon: ScrollText,
     path: "/admin/all-transactions",
     color: "bg-teal-50 text-teal-600",
+    role: "accounts",
+  },
+  {
+    title: "Corrections / Rectifications",
+    description: "Search a seva, donation, yatri, or fastline record to review and correct its details",
+    icon: FileEdit,
+    path: "/admin/corrections",
+    color: "bg-cyan-50 text-cyan-600",
     role: "accounts",
   },
   {
