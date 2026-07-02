@@ -3412,6 +3412,38 @@ export async function registerRoutes(
         originalDevoteeName,
         devoteeNameK,
         originalDevoteeNameK,
+        inAbsentia,
+        originalInAbsentia,
+        prasadaNeeded,
+        originalPrasadaNeeded,
+        addresseeName,
+        originalAddresseeName,
+        addressLine1,
+        originalAddressLine1,
+        addressLine2,
+        originalAddressLine2,
+        landmark,
+        originalLandmark,
+        city,
+        originalCity,
+        state,
+        originalState,
+        country,
+        originalCountry,
+        pincode,
+        originalPincode,
+        gotra,
+        originalGotra,
+        gotraK,
+        originalGotraK,
+        nakshatraId,
+        originalNakshatraId,
+        rashiId,
+        originalRashiId,
+        postageId,
+        originalPostageId,
+        sevaDate,
+        originalSevaDate,
       } = req.body || {};
       if (!recordType || typeof recordType !== "string") {
         return res.status(400).json({ error: "recordType is required" });
@@ -3420,7 +3452,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "id is required" });
       }
 
-      if (recordType !== "yatri" && recordType !== "fastline") {
+      if (recordType !== "yatri" && recordType !== "fastline" && recordType !== "seva") {
         return res.status(400).json({ error: `Corrections for record type "${recordType}" are not yet supported` });
       }
 
@@ -3445,7 +3477,7 @@ export async function registerRoutes(
         if (hasRemarks) {
           summaryParts.push(remarks.trim());
         }
-      } else {
+      } else if (recordType === "fastline") {
         const hasIsPrinted = isPrinted !== undefined && isPrinted !== null && isPrinted !== "";
         const hasMobileNumber = typeof mobileNumber === "string" && mobileNumber.trim() !== "";
         const hasDevoteeName = typeof devoteeName === "string" && devoteeName.trim() !== "";
@@ -3487,6 +3519,85 @@ export async function registerRoutes(
               : "unknown";
           summaryParts.push(`Devotee name (Kannada) changed from ${fromNameK} to ${devoteeNameK.trim()}`);
           payload.devoteeNameK = devoteeNameK.trim();
+        }
+        if (hasRemarks) {
+          summaryParts.push(remarks.trim());
+        }
+      } else {
+        const stringFieldDefs: Array<{
+          key: string;
+          label: string;
+          value: unknown;
+          original: unknown;
+        }> = [
+          { key: "addresseeName", label: "Addressee name", value: addresseeName, original: originalAddresseeName },
+          { key: "addressLine1", label: "Address line 1", value: addressLine1, original: originalAddressLine1 },
+          { key: "addressLine2", label: "Address line 2", value: addressLine2, original: originalAddressLine2 },
+          { key: "landmark", label: "Landmark", value: landmark, original: originalLandmark },
+          { key: "city", label: "City", value: city, original: originalCity },
+          { key: "state", label: "State", value: state, original: originalState },
+          { key: "country", label: "Country", value: country, original: originalCountry },
+          { key: "pincode", label: "Pincode", value: pincode, original: originalPincode },
+          { key: "devoteeName", label: "Devotee name", value: devoteeName, original: originalDevoteeName },
+          { key: "devoteeNameK", label: "Devotee name (Kannada)", value: devoteeNameK, original: originalDevoteeNameK },
+          { key: "gotra", label: "Gotra", value: gotra, original: originalGotra },
+          { key: "gotraK", label: "Gotra (Kannada)", value: gotraK, original: originalGotraK },
+          { key: "sevaDate", label: "Seva date", value: sevaDate, original: originalSevaDate },
+        ];
+        const booleanFieldDefs: Array<{
+          key: string;
+          label: string;
+          value: unknown;
+          original: unknown;
+        }> = [
+          { key: "isPrinted", label: "Printed status", value: isPrinted, original: originalIsPrinted },
+          { key: "inAbsentia", label: "In-absentia status", value: inAbsentia, original: originalInAbsentia },
+          { key: "prasadaNeeded", label: "Prasada needed status", value: prasadaNeeded, original: originalPrasadaNeeded },
+        ];
+        const idFieldDefs: Array<{
+          key: string;
+          label: string;
+          value: unknown;
+          original: unknown;
+        }> = [
+          { key: "nakshatraId", label: "Nakshatra", value: nakshatraId, original: originalNakshatraId },
+          { key: "rashiId", label: "Rashi", value: rashiId, original: originalRashiId },
+          { key: "postageId", label: "Postage option", value: postageId, original: originalPostageId },
+        ];
+
+        const hasRemarks = typeof remarks === "string" && remarks.trim() !== "";
+        let hasAnyFieldChange = false;
+
+        for (const def of stringFieldDefs) {
+          if (typeof def.value === "string" && def.value.trim() !== "") {
+            hasAnyFieldChange = true;
+            const from =
+              typeof def.original === "string" && def.original.trim() !== "" ? def.original.trim() : "unknown";
+            summaryParts.push(`${def.label} changed from ${from} to ${def.value.trim()}`);
+            payload[def.key] = def.value.trim();
+          }
+        }
+        for (const def of booleanFieldDefs) {
+          if (def.value !== undefined && def.value !== null && def.value !== "") {
+            hasAnyFieldChange = true;
+            const from =
+              def.original !== undefined && def.original !== null && def.original !== "" ? String(def.original) : "unknown";
+            summaryParts.push(`${def.label} changed from ${from} to ${def.value}`);
+            payload[def.key] = def.value as string | number;
+          }
+        }
+        for (const def of idFieldDefs) {
+          if (def.value !== undefined && def.value !== null && def.value !== "") {
+            hasAnyFieldChange = true;
+            const from =
+              def.original !== undefined && def.original !== null && def.original !== "" ? String(def.original) : "unknown";
+            summaryParts.push(`${def.label} changed from ${from} to ${def.value}`);
+            payload[def.key] = def.value as string | number;
+          }
+        }
+
+        if (!hasAnyFieldChange && !hasRemarks) {
+          return res.status(400).json({ error: "Provide at least one field to update, or a remark" });
         }
         if (hasRemarks) {
           summaryParts.push(remarks.trim());

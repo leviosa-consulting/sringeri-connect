@@ -1,0 +1,1 @@
+- [Admin Corrections tool extension pattern](admin-corrections-pattern.md) — how to add a new record type (yatri/fastline/seva style) to the corrections tool and its admin-role testing limitation.
