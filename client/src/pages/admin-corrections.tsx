@@ -43,6 +43,7 @@ export default function AdminCorrections() {
   const [bookingDate, setBookingDate] = useState("");
 
   const [records, setRecords] = useState<CorrectionRecord[]>([]);
+  const [lastSearchedRecordType, setLastSearchedRecordType] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
@@ -92,6 +93,7 @@ export default function AdminCorrections() {
             ? data.data
             : [];
       setRecords(list);
+      setLastSearchedRecordType(recordType);
     } catch (err: any) {
       setLoadError(err?.message || "Failed to load records");
       setRecords([]);
@@ -112,6 +114,10 @@ export default function AdminCorrections() {
 
   async function handleSaveCorrection() {
     if (!detailRecord || !getToken) return;
+    if (detailRecordType !== "yatri") {
+      setSaveError("Editing is not yet supported for this record type.");
+      return;
+    }
     const recordId = getField(detailRecord, "id", "reservationId", "ID");
     if (recordId === "—") {
       setSaveError("Could not determine this record's ID.");
@@ -153,7 +159,9 @@ export default function AdminCorrections() {
       }
       if (hasRemarksChange) {
         const existingRemarks = getField(detailRecord, "remarks");
-        const newRemarksValue = existingRemarks !== "—" ? `${existingRemarks}|${editRemarks.trim()}` : editRemarks.trim();
+        const adminIdentity = user?.email || "you";
+        const appendedRemark = `${editRemarks.trim()} - ${adminIdentity}`;
+        const newRemarksValue = existingRemarks !== "—" ? `${existingRemarks}|${appendedRemark}` : appendedRemark;
         updatedRecord.remarks = newRemarksValue;
       }
       setRecords((prev) => prev.map((r) => (r === detailRecord ? updatedRecord : r)));
@@ -337,7 +345,7 @@ export default function AdminCorrections() {
                         onClick={() => {
                           const currentBookingDate = getField(rec, "bookingDate", "reservedDate") !== "—" ? getField(rec, "bookingDate", "reservedDate") : "";
                           setDetailRecord(rec);
-                          setDetailRecordType(recordType);
+                          setDetailRecordType(lastSearchedRecordType);
                           setOriginalBookingDate(currentBookingDate);
                           setEditBookingDate(currentBookingDate);
                           setEditRemarks("");
