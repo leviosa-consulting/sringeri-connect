@@ -3416,7 +3416,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Provide at least one of bookingDate or remarks to update" });
       }
 
-      const payload: Record<string, string | number> = { id };
+      const payload: Record<string, string | number> = { recordType, id };
       if (hasBookingDate) payload.bookingDate = bookingDate.trim();
       if (hasRemarks) {
         const adminIdentity = email || uid || "unknown admin";
