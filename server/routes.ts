@@ -3394,6 +3394,65 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/corrections/update", async (req, res) => {
+    try {
+      if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
+      const { uid, email } = (await getFirebaseUidAndEmail(req)) || {};
+      const { recordType, id, bookingDate, remarks } = req.body || {};
+      if (!recordType || typeof recordType !== "string") {
+        return res.status(400).json({ error: "recordType is required" });
+      }
+      if (!id || (typeof id !== "string" && typeof id !== "number")) {
+        return res.status(400).json({ error: "id is required" });
+      }
+
+      if (recordType !== "yatri") {
+        return res.status(400).json({ error: `Corrections for record type "${recordType}" are not yet supported` });
+      }
+
+      const hasBookingDate = typeof bookingDate === "string" && bookingDate.trim() !== "";
+      const hasRemarks = typeof remarks === "string" && remarks.trim() !== "";
+      if (!hasBookingDate && !hasRemarks) {
+        return res.status(400).json({ error: "Provide at least one of bookingDate or remarks to update" });
+      }
+
+      const payload: Record<string, string | number> = { id };
+      if (hasBookingDate) payload.bookingDate = bookingDate.trim();
+      if (hasRemarks) {
+        const adminIdentity = email || uid || "unknown admin";
+        payload.remarks = `${remarks.trim()} - ${adminIdentity}`;
+      }
+
+      const r = await fetch(`${SRINGERI_API_URL}/api/updateRecordCorrection`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+        },
+        body: JSON.stringify(payload),
+      });
+      const text = await r.text();
+      if (!r.ok) {
+        console.error("updateRecordCorrection upstream error:", r.status, text);
+        return res.status(r.status).json({ error: "Failed to update record" });
+      }
+      let data;
+      try {
+        const jsonStart = text.indexOf("{");
+        const jsonStartArr = text.indexOf("[");
+        const start = jsonStart !== -1 && (jsonStartArr === -1 || jsonStart < jsonStartArr) ? jsonStart : jsonStartArr;
+        data = start !== -1 ? JSON.parse(text.substring(start)) : JSON.parse(text);
+      } catch (e) {
+        console.error("updateRecordCorrection parse error:", e, text.slice(0, 200));
+        return res.status(500).json({ error: "Invalid upstream response" });
+      }
+      res.json(data);
+    } catch (error) {
+      console.error("Error updating record correction:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/admin/reconciliation/pending", async (req, res) => {
     try {
       if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
