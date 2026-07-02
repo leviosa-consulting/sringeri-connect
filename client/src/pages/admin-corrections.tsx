@@ -5,6 +5,13 @@ import { ArrowLeft, Search, AlertCircle, PencilLine } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface CorrectionRecord {
   [key: string]: any;
@@ -39,6 +46,7 @@ export default function AdminCorrections() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
+  const [detailRecord, setDetailRecord] = useState<CorrectionRecord | null>(null);
 
   const hasAnyFilter = [referenceNo, email, mobileNumber, bookingDate].some((v) => v.trim() !== "");
 
@@ -256,9 +264,8 @@ export default function AdminCorrections() {
                     <td className="px-3 py-3 whitespace-nowrap">
                       <button
                         type="button"
-                        disabled
-                        title="Editing coming soon"
-                        className="text-xs px-2.5 py-1 rounded bg-muted text-muted-foreground font-semibold inline-flex items-center gap-1 opacity-60 cursor-not-allowed"
+                        onClick={() => setDetailRecord(rec)}
+                        className="text-xs px-2.5 py-1 rounded bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-colors inline-flex items-center gap-1"
                         data-testid={`button-edit-${ref !== "—" ? ref : idx}`}
                       >
                         <PencilLine className="h-3 w-3" /> Edit
@@ -271,6 +278,35 @@ export default function AdminCorrections() {
           </table>
         </div>
       )}
+
+      <Dialog open={!!detailRecord} onOpenChange={(open) => !open && setDetailRecord(null)}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto" data-testid="dialog-record-detail">
+          <DialogHeader>
+            <DialogTitle>Full Record Details</DialogTitle>
+            <DialogDescription>
+              All fields returned by the Sringeri API for this record. Select which field(s) need correction.
+            </DialogDescription>
+          </DialogHeader>
+          {detailRecord && (
+            <table className="w-full text-sm border-collapse">
+              <tbody>
+                {Object.entries(detailRecord).map(([key, value]) => (
+                  <tr key={key} className="border-b border-border/30 last:border-0" data-testid={`row-detail-field-${key}`}>
+                    <td className="py-2 pr-4 align-top font-medium text-muted-foreground whitespace-nowrap">{key}</td>
+                    <td className="py-2 break-all">
+                      {value === null || value === undefined || value === ""
+                        ? "—"
+                        : typeof value === "object"
+                          ? JSON.stringify(value)
+                          : String(value)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
