@@ -52,6 +52,14 @@ export default function AdminCorrections() {
   const [originalBookingDate, setOriginalBookingDate] = useState("");
   const [editBookingDate, setEditBookingDate] = useState("");
   const [editRemarks, setEditRemarks] = useState("");
+  const [originalIsPrinted, setOriginalIsPrinted] = useState("");
+  const [editIsPrinted, setEditIsPrinted] = useState(false);
+  const [originalMobileNumber, setOriginalMobileNumber] = useState("");
+  const [editMobileNumber, setEditMobileNumber] = useState("");
+  const [originalDevoteeName, setOriginalDevoteeName] = useState("");
+  const [editDevoteeName, setEditDevoteeName] = useState("");
+  const [originalDevoteeNameK, setOriginalDevoteeNameK] = useState("");
+  const [editDevoteeNameK, setEditDevoteeNameK] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -109,12 +117,20 @@ export default function AdminCorrections() {
     setOriginalBookingDate("");
     setEditBookingDate("");
     setEditRemarks("");
+    setOriginalIsPrinted("");
+    setEditIsPrinted(false);
+    setOriginalMobileNumber("");
+    setEditMobileNumber("");
+    setOriginalDevoteeName("");
+    setEditDevoteeName("");
+    setOriginalDevoteeNameK("");
+    setEditDevoteeNameK("");
     setSaveError(null);
   }
 
   async function handleSaveCorrection() {
     if (!detailRecord || !getToken) return;
-    if (detailRecordType !== "yatri") {
+    if (detailRecordType !== "yatri" && detailRecordType !== "fastline") {
       setSaveError("Editing is not yet supported for this record type.");
       return;
     }
@@ -123,11 +139,45 @@ export default function AdminCorrections() {
       setSaveError("Could not determine this record's ID.");
       return;
     }
+
     const trimmedBookingDate = editBookingDate.trim();
-    const hasBookingDateChange = trimmedBookingDate !== "" && trimmedBookingDate !== originalBookingDate.trim();
+    const hasBookingDateChange =
+      detailRecordType === "yatri" &&
+      trimmedBookingDate !== "" &&
+      trimmedBookingDate !== originalBookingDate.trim();
+
+    const trimmedMobileNumber = editMobileNumber.trim();
+    const hasMobileNumberChange =
+      detailRecordType === "fastline" &&
+      trimmedMobileNumber !== "" &&
+      trimmedMobileNumber !== originalMobileNumber.trim();
+
+    const trimmedDevoteeName = editDevoteeName.trim();
+    const hasDevoteeNameChange =
+      detailRecordType === "fastline" &&
+      trimmedDevoteeName !== "" &&
+      trimmedDevoteeName !== originalDevoteeName.trim();
+
+    const trimmedDevoteeNameK = editDevoteeNameK.trim();
+    const hasDevoteeNameKChange =
+      detailRecordType === "fastline" &&
+      trimmedDevoteeNameK !== "" &&
+      trimmedDevoteeNameK !== originalDevoteeNameK.trim();
+
+    const newIsPrinted = editIsPrinted ? "1" : "0";
+    const hasIsPrintedChange = detailRecordType === "fastline" && newIsPrinted !== originalIsPrinted;
+
     const hasRemarksChange = editRemarks.trim() !== "";
-    if (!hasBookingDateChange && !hasRemarksChange) {
-      setSaveError("Change the booking date or add a remark before saving.");
+
+    const hasAnyChange =
+      hasBookingDateChange ||
+      hasMobileNumberChange ||
+      hasDevoteeNameChange ||
+      hasDevoteeNameKChange ||
+      hasIsPrintedChange ||
+      hasRemarksChange;
+    if (!hasAnyChange) {
+      setSaveError("Change at least one field or add a remark before saving.");
       return;
     }
     setSaving(true);
@@ -144,6 +194,16 @@ export default function AdminCorrections() {
           ...(hasBookingDateChange
             ? { bookingDate: trimmedBookingDate, originalBookingDate: originalBookingDate.trim() }
             : {}),
+          ...(hasMobileNumberChange
+            ? { mobileNumber: trimmedMobileNumber, originalMobileNumber: originalMobileNumber.trim() }
+            : {}),
+          ...(hasDevoteeNameChange
+            ? { devoteeName: trimmedDevoteeName, originalDevoteeName: originalDevoteeName.trim() }
+            : {}),
+          ...(hasDevoteeNameKChange
+            ? { devoteeNameK: trimmedDevoteeNameK, originalDevoteeNameK: originalDevoteeNameK.trim() }
+            : {}),
+          ...(hasIsPrintedChange ? { isPrinted: newIsPrinted, originalIsPrinted } : {}),
           ...(hasRemarksChange ? { remarks: editRemarks.trim() } : {}),
         }),
       });
@@ -159,18 +219,50 @@ export default function AdminCorrections() {
           updatedRecord.bookingDate = trimmedBookingDate;
         }
       }
+      if (hasMobileNumberChange) {
+        if ("mobileNumber" in updatedRecord) updatedRecord.mobileNumber = trimmedMobileNumber;
+        if ("mobile" in updatedRecord) updatedRecord.mobile = trimmedMobileNumber;
+        if (!("mobileNumber" in updatedRecord) && !("mobile" in updatedRecord)) {
+          updatedRecord.mobileNumber = trimmedMobileNumber;
+        }
+      }
+      if (hasDevoteeNameChange) {
+        updatedRecord.devoteeName = trimmedDevoteeName;
+      }
+      if (hasDevoteeNameKChange) {
+        updatedRecord.devoteeNameK = trimmedDevoteeNameK;
+      }
+      if (hasIsPrintedChange) {
+        updatedRecord.isPrinted = newIsPrinted;
+      }
+
       const adminIdentity = user?.email || "you";
       const summaryParts: string[] = [];
       if (hasBookingDateChange) {
         summaryParts.push(`Booking date changed from ${originalBookingDate.trim() || "unknown"} to ${trimmedBookingDate}`);
       }
+      if (hasIsPrintedChange) {
+        summaryParts.push(`Printed status changed from ${originalIsPrinted || "unknown"} to ${newIsPrinted}`);
+      }
+      if (hasMobileNumberChange) {
+        summaryParts.push(`Mobile number changed from ${originalMobileNumber.trim() || "unknown"} to ${trimmedMobileNumber}`);
+      }
+      if (hasDevoteeNameChange) {
+        summaryParts.push(`Devotee name changed from ${originalDevoteeName.trim() || "unknown"} to ${trimmedDevoteeName}`);
+      }
+      if (hasDevoteeNameKChange) {
+        summaryParts.push(
+          `Devotee name (Kannada) changed from ${originalDevoteeNameK.trim() || "unknown"} to ${trimmedDevoteeNameK}`
+        );
+      }
       if (hasRemarksChange) {
         summaryParts.push(editRemarks.trim());
       }
-      const existingRemarks = getField(detailRecord, "remarks");
+      const existingRemarksField = detailRecordType === "fastline" ? "donationDetails" : "remarks";
+      const existingRemarks = getField(detailRecord, existingRemarksField, "remarks");
       const appendedRemark = `${summaryParts.join(" | ")} - ${adminIdentity}`;
       const newRemarksValue = existingRemarks !== "—" ? `${existingRemarks}|${appendedRemark}` : appendedRemark;
-      updatedRecord.remarks = newRemarksValue;
+      updatedRecord[existingRemarksField] = newRemarksValue;
       setRecords((prev) => prev.map((r) => (r === detailRecord ? updatedRecord : r)));
       closeDetailDialog();
     } catch (err: any) {
@@ -351,11 +443,24 @@ export default function AdminCorrections() {
                         type="button"
                         onClick={() => {
                           const currentBookingDate = getField(rec, "bookingDate", "reservedDate") !== "—" ? getField(rec, "bookingDate", "reservedDate") : "";
+                          const currentMobileNumber = getField(rec, "mobileNumber", "mobile") !== "—" ? getField(rec, "mobileNumber", "mobile") : "";
+                          const currentDevoteeName = getField(rec, "devoteeName") !== "—" ? getField(rec, "devoteeName") : "";
+                          const currentDevoteeNameK = getField(rec, "devoteeNameK") !== "—" ? getField(rec, "devoteeNameK") : "";
+                          const currentIsPrintedRaw = getField(rec, "isPrinted");
+                          const currentIsPrinted = currentIsPrintedRaw !== "—" ? currentIsPrintedRaw : "0";
                           setDetailRecord(rec);
                           setDetailRecordType(lastSearchedRecordType);
                           setOriginalBookingDate(currentBookingDate);
                           setEditBookingDate(currentBookingDate);
                           setEditRemarks("");
+                          setOriginalMobileNumber(currentMobileNumber);
+                          setEditMobileNumber(currentMobileNumber);
+                          setOriginalDevoteeName(currentDevoteeName);
+                          setEditDevoteeName(currentDevoteeName);
+                          setOriginalDevoteeNameK(currentDevoteeNameK);
+                          setEditDevoteeNameK(currentDevoteeNameK);
+                          setOriginalIsPrinted(currentIsPrinted);
+                          setEditIsPrinted(currentIsPrinted === "1");
                           setSaveError(null);
                         }}
                         className="text-xs px-2.5 py-1 rounded bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-colors inline-flex items-center gap-1"
@@ -379,7 +484,9 @@ export default function AdminCorrections() {
             <DialogDescription>
               {detailRecordType === "yatri"
                 ? "Review the record below, then update the booking date or add a remark to correct it."
-                : "All fields returned by the Sringeri API for this record. Editing isn't supported for this record type yet."}
+                : detailRecordType === "fastline"
+                  ? "Review the record below, then update the fields or add a remark to correct it."
+                  : "All fields returned by the Sringeri API for this record. Editing isn't supported for this record type yet."}
             </DialogDescription>
           </DialogHeader>
           {detailRecord && (
@@ -401,18 +508,67 @@ export default function AdminCorrections() {
                 </tbody>
               </table>
 
-              {detailRecordType === "yatri" && (
+              {(detailRecordType === "yatri" || detailRecordType === "fastline") && (
                 <div className="mt-4 space-y-3 border-t border-border/50 pt-4">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Booking Date</label>
-                    <input
-                      type="date"
-                      value={editBookingDate}
-                      onChange={(e) => setEditBookingDate(e.target.value)}
-                      className="w-full h-10 px-3 rounded-lg border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      data-testid="input-edit-booking-date"
-                    />
-                  </div>
+                  {detailRecordType === "yatri" && (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Booking Date</label>
+                      <input
+                        type="date"
+                        value={editBookingDate}
+                        onChange={(e) => setEditBookingDate(e.target.value)}
+                        className="w-full h-10 px-3 rounded-lg border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        data-testid="input-edit-booking-date"
+                      />
+                    </div>
+                  )}
+                  {detailRecordType === "fastline" && (
+                    <>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Mobile Number</label>
+                        <input
+                          type="tel"
+                          value={editMobileNumber}
+                          onChange={(e) => setEditMobileNumber(e.target.value)}
+                          className="w-full h-10 px-3 rounded-lg border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          data-testid="input-edit-mobile-number"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Devotee Name</label>
+                        <input
+                          type="text"
+                          value={editDevoteeName}
+                          onChange={(e) => setEditDevoteeName(e.target.value)}
+                          className="w-full h-10 px-3 rounded-lg border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          data-testid="input-edit-devotee-name"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Devotee Name (Kannada)</label>
+                        <input
+                          type="text"
+                          value={editDevoteeNameK}
+                          onChange={(e) => setEditDevoteeNameK(e.target.value)}
+                          className="w-full h-10 px-3 rounded-lg border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          data-testid="input-edit-devotee-name-k"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="edit-is-printed"
+                          checked={editIsPrinted}
+                          onChange={(e) => setEditIsPrinted(e.target.checked)}
+                          className="h-4 w-4 rounded border-input"
+                          data-testid="checkbox-edit-is-printed"
+                        />
+                        <label htmlFor="edit-is-printed" className="text-xs font-medium text-muted-foreground">
+                          Receipt Printed
+                        </label>
+                      </div>
+                    </>
+                  )}
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">Add a Remark</label>
                     <input

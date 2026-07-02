@@ -3398,7 +3398,21 @@ export async function registerRoutes(
     try {
       if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
       const { uid, email } = (await getFirebaseUidAndEmail(req)) || {};
-      const { recordType, id, bookingDate, remarks, originalBookingDate } = req.body || {};
+      const {
+        recordType,
+        id,
+        bookingDate,
+        remarks,
+        originalBookingDate,
+        isPrinted,
+        originalIsPrinted,
+        mobileNumber,
+        originalMobileNumber,
+        devoteeName,
+        originalDevoteeName,
+        devoteeNameK,
+        originalDevoteeNameK,
+      } = req.body || {};
       if (!recordType || typeof recordType !== "string") {
         return res.status(400).json({ error: "recordType is required" });
       }
@@ -3406,31 +3420,79 @@ export async function registerRoutes(
         return res.status(400).json({ error: "id is required" });
       }
 
-      if (recordType !== "yatri") {
+      if (recordType !== "yatri" && recordType !== "fastline") {
         return res.status(400).json({ error: `Corrections for record type "${recordType}" are not yet supported` });
-      }
-
-      const hasBookingDate = typeof bookingDate === "string" && bookingDate.trim() !== "";
-      const hasRemarks = typeof remarks === "string" && remarks.trim() !== "";
-      if (!hasBookingDate && !hasRemarks) {
-        return res.status(400).json({ error: "Provide at least one of bookingDate or remarks to update" });
       }
 
       const adminIdentity = email || uid || "unknown admin";
       const summaryParts: string[] = [];
-      if (hasBookingDate) {
-        const fromDate =
-          typeof originalBookingDate === "string" && originalBookingDate.trim() !== ""
-            ? originalBookingDate.trim()
-            : "unknown";
-        summaryParts.push(`Booking date changed from ${fromDate} to ${bookingDate.trim()}`);
-      }
-      if (hasRemarks) {
-        summaryParts.push(remarks.trim());
+      const payload: Record<string, string | number> = { recordType, id };
+
+      if (recordType === "yatri") {
+        const hasBookingDate = typeof bookingDate === "string" && bookingDate.trim() !== "";
+        const hasRemarks = typeof remarks === "string" && remarks.trim() !== "";
+        if (!hasBookingDate && !hasRemarks) {
+          return res.status(400).json({ error: "Provide at least one of bookingDate or remarks to update" });
+        }
+        if (hasBookingDate) {
+          const fromDate =
+            typeof originalBookingDate === "string" && originalBookingDate.trim() !== ""
+              ? originalBookingDate.trim()
+              : "unknown";
+          summaryParts.push(`Booking date changed from ${fromDate} to ${bookingDate.trim()}`);
+          payload.bookingDate = bookingDate.trim();
+        }
+        if (hasRemarks) {
+          summaryParts.push(remarks.trim());
+        }
+      } else {
+        const hasIsPrinted = isPrinted !== undefined && isPrinted !== null && isPrinted !== "";
+        const hasMobileNumber = typeof mobileNumber === "string" && mobileNumber.trim() !== "";
+        const hasDevoteeName = typeof devoteeName === "string" && devoteeName.trim() !== "";
+        const hasDevoteeNameK = typeof devoteeNameK === "string" && devoteeNameK.trim() !== "";
+        const hasRemarks = typeof remarks === "string" && remarks.trim() !== "";
+        if (!hasIsPrinted && !hasMobileNumber && !hasDevoteeName && !hasDevoteeNameK && !hasRemarks) {
+          return res.status(400).json({
+            error: "Provide at least one of isPrinted, mobileNumber, devoteeName, devoteeNameK, or remarks to update",
+          });
+        }
+        if (hasIsPrinted) {
+          const fromPrinted =
+            originalIsPrinted !== undefined && originalIsPrinted !== null && originalIsPrinted !== ""
+              ? String(originalIsPrinted)
+              : "unknown";
+          summaryParts.push(`Printed status changed from ${fromPrinted} to ${isPrinted}`);
+          payload.isPrinted = isPrinted;
+        }
+        if (hasMobileNumber) {
+          const fromMobile =
+            typeof originalMobileNumber === "string" && originalMobileNumber.trim() !== ""
+              ? originalMobileNumber.trim()
+              : "unknown";
+          summaryParts.push(`Mobile number changed from ${fromMobile} to ${mobileNumber.trim()}`);
+          payload.mobileNumber = mobileNumber.trim();
+        }
+        if (hasDevoteeName) {
+          const fromName =
+            typeof originalDevoteeName === "string" && originalDevoteeName.trim() !== ""
+              ? originalDevoteeName.trim()
+              : "unknown";
+          summaryParts.push(`Devotee name changed from ${fromName} to ${devoteeName.trim()}`);
+          payload.devoteeName = devoteeName.trim();
+        }
+        if (hasDevoteeNameK) {
+          const fromNameK =
+            typeof originalDevoteeNameK === "string" && originalDevoteeNameK.trim() !== ""
+              ? originalDevoteeNameK.trim()
+              : "unknown";
+          summaryParts.push(`Devotee name (Kannada) changed from ${fromNameK} to ${devoteeNameK.trim()}`);
+          payload.devoteeNameK = devoteeNameK.trim();
+        }
+        if (hasRemarks) {
+          summaryParts.push(remarks.trim());
+        }
       }
 
-      const payload: Record<string, string | number> = { recordType, id };
-      if (hasBookingDate) payload.bookingDate = bookingDate.trim();
       payload.remarks = `${summaryParts.join(" | ")} - ${adminIdentity}`;
 
       const r = await fetch(`${SRINGERI_API_URL}/api/updateRecordCorrection`, {
