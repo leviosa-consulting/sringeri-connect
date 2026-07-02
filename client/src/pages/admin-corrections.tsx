@@ -140,6 +140,19 @@ export default function AdminCorrections() {
     },
   });
 
+  const { data: deitySevaLookup = {} } = useQuery<
+    Record<string, { deityName: string; sevaName: string; sannidhiName: string }>
+  >({
+    queryKey: ["deitySevaLookup"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/deitySevaLookup");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!detailRecord && detailRecordType === "seva",
+    staleTime: 5 * 60 * 1000,
+  });
+
   const handleEditNakshatraChange = (idStr: string) => {
     setEditNakshatraId(idStr);
     if (!idStr) return;
@@ -875,18 +888,32 @@ export default function AdminCorrections() {
             <>
               <table className="w-full text-sm border-collapse">
                 <tbody>
-                  {Object.entries(detailRecord).map(([key, value]) => (
-                    <tr key={key} className="border-b border-border/30 last:border-0" data-testid={`row-detail-field-${key}`}>
-                      <td className="py-2 pr-4 align-top font-medium text-muted-foreground whitespace-nowrap">{key}</td>
-                      <td className="py-2 break-all">
-                        {value === null || value === undefined || value === ""
-                          ? "—"
-                          : typeof value === "object"
-                            ? JSON.stringify(value)
-                            : String(value)}
-                      </td>
-                    </tr>
-                  ))}
+                  {Object.entries(detailRecord).map(([key, value]) => {
+                    const resolvedDeitySeva =
+                      detailRecordType === "seva" && key === "deitySevaId" && value !== null && value !== undefined && value !== ""
+                        ? deitySevaLookup[String(value)]
+                        : undefined;
+                    return (
+                      <tr key={key} className="border-b border-border/30 last:border-0" data-testid={`row-detail-field-${key}`}>
+                        <td className="py-2 pr-4 align-top font-medium text-muted-foreground whitespace-nowrap">{key}</td>
+                        <td className="py-2 break-all">
+                          {value === null || value === undefined || value === ""
+                            ? "—"
+                            : typeof value === "object"
+                              ? JSON.stringify(value)
+                              : String(value)}
+                          {resolvedDeitySeva && (
+                            <span
+                              className="block text-xs text-muted-foreground mt-0.5"
+                              data-testid="text-deity-seva-name"
+                            >
+                              {resolvedDeitySeva.deityName} — {resolvedDeitySeva.sevaName}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 

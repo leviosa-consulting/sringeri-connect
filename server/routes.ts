@@ -39,6 +39,7 @@ export async function registerRoutes(
     recurrenceTypes:     makeCache(12 * 3600_000),
     govtIdTypes:         makeCache(12 * 3600_000),
     postageOptions:      makeCache(3600_000),
+    deitySevaLookup:     makeCache(5 * 60_000),        // 5 min — admin corrections display only
   };
   // Transliterate cache: same input always gives same output
   const _xlitCache = new Map<string, string>();
@@ -2688,6 +2689,64 @@ export async function registerRoutes(
       res.json(data);
     } catch (error) {
       console.error("Error fetching deity sevas:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/deitySevaLookup", async (req, res) => {
+    try {
+      const cached = _c.deitySevaLookup.get("v");
+      if (cached !== null) return res.json(cached);
+
+      const fetchJson = async (url: string) => {
+        const response = await fetch(url, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+          },
+        });
+        if (!response.ok) return null;
+        const text = await response.text();
+        try {
+          const jsonStart = text.indexOf('[');
+          const jsonStartObj = text.indexOf('{');
+          const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+          return start !== -1 ? JSON.parse(text.substring(start)) : JSON.parse(text);
+        } catch {
+          return null;
+        }
+      };
+
+      const SEVA_TYPE_IDS = [1, 2, 3];
+      const lookup: Record<string, { deityName: string; sevaName: string; sannidhiName: string }> = {};
+
+      for (const sevaTypeId of SEVA_TYPE_IDS) {
+        const sannidhis = await fetchJson(`${SRINGERI_API_URL}/api/online/deities/${sevaTypeId}`);
+        if (!Array.isArray(sannidhis)) continue;
+
+        await Promise.all(
+          sannidhis.map(async (sannidhi: any) => {
+            if (!sannidhi || sannidhi.id === undefined) return;
+            const deitySevas = await fetchJson(
+              `${SRINGERI_API_URL}/api/online/deitySevas/${sannidhi.id}/${sevaTypeId}`
+            );
+            if (!Array.isArray(deitySevas)) return;
+            for (const ds of deitySevas) {
+              if (!ds || ds.id === undefined) continue;
+              lookup[ds.id] = {
+                deityName: sannidhi.name,
+                sevaName: ds.name,
+                sannidhiName: sannidhi.name,
+              };
+            }
+          })
+        );
+      }
+
+      _c.deitySevaLookup.set("v", lookup);
+      res.json(lookup);
+    } catch (error) {
+      console.error("Error building deity seva lookup:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
