@@ -48,6 +48,7 @@ export default function AdminCorrections() {
   const [searched, setSearched] = useState(false);
   const [detailRecord, setDetailRecord] = useState<CorrectionRecord | null>(null);
   const [detailRecordType, setDetailRecordType] = useState<string>("");
+  const [originalBookingDate, setOriginalBookingDate] = useState("");
   const [editBookingDate, setEditBookingDate] = useState("");
   const [editRemarks, setEditRemarks] = useState("");
   const [saving, setSaving] = useState(false);
@@ -103,6 +104,7 @@ export default function AdminCorrections() {
   function closeDetailDialog() {
     setDetailRecord(null);
     setDetailRecordType("");
+    setOriginalBookingDate("");
     setEditBookingDate("");
     setEditRemarks("");
     setSaveError(null);
@@ -115,7 +117,8 @@ export default function AdminCorrections() {
       setSaveError("Could not determine this record's ID.");
       return;
     }
-    const hasBookingDateChange = editBookingDate.trim() !== "";
+    const trimmedBookingDate = editBookingDate.trim();
+    const hasBookingDateChange = trimmedBookingDate !== "" && trimmedBookingDate !== originalBookingDate.trim();
     const hasRemarksChange = editRemarks.trim() !== "";
     if (!hasBookingDateChange && !hasRemarksChange) {
       setSaveError("Change the booking date or add a remark before saving.");
@@ -132,13 +135,28 @@ export default function AdminCorrections() {
         body: JSON.stringify({
           recordType: detailRecordType,
           id: recordId,
-          ...(hasBookingDateChange ? { bookingDate: editBookingDate.trim() } : {}),
+          ...(hasBookingDateChange ? { bookingDate: trimmedBookingDate } : {}),
           ...(hasRemarksChange ? { remarks: editRemarks.trim() } : {}),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
       toast({ title: "Record updated", description: "The correction was submitted successfully." });
+
+      const updatedRecord: CorrectionRecord = { ...detailRecord };
+      if (hasBookingDateChange) {
+        if ("bookingDate" in updatedRecord) updatedRecord.bookingDate = trimmedBookingDate;
+        if ("reservedDate" in updatedRecord) updatedRecord.reservedDate = trimmedBookingDate;
+        if (!("bookingDate" in updatedRecord) && !("reservedDate" in updatedRecord)) {
+          updatedRecord.bookingDate = trimmedBookingDate;
+        }
+      }
+      if (hasRemarksChange) {
+        const existingRemarks = getField(detailRecord, "remarks");
+        const newRemarksValue = existingRemarks !== "—" ? `${existingRemarks}|${editRemarks.trim()}` : editRemarks.trim();
+        updatedRecord.remarks = newRemarksValue;
+      }
+      setRecords((prev) => prev.map((r) => (r === detailRecord ? updatedRecord : r)));
       closeDetailDialog();
     } catch (err: any) {
       setSaveError(err?.message || "Failed to update record");
@@ -317,9 +335,11 @@ export default function AdminCorrections() {
                       <button
                         type="button"
                         onClick={() => {
+                          const currentBookingDate = getField(rec, "bookingDate", "reservedDate") !== "—" ? getField(rec, "bookingDate", "reservedDate") : "";
                           setDetailRecord(rec);
                           setDetailRecordType(recordType);
-                          setEditBookingDate(getField(rec, "bookingDate", "reservedDate") !== "—" ? getField(rec, "bookingDate", "reservedDate") : "");
+                          setOriginalBookingDate(currentBookingDate);
+                          setEditBookingDate(currentBookingDate);
                           setEditRemarks("");
                           setSaveError(null);
                         }}
