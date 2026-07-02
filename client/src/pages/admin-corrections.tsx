@@ -141,7 +141,9 @@ export default function AdminCorrections() {
         body: JSON.stringify({
           recordType: detailRecordType,
           id: recordId,
-          ...(hasBookingDateChange ? { bookingDate: trimmedBookingDate } : {}),
+          ...(hasBookingDateChange
+            ? { bookingDate: trimmedBookingDate, originalBookingDate: originalBookingDate.trim() }
+            : {}),
           ...(hasRemarksChange ? { remarks: editRemarks.trim() } : {}),
         }),
       });
@@ -157,13 +159,18 @@ export default function AdminCorrections() {
           updatedRecord.bookingDate = trimmedBookingDate;
         }
       }
-      if (hasRemarksChange) {
-        const existingRemarks = getField(detailRecord, "remarks");
-        const adminIdentity = user?.email || "you";
-        const appendedRemark = `${editRemarks.trim()} - ${adminIdentity}`;
-        const newRemarksValue = existingRemarks !== "—" ? `${existingRemarks}|${appendedRemark}` : appendedRemark;
-        updatedRecord.remarks = newRemarksValue;
+      const adminIdentity = user?.email || "you";
+      const summaryParts: string[] = [];
+      if (hasBookingDateChange) {
+        summaryParts.push(`Booking date changed from ${originalBookingDate.trim() || "unknown"} to ${trimmedBookingDate}`);
       }
+      if (hasRemarksChange) {
+        summaryParts.push(editRemarks.trim());
+      }
+      const existingRemarks = getField(detailRecord, "remarks");
+      const appendedRemark = `${summaryParts.join(" | ")} - ${adminIdentity}`;
+      const newRemarksValue = existingRemarks !== "—" ? `${existingRemarks}|${appendedRemark}` : appendedRemark;
+      updatedRecord.remarks = newRemarksValue;
       setRecords((prev) => prev.map((r) => (r === detailRecord ? updatedRecord : r)));
       closeDetailDialog();
     } catch (err: any) {

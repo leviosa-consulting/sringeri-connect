@@ -3398,7 +3398,7 @@ export async function registerRoutes(
     try {
       if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
       const { uid, email } = (await getFirebaseUidAndEmail(req)) || {};
-      const { recordType, id, bookingDate, remarks } = req.body || {};
+      const { recordType, id, bookingDate, remarks, originalBookingDate } = req.body || {};
       if (!recordType || typeof recordType !== "string") {
         return res.status(400).json({ error: "recordType is required" });
       }
@@ -3416,12 +3416,22 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Provide at least one of bookingDate or remarks to update" });
       }
 
+      const adminIdentity = email || uid || "unknown admin";
+      const summaryParts: string[] = [];
+      if (hasBookingDate) {
+        const fromDate =
+          typeof originalBookingDate === "string" && originalBookingDate.trim() !== ""
+            ? originalBookingDate.trim()
+            : "unknown";
+        summaryParts.push(`Booking date changed from ${fromDate} to ${bookingDate.trim()}`);
+      }
+      if (hasRemarks) {
+        summaryParts.push(remarks.trim());
+      }
+
       const payload: Record<string, string | number> = { recordType, id };
       if (hasBookingDate) payload.bookingDate = bookingDate.trim();
-      if (hasRemarks) {
-        const adminIdentity = email || uid || "unknown admin";
-        payload.remarks = `${remarks.trim()} - ${adminIdentity}`;
-      }
+      payload.remarks = `${summaryParts.join(" | ")} - ${adminIdentity}`;
 
       const r = await fetch(`${SRINGERI_API_URL}/api/updateRecordCorrection`, {
         method: "POST",
