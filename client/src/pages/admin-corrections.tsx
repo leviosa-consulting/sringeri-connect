@@ -889,9 +889,20 @@ export default function AdminCorrections() {
               <table className="w-full text-sm border-collapse">
                 <tbody>
                   {Object.entries(detailRecord).map(([key, value]) => {
+                    const hasValue = value !== null && value !== undefined && value !== "";
                     const resolvedDeitySeva =
-                      detailRecordType === "seva" && key === "deitySevaId" && value !== null && value !== undefined && value !== ""
+                      detailRecordType === "seva" && key === "deitySevaId" && hasValue
                         ? deitySevaLookup[String(value)]
+                        : undefined;
+                    const resolvedLookupName =
+                      detailRecordType === "seva" && hasValue
+                        ? key === "nakshatraId"
+                          ? nakshatras.find((n) => String(n.id) === String(value))?.name
+                          : key === "rashiId"
+                            ? rashis.find((r) => String(r.id) === String(value))?.name
+                            : key === "postageId"
+                              ? postageOptions.find((p) => String(p.id) === String(value))?.name
+                              : undefined
                         : undefined;
                     return (
                       <tr key={key} className="border-b border-border/30 last:border-0" data-testid={`row-detail-field-${key}`}>
@@ -908,6 +919,14 @@ export default function AdminCorrections() {
                               data-testid="text-deity-seva-name"
                             >
                               {resolvedDeitySeva.deityName} — {resolvedDeitySeva.sevaName}
+                            </span>
+                          )}
+                          {resolvedLookupName && (
+                            <span
+                              className="block text-xs text-muted-foreground mt-0.5"
+                              data-testid={`text-lookup-name-${key}`}
+                            >
+                              {resolvedLookupName}
                             </span>
                           )}
                         </td>
