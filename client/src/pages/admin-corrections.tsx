@@ -145,11 +145,17 @@ export default function AdminCorrections() {
   >({
     queryKey: ["deitySevaLookup"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/deitySevaLookup");
+      const token = getToken ? await getToken() : null;
+      const res = await fetch("/api/admin/deitySevaLookup", {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-    enabled: !!detailRecord && detailRecordType === "seva",
+    enabled:
+      isAdmin &&
+      (recordType === "seva" || recordType === "fastline") &&
+      (records.length > 0 || (!!detailRecord && (detailRecordType === "seva" || detailRecordType === "fastline"))),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -753,6 +759,9 @@ export default function AdminCorrections() {
                 <th className="px-3 py-2.5">Reference</th>
                 <th className="px-3 py-2.5">Name</th>
                 <th className="px-3 py-2.5">Mobile</th>
+                {(recordType === "seva" || recordType === "fastline") && (
+                  <th className="px-3 py-2.5">Sannidhi / Seva</th>
+                )}
                 <th className="px-3 py-2.5">Amount</th>
                 <th className="px-3 py-2.5">Date</th>
                 <th className="px-3 py-2.5">Status</th>
@@ -774,6 +783,16 @@ export default function AdminCorrections() {
                     <td className="px-3 py-3 whitespace-nowrap">
                       {getField(rec, "mobile", "mobileNumber", "phone")}
                     </td>
+                    {(recordType === "seva" || recordType === "fastline") && (
+                      <td className="px-3 py-3 whitespace-nowrap" data-testid={`text-sannidhi-seva-${ref !== "—" ? ref : idx}`}>
+                        {(() => {
+                          const dsId = getField(rec, "deitySevaId");
+                          if (dsId === "—") return "—";
+                          const resolved = deitySevaLookup[dsId];
+                          return resolved ? `${resolved.sannidhiName} / ${resolved.sevaName}` : dsId;
+                        })()}
+                      </td>
+                    )}
                     <td className="px-3 py-3 whitespace-nowrap">
                       ₹{getField(rec, "txnAmount", "amount", "totalAmount")}
                     </td>

@@ -2695,6 +2695,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/deitySevaLookup", async (req, res) => {
     try {
+      if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
       const cached = _c.deitySevaLookup.get("v");
       if (cached !== null) return res.json(cached);
 
