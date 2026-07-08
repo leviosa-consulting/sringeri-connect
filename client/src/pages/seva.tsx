@@ -602,7 +602,7 @@ export default function Seva() {
       if ((match as any).postageCharges === 0) {
         setHideCalendarPostage(true);
         setPostageCharges(0);
-        setPostageId("");
+        setPostageId("6");
       } else {
         setHideCalendarPostage(false);
       }
@@ -821,7 +821,7 @@ export default function Seva() {
     if (seva.postageCharges === 0) {
       setHideCalendarPostage(true);
       setPostageCharges(0);
-      setPostageId("");
+      setPostageId("6");
     } else {
       setHideCalendarPostage(false);
     }
@@ -1662,7 +1662,7 @@ export default function Seva() {
                       const opt = postageOptions.find((p) => String(p.id) === String(seva.postageId));
                       return (
                         <p className="text-xs text-muted-foreground">
-                          Prasadam Postage: {opt ? `${opt.name} — ₹${opt.amount}` : seva.postageCharges > 0 ? `₹${seva.postageCharges}` : "No postage"}
+                          Prasadam Postage: {String(seva.postageId) === "6" && seva.postageCharges === 0 ? "Included in seva amount" : opt ? `${opt.name} — ₹${opt.amount}` : seva.postageCharges > 0 ? `₹${seva.postageCharges}` : "No postage"}
                         </p>
                       );
                     })()}
@@ -2650,6 +2650,11 @@ export default function Seva() {
                   </div>
                 )}
 
+                {inAbsentia === "1" && receivePrasadam === "true" && hideCalendarPostage && (
+                  <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+                    Postage is included in the seva amount.
+                  </p>
+                )}
                 {inAbsentia === "1" && receivePrasadam === "true" && !hideCalendarPostage && (
                   <div>
                     <label className="text-xs text-muted-foreground mb-2 block">Postage Option</label>
@@ -2895,6 +2900,11 @@ export default function Seva() {
                       data-testid="button-ps-prasadam-no">No</button>
                   </div>
                 </div>
+                {receivePrasadam === "true" && hideCalendarPostage && (
+                  <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+                    Postage is included in the seva amount.
+                  </p>
+                )}
                 {receivePrasadam === "true" && !hideCalendarPostage && (
                   <div className="space-y-2">
                     {recurrenceType === 1 && (
