@@ -419,6 +419,18 @@ export default function Seva() {
     enabled: !!selectedSannidhi && !!selectedSevaType,
   });
 
+  const sannidhiPresetMismatch = !!preset && sannidhis.length > 0 && !sannidhis.find((d: any) => d.preset === preset) && !selectedSannidhi;
+  const { data: presetLookup } = useQuery<{ sannidhi: any; seva: any }>({
+    queryKey: ["sevaPresetLookup", preset],
+    queryFn: async () => {
+      const res = await fetch(`/api/sevaPresetLookup/${encodeURIComponent(preset)}`);
+      if (!res.ok) throw new Error("Not found");
+      return res.json();
+    },
+    enabled: sannidhiPresetMismatch,
+    retry: false,
+  });
+
   const { data: availableDates = [] } = useQuery<SevaAvailabilityDate[]>({
     queryKey: ["sevaAvailability", selectedSeva?.id],
     queryFn: async () => {
@@ -608,6 +620,27 @@ export default function Seva() {
       }
     }
   }, [deitySevas, preset]);
+
+  // Step C2 — fallback: if no sannidhi matched the preset by itself, use the server lookup result
+  useEffect(() => {
+    if (!presetLookup || selectedSannidhi || selectedSeva) return;
+    const { sannidhi, seva } = presetLookup;
+    if (!sannidhi || !seva) return;
+    setSelectedSannidhi(sannidhi);
+    setSannidhiSearch(sannidhi.name);
+    setShowSannidhiDropdown(false);
+    setSelectedSeva(seva);
+    setSevaSearch(`${seva.name} — ₹${formatNumber(seva.price)}`);
+    setShowSevaDropdown(false);
+    setSevaDate("");
+    if (seva.postageCharges === 0) {
+      setHideCalendarPostage(true);
+      setPostageCharges(0);
+      setPostageId("6");
+    } else {
+      setHideCalendarPostage(false);
+    }
+  }, [presetLookup]);
 
   // Step D — honour the `attend` field: 0=both, 1=in-person only, 2=in-absentia only
   // `attend` may be on the deity (sannidhi) or the seva object — check both, seva takes priority.

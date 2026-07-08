@@ -2693,6 +2693,54 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/sevaPresetLookup/:preset", async (req, res) => {
+    try {
+      const { preset } = req.params;
+      if (!preset) return res.status(400).json({ error: "preset is required" });
+
+      const fetchJson = async (url: string) => {
+        const response = await fetch(url, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }),
+          },
+        });
+        if (!response.ok) return null;
+        const text = await response.text();
+        try {
+          const jsonStart = text.indexOf('[');
+          const jsonStartObj = text.indexOf('{');
+          const start = jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj) ? jsonStart : jsonStartObj;
+          return start !== -1 ? JSON.parse(text.substring(start)) : JSON.parse(text);
+        } catch {
+          return null;
+        }
+      };
+
+      const sevaTypeId = 2;
+      const sannidhis = await fetchJson(`${SRINGERI_API_URL}/api/online/deities/${sevaTypeId}`);
+      if (!Array.isArray(sannidhis)) return res.status(404).json({ error: "Could not load sannidhis" });
+
+      let found: { sannidhi: any; seva: any } | null = null;
+
+      await Promise.all(
+        sannidhis.map(async (sannidhi: any) => {
+          if (found || !sannidhi?.id) return;
+          const sevas = await fetchJson(`${SRINGERI_API_URL}/api/online/deitySevas/${sannidhi.id}/${sevaTypeId}`);
+          if (!Array.isArray(sevas)) return;
+          const seva = sevas.find((s: any) => s.preset === preset);
+          if (seva && !found) found = { sannidhi, seva };
+        })
+      );
+
+      if (!found) return res.status(404).json({ error: "No seva found for preset" });
+      res.json(found);
+    } catch (error) {
+      console.error("Error in sevaPresetLookup:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/admin/deitySevaLookup", async (req, res) => {
     try {
       if (!await requireRole(req, "accounts")) return res.status(403).json({ error: "Forbidden" });
