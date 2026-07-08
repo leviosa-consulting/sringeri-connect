@@ -347,6 +347,7 @@ export default function Seva() {
   const sevaRef = useRef<HTMLDivElement>(null);
   const sevaSelectCardRef = useRef<HTMLDivElement>(null);
   const dateCardRef = useRef<HTMLDivElement>(null);
+  const attendingCardRef = useRef<HTMLDivElement>(null);
   const nameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gotraTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -861,7 +862,8 @@ export default function Seva() {
     } else {
       setHideCalendarPostage(false);
     }
-    setTimeout(() => dateCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    const scrollTarget = seva.postageCharges === 0 ? attendingCardRef : dateCardRef;
+    setTimeout(() => scrollTarget.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
   }
 
   function handlePostageSelect(opt: PostageOption) {
@@ -2636,7 +2638,7 @@ export default function Seva() {
             const showInPerson = attend !== 2;
             const showInAbsentia = attend !== 1;
             return (
-            <Card>
+            <Card ref={attendingCardRef}>
               <CardContent className="p-5 space-y-4">
                 <div>
                   <label className="text-xs text-muted-foreground mb-2 block">Attending</label>
