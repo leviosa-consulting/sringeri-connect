@@ -345,6 +345,8 @@ export default function Seva() {
 
   const sannidhiRef = useRef<HTMLDivElement>(null);
   const sevaRef = useRef<HTMLDivElement>(null);
+  const sevaSelectCardRef = useRef<HTMLDivElement>(null);
+  const dateCardRef = useRef<HTMLDivElement>(null);
   const nameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gotraTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -844,6 +846,7 @@ export default function Seva() {
     setPostageId("");
     setPostageCharges(0);
     setHideCalendarPostage(false);
+    setTimeout(() => sevaSelectCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
   }
 
   function handleSelectSeva(seva: DeitySeva) {
@@ -858,6 +861,7 @@ export default function Seva() {
     } else {
       setHideCalendarPostage(false);
     }
+    setTimeout(() => dateCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
   }
 
   function handlePostageSelect(opt: PostageOption) {
@@ -2475,7 +2479,7 @@ export default function Seva() {
           </Card>
 
           {selectedSannidhi && (
-            <Card>
+            <Card ref={sevaSelectCardRef}>
               <CardContent className="p-5 space-y-3">
                 <h3 className="font-serif font-bold text-sm">Select Seva</h3>
                 <div className="relative" ref={sevaRef}>
@@ -2519,7 +2523,7 @@ export default function Seva() {
           )}
 
           {selectedSeva && selectedSevaType?.id === 2 && !hideCalendarPostage && (
-            <Card>
+            <Card ref={dateCardRef}>
               <CardContent className="p-5 space-y-3">
                 <h3 className="font-serif font-bold text-sm">Select Date</h3>
                 {calendarMonths.length === 0 ? (

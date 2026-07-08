@@ -117,7 +117,7 @@ app.use((req, res, next) => {
 // yatri.* / yatra.* → /accommodation[/rest-of-path]
 app.use((req, res, next) => {
   const host = req.hostname || req.headers.host || "";
-  const skipPaths = ["/api", "/fastline", "/payment-result", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules"];
+  const skipPaths = ["/api", "/fastline", "/payment-result", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules", "/privacy", "/terms"];
 
   if (host.startsWith("fastline.") && req.path.startsWith("/kiosk")) {
     const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
