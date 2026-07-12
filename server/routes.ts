@@ -2918,7 +2918,41 @@ export async function registerRoutes(
     const xlitHit = _xlitCache.get(text);
     if (xlitHit !== undefined) return res.json({ transliteration: xlitHit });
 
-    // Primary: unofficial gtx endpoint (free, no key needed)
+    const cacheAndReturn = (translated: string) => {
+      if (_xlitCache.size >= XLIT_MAX) {
+        const firstKey = _xlitCache.keys().next().value;
+        if (firstKey !== undefined) _xlitCache.delete(firstKey);
+      }
+      _xlitCache.set(text, translated);
+      return res.json({ transliteration: translated });
+    };
+
+    // Primary: official Google Cloud Translation API (keyed)
+    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+    if (apiKey) {
+      try {
+        const response = await fetch(
+          `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ q: text, source: "en", target: lang, format: "text" }),
+            signal: AbortSignal.timeout(5000),
+          }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const translated = data?.data?.translations?.[0]?.translatedText || "";
+          if (translated) return cacheAndReturn(translated);
+        } else {
+          console.error("Google Translate API error:", response.status, await response.text().catch(() => ""));
+        }
+      } catch (error) {
+        console.error("Google Translate API exception:", error);
+      }
+    }
+
+    // Fallback: unofficial gtx endpoint (free, no key needed)
     try {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(text)}`;
       const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
@@ -2927,47 +2961,13 @@ export async function registerRoutes(
         const translated = Array.isArray(data) && Array.isArray(data[0])
           ? data[0].map((s: any) => (Array.isArray(s) ? s[0] : "")).join("")
           : "";
-        if (translated) {
-          if (_xlitCache.size >= XLIT_MAX) {
-            const firstKey = _xlitCache.keys().next().value;
-            if (firstKey !== undefined) _xlitCache.delete(firstKey);
-          }
-          _xlitCache.set(text, translated);
-          return res.json({ transliteration: translated });
-        }
+        if (translated) return cacheAndReturn(translated);
       }
     } catch {
-      // gtx failed or timed out — fall through to official API
+      // gtx also failed
     }
 
-    // Fallback: official Google Cloud Translation API
-    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
-    if (!apiKey) return res.json({ transliteration: "" });
-    try {
-      const response = await fetch(
-        `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ q: text, source: "en", target: lang, format: "text" }),
-          signal: AbortSignal.timeout(5000),
-        }
-      );
-      if (!response.ok) return res.json({ transliteration: "" });
-      const data = await response.json();
-      const translated = data?.data?.translations?.[0]?.translatedText || "";
-      if (translated) {
-        if (_xlitCache.size >= XLIT_MAX) {
-          const firstKey = _xlitCache.keys().next().value;
-          if (firstKey !== undefined) _xlitCache.delete(firstKey);
-        }
-        _xlitCache.set(text, translated);
-      }
-      return res.json({ transliteration: translated });
-    } catch (error) {
-      console.error("Transliteration fallback error:", error);
-      return res.json({ transliteration: "" });
-    }
+    return res.json({ transliteration: "" });
   });
 
   app.get("/api/postageOptions", async (req, res) => {
