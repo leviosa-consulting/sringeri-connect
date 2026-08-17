@@ -284,10 +284,15 @@ export default function TodayDrawer({ open, onClose, todayDetails, formattedDate
                     data-testid="input-reflection"
                   />
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-[10px] text-foreground/40">{reflection.length}/2000 · Private to you</span>
+                    <span className="text-[10px] text-foreground/40" data-testid="text-reflection-count">
+                      {reflection.trim().length < 50
+                        ? `${reflection.trim().length}/50 min · ${reflection.length}/2000`
+                        : `${reflection.length}/2000`}{" "}
+                      · Private to you
+                    </span>
                     <button
                       onClick={() => reflectMutation.mutate(reflection.trim())}
-                      disabled={!reflection.trim() || reflectMutation.isPending}
+                      disabled={reflection.trim().length < 50 || reflectMutation.isPending}
                       className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary text-white text-xs font-semibold disabled:opacity-50 active:scale-95 transition-all"
                       data-testid="button-save-reflection"
                     >

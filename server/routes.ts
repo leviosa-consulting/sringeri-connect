@@ -5374,6 +5374,7 @@ export async function registerRoutes(
       if (!uid) return res.status(401).json({ error: "Authentication required" });
       const text = typeof req.body?.reflectionText === "string" ? req.body.reflectionText.trim() : "";
       if (!text) return res.status(400).json({ error: "A reflection is required" });
+      if (text.length < 50) return res.status(400).json({ error: "Reflection must be at least 50 characters" });
       if (text.length > 2000) return res.status(400).json({ error: "Reflection is too long (max 2000 characters)" });
 
       const dateStr = getISTDate();
