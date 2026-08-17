@@ -21,6 +21,8 @@ export const LIVE_CHAT_DDL: string[] = [
     phone text,
     status text DEFAULT 'bot' NOT NULL,
     source text DEFAULT 'app' NOT NULL,
+    page_url text,
+    page_title text,
     assigned_agent_uid text,
     assigned_agent_name text,
     unread_for_agent integer DEFAULT 0 NOT NULL,
@@ -41,6 +43,10 @@ export const LIVE_CHAT_DDL: string[] = [
   `CREATE INDEX IF NOT EXISTS chat_conversations_status_idx ON chat_conversations (status)`,
   `CREATE INDEX IF NOT EXISTS chat_conversations_last_message_idx ON chat_conversations (last_message_at)`,
   `CREATE INDEX IF NOT EXISTS chat_messages_conversation_idx ON chat_messages (conversation_id, id)`,
+  // CREATE TABLE IF NOT EXISTS is a no-op once the table already exists, so
+  // columns added after the table's first release need their own ALTERs here.
+  `ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS page_url text`,
+  `ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS page_title text`,
 ];
 
 export async function ensureLiveChatSchema(): Promise<void> {

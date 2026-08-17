@@ -403,6 +403,16 @@ export default function ChatbotWidget() {
     }
   };
 
+  const restartChat = useCallback(() => {
+    setConversation(null);
+    setLines([]);
+    lastIdRef.current = 0;
+    setUnread(0);
+    setError("");
+    setShowHandoffForm(false);
+    void startSession();
+  }, [startSession]);
+
   const status = conversation?.status ?? "bot";
   const headerTitle = status === "live"
     ? conversation?.assignedAgentName || "Sringeri Team"
@@ -552,41 +562,57 @@ export default function ChatbotWidget() {
             </CardContent>
 
             <CardFooter className="p-2.5 border-t bg-background shrink-0 flex-col gap-2 items-stretch">
-              {status !== "closed" && status !== "live" && status !== "waiting" && !showHandoffForm && (
-                <button
-                  onClick={requestAgent}
-                  disabled={sending || !conversation}
-                  className="text-xs text-primary hover:underline flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  data-testid="button-talk-to-person"
+              {status === "closed" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={restartChat}
+                  disabled={starting}
+                  className="w-full"
+                  data-testid="button-start-new-chat"
                 >
-                  <Headset className="h-3.5 w-3.5" />
-                  Talk to a person
-                  {!agentOnline && <span className="text-muted-foreground">· team offline</span>}
-                </button>
-              )}
-
-              {status === "offline_pending" && (
-                <p className="text-[11px] text-muted-foreground flex items-center justify-center gap-1">
-                  <Mail className="h-3 w-3" /> We will reply to {conversation?.email} within 2–4 hours.
-                </p>
-              )}
-
-              <form
-                className="flex w-full gap-2"
-                onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }}
-              >
-                <Input
-                  placeholder={status === "closed" ? "This chat is closed" : "Type your message…"}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  className="flex-1"
-                  disabled={!canType || sending}
-                  data-testid="input-chat-message"
-                />
-                <Button type="submit" size="icon" disabled={!input.trim() || !canType || sending} data-testid="button-send-chat">
-                  <Send className="h-4 w-4" />
+                  {starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Start a new chat"}
                 </Button>
-              </form>
+              ) : (
+                <>
+                  {status !== "live" && status !== "waiting" && !showHandoffForm && (
+                    <button
+                      onClick={requestAgent}
+                      disabled={sending || !conversation}
+                      className="text-xs text-primary hover:underline flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      data-testid="button-talk-to-person"
+                    >
+                      <Headset className="h-3.5 w-3.5" />
+                      Talk to a person
+                      {!agentOnline && <span className="text-muted-foreground">· team offline</span>}
+                    </button>
+                  )}
+
+                  {status === "offline_pending" && (
+                    <p className="text-[11px] text-muted-foreground flex items-center justify-center gap-1">
+                      <Mail className="h-3 w-3" /> We will reply to {conversation?.email} within 2–4 hours.
+                    </p>
+                  )}
+
+                  <form
+                    className="flex w-full gap-2"
+                    onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }}
+                  >
+                    <Input
+                      placeholder="Type your message…"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      className="flex-1"
+                      disabled={!canType || sending}
+                      data-testid="input-chat-message"
+                    />
+                    <Button type="submit" size="icon" disabled={!input.trim() || !canType || sending} data-testid="button-send-chat">
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </form>
+                </>
+              )}
             </CardFooter>
           </Card>
         </div>

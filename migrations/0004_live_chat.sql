@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS chat_conversations (
   phone text,
   status text DEFAULT 'bot' NOT NULL,
   source text DEFAULT 'app' NOT NULL,
+  page_url text,
+  page_title text,
   assigned_agent_uid text,
   assigned_agent_name text,
   unread_for_agent integer DEFAULT 0 NOT NULL,

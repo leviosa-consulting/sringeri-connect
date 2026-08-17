@@ -220,6 +220,8 @@ export class MemStorage implements IStorage {
       phone: data.phone ?? null,
       status: data.status ?? "bot",
       source: data.source ?? "app",
+      pageUrl: data.pageUrl ?? null,
+      pageTitle: data.pageTitle ?? null,
       assignedAgentUid: data.assignedAgentUid ?? null,
       assignedAgentName: data.assignedAgentName ?? null,
       unreadForAgent: data.unreadForAgent ?? 0,
