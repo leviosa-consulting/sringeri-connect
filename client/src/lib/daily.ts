@@ -8,7 +8,6 @@ export interface DailyGuruvaniItem {
   quote: string;
   attribution: string;
   points: number;
-  isFallback: boolean;
   reflected: boolean;
   reflectionText: string | null;
   pointsAwarded: number | null;

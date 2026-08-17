@@ -1,5 +1,6 @@
-import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, passwordResetTokens, adminRoles, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog, type PasswordResetToken, type AdminRole, dailyGuruvani, dailyQuestions, dailyActivities, dailyReflections, dailyQuestionResponses, dailyActivityResponses, dharmaPoints, DHARMA_SOURCE_GURUVANI, DHARMA_SOURCE_QUESTION, DHARMA_SOURCE_ACTIVITY, type DailyGuruvani, type DailyQuestion, type DailyActivity, type DailyReflection, type DailyQuestionResponse, type DailyActivityResponse, type DharmaPointsEntry, type InsertDailyGuruvani, type InsertDailyQuestion, type InsertDailyActivity } from "@shared/schema";
+import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, passwordResetTokens, adminRoles, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog, type PasswordResetToken, type AdminRole, dailyGuruvani, dailyQuestions, dailyActivities, dailyReflections, dailyQuestionResponses, dailyActivityResponses, dharmaPoints, DHARMA_SOURCE_GURUVANI, DHARMA_SOURCE_QUESTION, DHARMA_SOURCE_ACTIVITY, type DailyQuestion, type DailyActivity, type DailyReflection, type DailyQuestionResponse, type DailyActivityResponse, type DharmaPointsEntry, type InsertDailyQuestion, type InsertDailyActivity } from "@shared/schema";
 import { normalizeDailyAnswer } from "@shared/daily-grading";
+import { getGuruvaniForDate } from "@shared/guruvani";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql, eq, and, gte, lte, desc, asc, count, countDistinct, avg } from "drizzle-orm";
@@ -58,13 +59,10 @@ export interface IStorage {
   revokeAdminRole(id: number): Promise<void>;
 
   // --- Daily practice content (admin-scheduled, one item per date) ---
-  getDailyGuruvani(dateStr: string): Promise<DailyGuruvani | undefined>;
   getDailyQuestion(dateStr: string): Promise<DailyQuestion | undefined>;
   getDailyActivity(dateStr: string): Promise<DailyActivity | undefined>;
-  upsertDailyGuruvani(data: InsertDailyGuruvani): Promise<DailyGuruvani>;
   upsertDailyQuestion(data: InsertDailyQuestion): Promise<DailyQuestion>;
   upsertDailyActivity(data: InsertDailyActivity): Promise<DailyActivity>;
-  deleteDailyGuruvani(dateStr: string): Promise<void>;
   deleteDailyQuestion(dateStr: string): Promise<void>;
   deleteDailyActivity(dateStr: string): Promise<void>;
   listDailyContentDates(limit?: number): Promise<DailyContentDateRow[]>;
@@ -112,7 +110,6 @@ export type DailyContentSaveResult = "saved" | "frozen";
 
 export interface DailyContentDateRow {
   contentDate: string;
-  hasGuruvani: boolean;
   hasQuestion: boolean;
   hasActivity: boolean;
 }
@@ -230,13 +227,10 @@ export class MemStorage implements IStorage {
     this._adminRoles = this._adminRoles.filter(r => r.id !== id);
   }
 
-  async getDailyGuruvani(_dateStr: string): Promise<DailyGuruvani | undefined> { return undefined; }
   async getDailyQuestion(_dateStr: string): Promise<DailyQuestion | undefined> { return undefined; }
   async getDailyActivity(_dateStr: string): Promise<DailyActivity | undefined> { return undefined; }
-  async upsertDailyGuruvani(_data: InsertDailyGuruvani): Promise<DailyGuruvani> { throw new Error("Not implemented"); }
   async upsertDailyQuestion(_data: InsertDailyQuestion): Promise<DailyQuestion> { throw new Error("Not implemented"); }
   async upsertDailyActivity(_data: InsertDailyActivity): Promise<DailyActivity> { throw new Error("Not implemented"); }
-  async deleteDailyGuruvani(_dateStr: string): Promise<void> {}
   async deleteDailyQuestion(_dateStr: string): Promise<void> {}
   async deleteDailyActivity(_dateStr: string): Promise<void> {}
   async listDailyContentDates(_limit?: number): Promise<DailyContentDateRow[]> { return []; }
@@ -783,12 +777,6 @@ if (process.env.DATABASE_URL) {
 
     // ----- Daily practice content -----
 
-    async getDailyGuruvani(dateStr: string): Promise<DailyGuruvani | undefined> {
-      const [row] = await db.select().from(dailyGuruvani)
-        .where(and(eq(dailyGuruvani.contentDate, dateStr), eq(dailyGuruvani.isActive, true)));
-      return row;
-    }
-
     async getDailyQuestion(dateStr: string): Promise<DailyQuestion | undefined> {
       const [row] = await db.select().from(dailyQuestions)
         .where(and(eq(dailyQuestions.contentDate, dateStr), eq(dailyQuestions.isActive, true)));
@@ -798,20 +786,6 @@ if (process.env.DATABASE_URL) {
     async getDailyActivity(dateStr: string): Promise<DailyActivity | undefined> {
       const [row] = await db.select().from(dailyActivities)
         .where(and(eq(dailyActivities.contentDate, dateStr), eq(dailyActivities.isActive, true)));
-      return row;
-    }
-
-    async upsertDailyGuruvani(data: InsertDailyGuruvani): Promise<DailyGuruvani> {
-      const [row] = await db.insert(dailyGuruvani).values(data).onConflictDoUpdate({
-        target: dailyGuruvani.contentDate,
-        set: {
-          quote: data.quote,
-          attribution: data.attribution ?? null,
-          points: data.points ?? 2,
-          isActive: data.isActive ?? true,
-          updatedAt: new Date(),
-        },
-      }).returning();
       return row;
     }
 
@@ -851,10 +825,6 @@ if (process.env.DATABASE_URL) {
       return row;
     }
 
-    async deleteDailyGuruvani(dateStr: string): Promise<void> {
-      await db.delete(dailyGuruvani).where(eq(dailyGuruvani.contentDate, dateStr));
-    }
-
     async deleteDailyQuestion(dateStr: string): Promise<void> {
       await db.delete(dailyQuestions).where(eq(dailyQuestions.contentDate, dateStr));
     }
@@ -866,12 +836,10 @@ if (process.env.DATABASE_URL) {
     async listDailyContentDates(limitNum: number = 60): Promise<DailyContentDateRow[]> {
       const rows = await db.execute(sql`
         SELECT d.content_date::text AS content_date,
-               bool_or(d.kind = 'g') AS has_guruvani,
                bool_or(d.kind = 'q') AS has_question,
                bool_or(d.kind = 'a') AS has_activity
         FROM (
-          SELECT content_date, 'g' AS kind FROM daily_guruvani
-          UNION ALL SELECT content_date, 'q' FROM daily_questions
+          SELECT content_date, 'q' AS kind FROM daily_questions
           UNION ALL SELECT content_date, 'a' FROM daily_activities
         ) d
         GROUP BY d.content_date
@@ -880,7 +848,6 @@ if (process.env.DATABASE_URL) {
       `);
       return (rows.rows as any[]).map(r => ({
         contentDate: r.content_date,
-        hasGuruvani: !!r.has_guruvani,
         hasQuestion: !!r.has_question,
         hasActivity: !!r.has_activity,
       }));
@@ -1118,7 +1085,8 @@ if (process.env.DATABASE_URL) {
         }).from(dailyReflections)
           .leftJoin(dailyGuruvani, eq(dailyReflections.guruvaniId, dailyGuruvani.id))
           .where(eq(dailyReflections.odUserId, odUserId))
-          .orderBy(desc(dailyReflections.contentDate)).limit(limitNum),
+          .orderBy(desc(dailyReflections.contentDate)).limit(limitNum)
+          .then(rows => rows.map(r => ({ ...r, quote: r.quote ?? getGuruvaniForDate(r.contentDate) }))),
         db.select({
           id: dailyQuestionResponses.id,
           odUserId: dailyQuestionResponses.odUserId,
@@ -1168,7 +1136,8 @@ if (process.env.DATABASE_URL) {
         }).from(dailyReflections)
           .leftJoin(dailyGuruvani, eq(dailyReflections.guruvaniId, dailyGuruvani.id))
           .where(eq(dailyReflections.contentDate, dateStr))
-          .orderBy(desc(dailyReflections.createdAt)).limit(500),
+          .orderBy(desc(dailyReflections.createdAt)).limit(500)
+          .then(rows => rows.map(r => ({ ...r, quote: r.quote ?? getGuruvaniForDate(r.contentDate) }))),
         db.select({
           id: dailyQuestionResponses.id,
           odUserId: dailyQuestionResponses.odUserId,

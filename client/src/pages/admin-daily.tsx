@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-interface GuruvaniForm {
+interface GuruvaniInfo {
   quote: string;
   attribution: string;
   points: number;
@@ -35,7 +35,6 @@ interface ActivityForm {
 
 interface DateRow {
   contentDate: string;
-  hasGuruvani: boolean;
   hasQuestion: boolean;
   hasActivity: boolean;
 }
@@ -46,7 +45,6 @@ interface Submissions {
   activities: { id: number; odUserId: string; submittedAnswer: string; isCorrect: boolean; pointsAwarded: number }[];
 }
 
-const EMPTY_GURUVANI: GuruvaniForm = { quote: "", attribution: "", points: 2 };
 const EMPTY_QUESTION: QuestionForm = { questionText: "", options: ["", ""], correctIndex: 0, points: 1, explanation: "" };
 const EMPTY_ACTIVITY: ActivityForm = {
   activityType: "anagram", answerMode: "text", prompt: "", imageUrl: "",
@@ -80,13 +78,11 @@ export default function AdminDaily() {
   const [error, setError] = useState("");
   const [dates, setDates] = useState<DateRow[]>([]);
 
-  const [guruvaniOn, setGuruvaniOn] = useState(false);
   const [questionOn, setQuestionOn] = useState(false);
   const [activityOn, setActivityOn] = useState(false);
-  const [guruvani, setGuruvani] = useState<GuruvaniForm>(EMPTY_GURUVANI);
+  const [guruvani, setGuruvani] = useState<GuruvaniInfo>({ quote: "", attribution: "", points: 2 });
   const [question, setQuestion] = useState<QuestionForm>(EMPTY_QUESTION);
   const [activity, setActivity] = useState<ActivityForm>(EMPTY_ACTIVITY);
-  const [fallbackGuruvani, setFallbackGuruvani] = useState("");
   const [questionFrozen, setQuestionFrozen] = useState(false);
   const [activityFrozen, setActivityFrozen] = useState(false);
 
@@ -116,21 +112,15 @@ export default function AdminDaily() {
       const res = await authFetch(`/api/admin/daily/${target}`);
       if (!res.ok) throw new Error("Could not load this date");
       const data = await res.json();
-      setFallbackGuruvani(data.fallbackGuruvani || "");
       setQuestionFrozen(!!data.questionFrozen);
       setActivityFrozen(!!data.activityFrozen);
 
-      if (data.guruvani) {
-        setGuruvaniOn(true);
-        setGuruvani({
-          quote: data.guruvani.quote,
-          attribution: data.guruvani.attribution || "",
-          points: data.guruvani.points,
-        });
-      } else {
-        setGuruvaniOn(false);
-        setGuruvani(EMPTY_GURUVANI);
-      }
+      // Guruvani always comes from the fixed quote pool — read-only here.
+      setGuruvani({
+        quote: data.guruvani?.quote || "",
+        attribution: data.guruvani?.attribution || "",
+        points: data.guruvani?.points ?? 2,
+      });
 
       if (data.question) {
         setQuestionOn(true);
@@ -178,9 +168,6 @@ export default function AdminDaily() {
     setError("");
     try {
       const body = {
-        guruvani: guruvaniOn
-          ? { quote: guruvani.quote, attribution: guruvani.attribution, points: Number(guruvani.points) }
-          : null,
         question: questionFrozen ? undefined : questionOn
           ? {
               questionText: question.questionText,
@@ -255,7 +242,7 @@ export default function AdminDaily() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold">Daily Content</h1>
-          <p className="text-sm text-muted-foreground">Schedule the Guruvani, Question and Activity that devotees see in Today</p>
+          <p className="text-sm text-muted-foreground">Schedule the Question and Activity that devotees see in Today. Guruvani rotates automatically from the fixed quote pool and cannot be scheduled here.</p>
         </div>
       </div>
 
@@ -288,7 +275,7 @@ export default function AdminDaily() {
             >
               {d.contentDate}
               <span className="ml-1 opacity-70">
-                {d.hasGuruvani ? "G" : ""}{d.hasQuestion ? "Q" : ""}{d.hasActivity ? "A" : ""}
+                {d.hasQuestion ? "Q" : ""}{d.hasActivity ? "A" : ""}
               </span>
             </button>
           ))}
@@ -299,50 +286,19 @@ export default function AdminDaily() {
         <div className="flex justify-center py-10"><RangoliLoader size={48} /></div>
       ) : (
         <div className="space-y-5">
-          {/* ---------- Guruvani ---------- */}
-          <section className="p-4 rounded-xl border border-border/60 bg-card space-y-3" data-testid="admin-section-guruvani">
-            <label className="flex items-center gap-2 font-semibold">
-              <input type="checkbox" checked={guruvaniOn} onChange={(e) => setGuruvaniOn(e.target.checked)} data-testid="toggle-guruvani" />
-              Guruvani
-            </label>
-            {guruvaniOn ? (
-              <div className="space-y-3">
-                <Field label="Quote">
-                  <textarea
-                    rows={3}
-                    value={guruvani.quote}
-                    onChange={(e) => setGuruvani({ ...guruvani, quote: e.target.value })}
-                    className="w-full rounded-md border border-input bg-background p-2 text-sm"
-                    data-testid="input-guruvani-quote"
-                  />
-                </Field>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <Field label="Attribution">
-                      <Input
-                        value={guruvani.attribution}
-                        onChange={(e) => setGuruvani({ ...guruvani, attribution: e.target.value })}
-                        placeholder="Jagadguru Shankaracharya…"
-                        data-testid="input-guruvani-attribution"
-                      />
-                    </Field>
-                  </div>
-                  <Field label="Points" hint="Awarded for any reflection">
-                    <Input
-                      type="number"
-                      min={0}
-                      value={guruvani.points}
-                      onChange={(e) => setGuruvani({ ...guruvani, points: Number(e.target.value) })}
-                      data-testid="input-guruvani-points"
-                    />
-                  </Field>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Not scheduled — devotees will see the standard rotating quote: “{fallbackGuruvani.slice(0, 90)}…”
-              </p>
-            )}
+          {/* ---------- Guruvani (read-only: always the pool's quote for this date) ---------- */}
+          <section className="p-4 rounded-xl border border-border/60 bg-card space-y-2" data-testid="admin-section-guruvani">
+            <div className="font-semibold">Guruvani</div>
+            <p className="text-xs text-muted-foreground">
+              Always drawn from the fixed quote pool — it cannot be authored or overridden here.
+            </p>
+            <div className="rounded-md bg-muted/40 p-3 space-y-1">
+              <p className="text-sm italic" data-testid="text-guruvani-readonly-quote">{guruvani.quote || "—"}</p>
+              {guruvani.attribution && (
+                <p className="text-xs text-muted-foreground">— {guruvani.attribution}</p>
+              )}
+              <p className="text-[11px] text-muted-foreground">Awarded for any reflection: {guruvani.points} points</p>
+            </div>
           </section>
 
           {/* ---------- Question ---------- */}
@@ -353,7 +309,7 @@ export default function AdminDaily() {
             </label>
             {questionFrozen && (
               <p className="text-xs text-amber-700 bg-amber-50 rounded-md px-2 py-1.5" data-testid="text-question-frozen">
-                Devotees have already answered this question, so it can no longer be changed. The Guruvani and activity for this day can still be edited.
+                Devotees have already answered this question, so it can no longer be changed. The activity for this day can still be edited.
               </p>
             )}
             {questionOn && (
@@ -587,7 +543,7 @@ export default function AdminDaily() {
             </div>
             <div className="rounded-xl bg-white/70 p-3">
               <div className="text-[11px] font-semibold text-primary uppercase tracking-wider">Guruvani</div>
-              <p className="text-sm italic mt-1">{guruvaniOn ? guruvani.quote || "—" : fallbackGuruvani}</p>
+              <p className="text-sm italic mt-1">{guruvani.quote || "—"}</p>
             </div>
             {questionOn && (
               <div className="rounded-xl bg-white/70 p-3">

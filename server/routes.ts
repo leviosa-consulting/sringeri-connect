@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { getFallbackGuruvani, GURU_VANI_ATTRIBUTION } from "@shared/guruvani";
+import { getGuruvaniForDate, GURU_VANI_ATTRIBUTION } from "@shared/guruvani";
 import { createServer, type Server } from "http";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
@@ -5300,8 +5300,7 @@ export async function registerRoutes(
       if (!uid) return res.status(401).json({ error: "Authentication required" });
       const dateStr = getISTDate();
 
-      const [guruvani, question, activity, reflection, questionResponse, activityResponse, points] = await Promise.all([
-        storage.getDailyGuruvani(dateStr),
+      const [question, activity, reflection, questionResponse, activityResponse, points] = await Promise.all([
         storage.getDailyQuestion(dateStr),
         storage.getDailyActivity(dateStr),
         storage.getDailyReflection(uid, dateStr),
@@ -5311,11 +5310,10 @@ export async function registerRoutes(
       ]);
 
       const guruvaniPayload = {
-        id: guruvani?.id ?? null,
-        quote: guruvani?.quote ?? getFallbackGuruvani(dateStr),
-        attribution: guruvani?.attribution ?? GURU_VANI_ATTRIBUTION,
-        points: guruvani?.points ?? GURUVANI_DEFAULT_POINTS,
-        isFallback: !guruvani,
+        id: null,
+        quote: getGuruvaniForDate(dateStr),
+        attribution: GURU_VANI_ATTRIBUTION,
+        points: GURUVANI_DEFAULT_POINTS,
         reflected: !!reflection,
         reflectionText: reflection?.reflectionText ?? null,
         pointsAwarded: reflection?.pointsAwarded ?? null,
@@ -5378,10 +5376,9 @@ export async function registerRoutes(
       if (text.length > 2000) return res.status(400).json({ error: "Reflection is too long (max 2000 characters)" });
 
       const dateStr = getISTDate();
-      const guruvani = await storage.getDailyGuruvani(dateStr);
-      const points = guruvani?.points ?? GURUVANI_DEFAULT_POINTS;
+      const points = GURUVANI_DEFAULT_POINTS;
 
-      const reflection = await storage.submitDailyReflection(uid, dateStr, guruvani?.id ?? null, text, points);
+      const reflection = await storage.submitDailyReflection(uid, dateStr, null, text, points);
       if (!reflection) return res.status(409).json({ error: "You have already reflected today" });
 
       const summary = await storage.getDharmaPointsSummary(uid, dateStr);
@@ -5504,8 +5501,7 @@ export async function registerRoutes(
       if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const dateStr = req.params.date;
       if (!DATE_RE.test(dateStr)) return res.status(400).json({ error: "Invalid date" });
-      const [guruvani, question, activity, questionAnswers, activityAnswers] = await Promise.all([
-        storage.getDailyGuruvani(dateStr),
+      const [question, activity, questionAnswers, activityAnswers] = await Promise.all([
         storage.getDailyQuestion(dateStr),
         storage.getDailyActivity(dateStr),
         storage.countDailyQuestionResponses(dateStr),
@@ -5513,7 +5509,13 @@ export async function registerRoutes(
       ]);
       res.json({
         date: dateStr,
-        guruvani: guruvani ?? null,
+        // Guruvani is never admin-scheduled — always the fixed pool's quote
+        // for this date, shown here read-only for reference.
+        guruvani: {
+          quote: getGuruvaniForDate(dateStr),
+          attribution: GURU_VANI_ATTRIBUTION,
+          points: GURUVANI_DEFAULT_POINTS,
+        },
         question: question ?? null,
         activity: activity ?? null,
         // Once a devotee has answered, that item is frozen: changing it would
@@ -5522,7 +5524,6 @@ export async function registerRoutes(
         activityFrozen: activityAnswers > 0,
         questionAnswers,
         activityAnswers,
-        fallbackGuruvani: getFallbackGuruvani(dateStr),
       });
     } catch (error) {
       console.error("Error getting daily content:", error);
@@ -5535,25 +5536,11 @@ export async function registerRoutes(
       if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
       const dateStr = req.params.date;
       if (!DATE_RE.test(dateStr)) return res.status(400).json({ error: "Invalid date" });
-      const { guruvani, question, activity } = req.body || {};
+      const { question, activity } = req.body || {};
       // Each section is saved on its own: a frozen question must not stop the
-      // Guruvani or activity for that day from being edited.
+      // activity for that day from being edited. Guruvani is never
+      // admin-authored, so there is nothing to save for it here.
       const frozen: string[] = [];
-
-      if (guruvani === null) {
-        await storage.deleteDailyGuruvani(dateStr);
-      } else if (guruvani) {
-        if (typeof guruvani.quote !== "string" || !guruvani.quote.trim()) {
-          return res.status(400).json({ error: "Guruvani quote is required" });
-        }
-        await storage.upsertDailyGuruvani({
-          contentDate: dateStr,
-          quote: guruvani.quote.trim(),
-          attribution: guruvani.attribution?.trim() || null,
-          points: Number.isInteger(guruvani.points) && guruvani.points > 0 ? guruvani.points : GURUVANI_DEFAULT_POINTS,
-          isActive: guruvani.isActive !== false,
-        });
-      }
 
       if (question === null) {
         if (await storage.deleteDailyQuestionIfUnanswered(dateStr) === "frozen") frozen.push("question");
@@ -5620,8 +5607,7 @@ export async function registerRoutes(
         if (activityResult === "frozen") frozen.push("activity");
       }
 
-      const [g, q, a, questionAnswers, activityAnswers] = await Promise.all([
-        storage.getDailyGuruvani(dateStr),
+      const [q, a, questionAnswers, activityAnswers] = await Promise.all([
         storage.getDailyQuestion(dateStr),
         storage.getDailyActivity(dateStr),
         storage.countDailyQuestionResponses(dateStr),
@@ -5629,7 +5615,11 @@ export async function registerRoutes(
       ]);
       res.json({
         date: dateStr,
-        guruvani: g ?? null,
+        guruvani: {
+          quote: getGuruvaniForDate(dateStr),
+          attribution: GURU_VANI_ATTRIBUTION,
+          points: GURUVANI_DEFAULT_POINTS,
+        },
         question: q ?? null,
         activity: a ?? null,
         questionFrozen: questionAnswers > 0,
