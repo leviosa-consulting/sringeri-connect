@@ -188,17 +188,17 @@ export default function Home() {
               <Sparkles className="w-3.5 h-3.5" />
               Occasion Today
             </div>
-            {todayDetails.occasionK && (
+            {todayDetails.occasion && (
+              <div className="text-base font-semibold text-foreground leading-relaxed" data-testid="text-home-occasion-english">{todayDetails.occasion}</div>
+            )}
+            {showKannada && todayDetails.occasionK && (
               <div
-                className="text-base font-serif text-foreground leading-relaxed"
+                className={`text-sm text-foreground/70 leading-relaxed font-serif ${todayDetails.occasion ? "mt-1" : ""}`}
                 style={{ fontFamily: "'Noto Serif Kannada', 'Merriweather', serif" }}
                 data-testid="text-home-occasion-kannada"
               >
                 {todayDetails.occasionK}
               </div>
-            )}
-            {todayDetails.occasion && (
-              <div className="text-sm text-foreground/70 leading-relaxed mt-1" data-testid="text-home-occasion-english">{todayDetails.occasion}</div>
             )}
           </div>
         )}
