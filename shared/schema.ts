@@ -206,6 +206,33 @@ export const CHAT_PRESENCE_KEY = "live_chat_agent_online";
 export const CHAT_PRESENCE_NAME_KEY = "live_chat_agent_name";
 export const CHAT_PRESENCE_UPDATED_KEY = "live_chat_presence_updated_at";
 
+/**
+ * Settings for the widget embedded on sringeri.net. They live in appSettings so
+ * the team can change them from the admin console without the website being
+ * touched — the embed reads them at load time.
+ */
+export const CHAT_EMBED_ENABLED_KEY = "live_chat_embed_enabled";
+export const CHAT_EMBED_GREETING_KEY = "live_chat_embed_greeting";
+export const CHAT_EMBED_ACCENT_KEY = "live_chat_embed_accent";
+export const CHAT_EMBED_POSITION_KEY = "live_chat_embed_position";
+/** Comma-separated extra origins allowed to load the embed, beyond the defaults. */
+export const CHAT_EMBED_ORIGINS_KEY = "live_chat_embed_origins";
+
+export const CHAT_EMBED_POSITIONS = ["bottom-right", "bottom-left"] as const;
+export type ChatEmbedPosition = (typeof CHAT_EMBED_POSITIONS)[number];
+
+export const CHAT_EMBED_DEFAULTS = {
+  enabled: true,
+  greeting:
+    "Namaste 🙏 I am Sringeri Sahayak. Ask me about darshan, sevas, donations, accommodation or events — or say \"talk to a person\" to reach our team.",
+  accent: "#B45309",
+  position: "bottom-right" as ChatEmbedPosition,
+};
+
+/** Sources a conversation can arrive from. */
+export const CHAT_SOURCES = ["app", "website"] as const;
+export type ChatSource = (typeof CHAT_SOURCES)[number];
+
 export const appSettings = pgTable("app_settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),

@@ -13,7 +13,21 @@ import {
   sendChatConcernToSupport,
   sendChatAgentReplyEmail,
 } from "./email-service";
-import { CHAT_PRESENCE_KEY, CHAT_PRESENCE_NAME_KEY, CHAT_PRESENCE_UPDATED_KEY, CHAT_STATUSES } from "@shared/schema";
+import {
+  CHAT_PRESENCE_KEY,
+  CHAT_PRESENCE_NAME_KEY,
+  CHAT_PRESENCE_UPDATED_KEY,
+  CHAT_STATUSES,
+  CHAT_EMBED_ENABLED_KEY,
+  CHAT_EMBED_GREETING_KEY,
+  CHAT_EMBED_ACCENT_KEY,
+  CHAT_EMBED_POSITION_KEY,
+  CHAT_EMBED_ORIGINS_KEY,
+  CHAT_EMBED_POSITIONS,
+  CHAT_EMBED_DEFAULTS,
+} from "@shared/schema";
+import fsPromises from "fs/promises";
+import nodePath from "path";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
 const _filename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
@@ -4603,7 +4617,106 @@ export async function registerRoutes(
     message: { error: "Too many messages. Please wait a moment." },
   });
 
+  // Polling is chatty by design (3 s while a chat is open), so it gets its own,
+  // roomier ceiling — but it must still have one, or an anonymous caller could
+  // hammer it freely. A shared office IP with several devotees chatting at once
+  // stays comfortably inside this.
+  const liveChatPollLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests. Please wait a moment." },
+  });
+
   const AGENT_ONLINE_STALE_MS = 12 * 60 * 60 * 1000;
+
+  // --- Embeddable widget (sringeri.net) -------------------------------------
+  //
+  // The website loads /embed/live-chat.js from this app and talks to the same
+  // live-chat endpoints cross-origin. Only allow-listed origins get the CORS
+  // headers, so an unrelated site cannot mount the widget against our queue.
+
+  const DEFAULT_EMBED_ORIGINS = [
+    "https://sringeri.net",
+    "https://www.sringeri.net",
+    "https://sringerimutt.org",
+    "https://www.sringerimutt.org",
+  ];
+
+  async function allowedEmbedOrigins(): Promise<string[]> {
+    const fromSettings = (await storage.getAppSetting(CHAT_EMBED_ORIGINS_KEY)) || "";
+    const fromEnv = process.env.CHAT_EMBED_ORIGINS || "";
+    const extra = fromSettings.split(",").concat(fromEnv.split(","))
+      .map(o => o.trim().replace(/\/$/, ""))
+      .filter(Boolean);
+    return DEFAULT_EMBED_ORIGINS.concat(extra).filter((o, i, all) => all.indexOf(o) === i);
+  }
+
+  /**
+   * Cross-origin access for the embedded widget. Same-origin requests from the
+   * devotee app carry no Origin header (or our own) and are untouched.
+   */
+  const liveChatCors = async (req: any, res: any, next: any) => {
+    try {
+      const origin = String(req.headers.origin || "").replace(/\/$/, "");
+      if (origin) {
+        const allowed = await allowedEmbedOrigins();
+        const selfOrigin = `${(req.headers["x-forwarded-proto"] as string) || req.protocol}://${req.headers.host}`;
+        if (allowed.includes(origin) || origin === selfOrigin) {
+          res.setHeader("Access-Control-Allow-Origin", origin);
+          res.setHeader("Vary", "Origin");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+          res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+          res.setHeader("Access-Control-Max-Age", "86400");
+        } else {
+          // Refuse unknown sites outright rather than letting the browser fail
+          // with a confusing CORS error after the work has already been done.
+          if (req.method === "OPTIONS") return res.status(403).end();
+          return res.status(403).json({ error: "This site is not authorised to use Sringeri Live Chat." });
+        }
+      }
+      if (req.method === "OPTIONS") return res.status(204).end();
+      next();
+    } catch (error) {
+      // A settings lookup failure must not hang the request; fall back to the
+      // built-in allowlist rather than leaving the visitor waiting.
+      console.error("Live chat CORS check failed:", error);
+      const origin = String(req.headers.origin || "").replace(/\/$/, "");
+      if (origin && !DEFAULT_EMBED_ORIGINS.includes(origin)) {
+        return res.status(403).json({ error: "This site is not authorised to use Sringeri Live Chat." });
+      }
+      if (origin) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Vary", "Origin");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      }
+      if (req.method === "OPTIONS") return res.status(204).end();
+      next();
+    }
+  };
+
+  app.use("/api/live-chat", liveChatCors);
+
+  async function getEmbedSettings() {
+    const [enabled, greeting, accent, position, origins] = await Promise.all([
+      storage.getAppSetting(CHAT_EMBED_ENABLED_KEY),
+      storage.getAppSetting(CHAT_EMBED_GREETING_KEY),
+      storage.getAppSetting(CHAT_EMBED_ACCENT_KEY),
+      storage.getAppSetting(CHAT_EMBED_POSITION_KEY),
+      storage.getAppSetting(CHAT_EMBED_ORIGINS_KEY),
+    ]);
+    return {
+      enabled: enabled === null || enabled === undefined ? CHAT_EMBED_DEFAULTS.enabled : enabled === "true",
+      greeting: greeting || CHAT_EMBED_DEFAULTS.greeting,
+      accent: accent || CHAT_EMBED_DEFAULTS.accent,
+      position: (CHAT_EMBED_POSITIONS as readonly string[]).includes(position || "")
+        ? (position as string)
+        : CHAT_EMBED_DEFAULTS.position,
+      origins: origins || "",
+    };
+  }
 
   async function getAgentPresence(): Promise<{ online: boolean; agentName: string | null }> {
     const [flag, name, updatedAt] = await Promise.all([
@@ -4637,6 +4750,50 @@ export async function registerRoutes(
     return messages.filter(m => m.author !== "system").map(m => ({ author: m.author, content: m.content }));
   }
 
+  /**
+   * The embed bundle lives in the client's public folder, so it is a plain
+   * static asset in production. Serving it explicitly gives it a stable URL in
+   * development too, plus a short cache window: the website pastes the tag once
+   * and picks up every later change within five minutes.
+   */
+  const EMBED_BUNDLE_CANDIDATES = [
+    nodePath.resolve(process.cwd(), "dist/public/embed/live-chat.js"),
+    nodePath.resolve(process.cwd(), "client/public/embed/live-chat.js"),
+  ];
+
+  app.get("/embed/live-chat.js", async (_req, res) => {
+    for (const candidate of EMBED_BUNDLE_CANDIDATES) {
+      try {
+        const js = await fsPromises.readFile(candidate, "utf8");
+        res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+        res.setHeader("Cache-Control", "public, max-age=300");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        return res.send(js);
+      } catch { /* try the next location */ }
+    }
+    console.error("Live chat embed bundle not found in", EMBED_BUNDLE_CANDIDATES);
+    res.status(404).type("application/javascript").send("/* Sringeri Live Chat embed unavailable */");
+  });
+
+  /** Read by the embed at load time so the website never needs redeploying. */
+  app.get("/api/live-chat/embed-config", async (_req, res) => {
+    try {
+      const settings = await getEmbedSettings();
+      const presence = await getAgentPresence();
+      res.setHeader("Cache-Control", "no-store");
+      res.json({
+        enabled: settings.enabled,
+        greeting: settings.greeting,
+        accent: settings.accent,
+        position: settings.position,
+        agentOnline: presence.online,
+      });
+    } catch (error) {
+      console.error("Live chat embed config error:", error);
+      res.json({ ...CHAT_EMBED_DEFAULTS, agentOnline: false });
+    }
+  });
+
   app.get("/api/live-chat/availability", async (_req, res) => {
     try {
       res.json(await getAgentPresence());
@@ -4654,19 +4811,24 @@ export async function registerRoutes(
       }
 
       const auth = await getFirebaseUidAndEmail(req).catch(() => null);
+      const cleanSource = source === "website" ? "website" : "app";
       let convo = await storage.getActiveChatConversationForVisitor(visitorId);
       if (!convo) {
         convo = await storage.createChatConversation({
           visitorId,
           odUserId: auth?.uid || null,
           email: auth?.email || null,
-          source: typeof source === "string" && source ? source.slice(0, 40) : "app",
+          source: cleanSource,
         });
+        // Website visitors get the greeting the team controls from the admin
+        // console; the in-app greeting is fixed.
+        const greeting = cleanSource === "website"
+          ? (await getEmbedSettings()).greeting
+          : "Namaste 🙏 I am Sringeri Sahayak. I can help with donations, accommodation, panchanga, events and services.\n\nAsk me anything, or say \"talk to a person\" to reach our team.";
         await storage.appendChatMessage({
           conversationId: convo.id,
           author: "bot",
-          content:
-            "Namaste 🙏 I am Sringeri Sahayak. I can help with donations, accommodation, panchanga, events and services.\n\nAsk me anything, or say \"talk to a person\" to reach our team.",
+          content: greeting,
         });
       } else if (auth?.uid && !convo.odUserId) {
         convo = (await storage.updateChatConversation(convo.id, { odUserId: auth.uid, email: convo.email || auth.email || null })) || convo;
@@ -4684,7 +4846,7 @@ export async function registerRoutes(
 
   // POST, not GET: the visitorId is a bearer secret and must never land in a
   // URL that browsers, proxies and access logs would keep.
-  app.post("/api/live-chat/poll", async (req, res) => {
+  app.post("/api/live-chat/poll", liveChatPollLimiter, async (req, res) => {
     try {
       const { visitorId, conversationId, sinceId, markRead } = req.body || {};
       const convo = await loadVisitorConversation(req, parseInt(String(conversationId), 10), String(visitorId || ""));
@@ -4857,6 +5019,59 @@ export async function registerRoutes(
       res.json(await getAgentPresence());
     } catch (error) {
       console.error("Live chat presence write error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/live-chat/embed-settings", async (req, res) => {
+    try {
+      if (!(await requireRole(req, "support"))) return res.status(403).json({ error: "Admin access required" });
+      res.json({ ...(await getEmbedSettings()), defaultOrigins: DEFAULT_EMBED_ORIGINS });
+    } catch (error) {
+      console.error("Live chat embed settings read error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/live-chat/embed-settings", async (req, res) => {
+    try {
+      if (!(await requireRole(req, "support"))) return res.status(403).json({ error: "Admin access required" });
+      const { enabled, greeting, accent, position, origins } = req.body || {};
+
+      if (typeof enabled === "boolean") {
+        await storage.setAppSetting(CHAT_EMBED_ENABLED_KEY, enabled ? "true" : "false");
+      }
+      if (typeof greeting === "string" && greeting.trim()) {
+        await storage.setAppSetting(CHAT_EMBED_GREETING_KEY, greeting.trim().slice(0, 600));
+      }
+      if (typeof accent === "string") {
+        if (!/^#[0-9a-fA-F]{6}$/.test(accent.trim())) {
+          return res.status(400).json({ error: "Accent colour must be a hex value like #B45309" });
+        }
+        await storage.setAppSetting(CHAT_EMBED_ACCENT_KEY, accent.trim());
+      }
+      if (typeof position === "string") {
+        if (!(CHAT_EMBED_POSITIONS as readonly string[]).includes(position)) {
+          return res.status(400).json({ error: "Position must be bottom-right or bottom-left" });
+        }
+        await storage.setAppSetting(CHAT_EMBED_POSITION_KEY, position);
+      }
+      if (typeof origins === "string") {
+        const cleaned = origins
+          .split(",")
+          .map(o => o.trim().replace(/\/$/, ""))
+          .filter(Boolean);
+        for (const o of cleaned) {
+          if (!/^https?:\/\/[^\s/]+$/.test(o)) {
+            return res.status(400).json({ error: `"${o}" is not a valid site address (e.g. https://example.org)` });
+          }
+        }
+        await storage.setAppSetting(CHAT_EMBED_ORIGINS_KEY, cleaned.join(","));
+      }
+
+      res.json({ ...(await getEmbedSettings()), defaultOrigins: DEFAULT_EMBED_ORIGINS });
+    } catch (error) {
+      console.error("Live chat embed settings write error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

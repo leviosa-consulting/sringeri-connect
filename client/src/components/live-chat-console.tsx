@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Headset, Send, Loader2, X, Mail, RefreshCw } from "lucide-react";
+import { Headset, Send, Loader2, X, Mail, RefreshCw, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -43,6 +43,15 @@ const STATUS_STYLES: Record<ChatStatus, { label: string; className: string }> = 
   closed: { label: "Closed", className: "bg-muted text-muted-foreground" },
 };
 
+const SOURCE_STYLES: Record<string, { label: string; className: string }> = {
+  app: { label: "App", className: "bg-indigo-100 text-indigo-700" },
+  website: { label: "Website", className: "bg-teal-100 text-teal-700" },
+};
+
+function sourceStyle(source: string) {
+  return SOURCE_STYLES[source] || { label: source, className: "bg-slate-100 text-slate-600" };
+}
+
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
@@ -58,6 +67,7 @@ export default function LiveChatConsole({ token }: { token: string }) {
   const [reply, setReply] = useState("");
   const [replySending, setReplySending] = useState(false);
   const [alsoEmail, setAlsoEmail] = useState(true);
+  const [sourceFilter, setSourceFilter] = useState<"" | "app" | "website">("");
   const transcriptRef = useRef<HTMLDivElement>(null);
 
   const authFetch = useCallback(
@@ -182,6 +192,7 @@ export default function LiveChatConsole({ token }: { token: string }) {
   const selected = conversations.find((c) => c.id === selectedId) || null;
   const waiting = conversations.filter((c) => c.status === "waiting").length;
   const pending = conversations.filter((c) => c.status === "offline_pending").length;
+  const visible = sourceFilter ? conversations.filter((c) => c.source === sourceFilter) : conversations;
 
   return (
     <div className="space-y-4" data-testid="live-chat-console">
@@ -226,14 +237,34 @@ export default function LiveChatConsole({ token }: { token: string }) {
         </div>
       </div>
 
+      <EmbedSettingsPanel authFetch={authFetch} />
+
+      <div className="flex items-center gap-2 text-xs" data-testid="filter-source">
+        <span className="text-muted-foreground">Show:</span>
+        {([["", "All"], ["app", "App"], ["website", "Website"]] as const).map(([value, label]) => (
+          <button
+            key={value || "all"}
+            onClick={() => setSourceFilter(value as "" | "app" | "website")}
+            className={`px-2.5 py-1 rounded-full border transition-colors ${
+              sourceFilter === value ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+            }`}
+            data-testid={`button-filter-${value || "all"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid md:grid-cols-[280px_1fr] gap-4">
         <div className="bg-white border border-border rounded-xl overflow-hidden max-h-[420px] overflow-y-auto" data-testid="list-conversations">
           {loading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
-          ) : conversations.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">No chats yet.</p>
+          ) : visible.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">
+              {sourceFilter ? `No ${sourceFilter} chats.` : "No chats yet."}
+            </p>
           ) : (
-            conversations.map((c) => {
+            visible.map((c) => {
               const style = STATUS_STYLES[c.status] || STATUS_STYLES.bot;
               return (
                 <button
@@ -244,6 +275,9 @@ export default function LiveChatConsole({ token }: { token: string }) {
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${style.className}`}>{style.label}</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${sourceStyle(c.source).className}`}>
+                      {sourceStyle(c.source).label}
+                    </span>
                     {c.unreadForAgent > 0 && (
                       <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white">{c.unreadForAgent}</span>
                     )}
@@ -345,6 +379,167 @@ export default function LiveChatConsole({ token }: { token: string }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Remote control for the widget embedded on sringeri.net. The website team
+ * pastes the snippet once; everything below is changed from here.
+ */
+interface EmbedSettings {
+  enabled: boolean;
+  greeting: string;
+  accent: string;
+  position: string;
+  origins: string;
+  defaultOrigins: string[];
+}
+
+function EmbedSettingsPanel({ authFetch }: { authFetch: (url: string, init?: RequestInit) => Promise<Response> }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [settings, setSettings] = useState<EmbedSettings | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open || settings) return;
+    void (async () => {
+      try {
+        const res = await authFetch("/api/admin/live-chat/embed-settings");
+        if (res.ok) setSettings(await res.json());
+      } catch { /* ignore */ }
+    })();
+  }, [open, settings, authFetch]);
+
+  const save = async () => {
+    if (!settings) return;
+    setSaving(true);
+    try {
+      const res = await authFetch("/api/admin/live-chat/embed-settings", {
+        method: "POST",
+        body: JSON.stringify({
+          enabled: settings.enabled,
+          greeting: settings.greeting,
+          accent: settings.accent,
+          position: settings.position,
+          origins: settings.origins,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not save");
+      setSettings(data);
+      toast({ title: "Website chat settings saved" });
+    } catch (err: any) {
+      toast({ title: "Not saved", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const snippet = `<script src="${window.location.origin}/embed/live-chat.js" defer></script>`;
+
+  return (
+    <div className="bg-white border border-border rounded-xl" data-testid="panel-embed-settings">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-2 px-4 py-3 text-left"
+        data-testid="button-toggle-embed-settings"
+      >
+        <Globe className="h-4 w-4 text-primary" />
+        <span className="text-sm font-semibold">Chat on sringeri.net</span>
+        <span className="ml-auto text-xs text-muted-foreground">{open ? "Hide" : "Settings & install code"}</span>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+          {!settings ? (
+            <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.enabled}
+                  onChange={(e) => setSettings({ ...settings, enabled: e.target.checked })}
+                  data-testid="checkbox-embed-enabled"
+                />
+                Show the chat widget on the website
+              </label>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Opening greeting for website visitors</p>
+                <textarea
+                  value={settings.greeting}
+                  onChange={(e) => setSettings({ ...settings, greeting: e.target.value })}
+                  rows={3}
+                  maxLength={600}
+                  className="w-full text-sm border border-border rounded-lg p-2 resize-none"
+                  data-testid="input-embed-greeting"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Colour</p>
+                  <input
+                    type="color"
+                    value={settings.accent}
+                    onChange={(e) => setSettings({ ...settings, accent: e.target.value })}
+                    className="h-9 w-16 border border-border rounded"
+                    data-testid="input-embed-accent"
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Corner</p>
+                  <select
+                    value={settings.position}
+                    onChange={(e) => setSettings({ ...settings, position: e.target.value })}
+                    className="h-9 text-sm border border-border rounded-lg px-2"
+                    data-testid="select-embed-position"
+                  >
+                    <option value="bottom-right">Bottom right</option>
+                    <option value="bottom-left">Bottom left</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Extra websites allowed to use this chat (comma separated). Always allowed: {settings.defaultOrigins.join(", ")}
+                </p>
+                <input
+                  value={settings.origins}
+                  onChange={(e) => setSettings({ ...settings, origins: e.target.value })}
+                  placeholder="https://another-site.org"
+                  className="w-full text-sm border border-border rounded-lg p-2"
+                  data-testid="input-embed-origins"
+                />
+              </div>
+
+              <Button size="sm" onClick={save} disabled={saving} data-testid="button-save-embed-settings">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save website settings"}
+              </Button>
+
+              <div className="pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground mb-1">
+                  Give this one line to the website team — paste it before <code>&lt;/body&gt;</code> on every page.
+                </p>
+                <code className="block text-[11px] bg-muted rounded-lg p-2 break-all" data-testid="text-embed-snippet">
+                  {snippet}
+                </code>
+                <button
+                  onClick={() => { void navigator.clipboard.writeText(snippet); toast({ title: "Install code copied" }); }}
+                  className="text-xs text-primary underline mt-1"
+                  data-testid="button-copy-embed-snippet"
+                >
+                  Copy install code
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
