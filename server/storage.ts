@@ -1,3 +1,4 @@
+import { chatConversations, chatMessages, type ChatConversation, type InsertChatConversation, type ChatMessage, type InsertChatMessage } from "@shared/schema";
 import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, passwordResetTokens, adminRoles, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog, type PasswordResetToken, type AdminRole, dailyGuruvani, dailyQuestions, dailyActivities, dailyReflections, dailyQuestionResponses, dailyActivityResponses, dharmaPoints, DHARMA_SOURCE_GURUVANI, DHARMA_SOURCE_QUESTION, DHARMA_SOURCE_ACTIVITY, type DailyQuestion, type DailyActivity, type DailyReflection, type DailyQuestionResponse, type DailyActivityResponse, type DharmaPointsEntry, type InsertDailyQuestion, type InsertDailyActivity } from "@shared/schema";
 import { normalizeDailyAnswer, normalizeAnagramAnswer } from "@shared/daily-grading";
 import { getGuruvaniForDate } from "@shared/guruvani";
@@ -47,6 +48,16 @@ export interface IStorage {
   listAllSupportMessages(type?: string, status?: string): Promise<SupportMessage[]>;
   getSupportMessage(id: number): Promise<SupportMessage | undefined>;
   replySupportMessage(id: number, reply: string): Promise<SupportMessage>;
+  createChatConversation(data: InsertChatConversation): Promise<ChatConversation>;
+  getChatConversation(id: number): Promise<ChatConversation | undefined>;
+  getActiveChatConversationForVisitor(visitorId: string): Promise<ChatConversation | undefined>;
+  listChatConversations(status?: string, limit?: number): Promise<ChatConversation[]>;
+  updateChatConversation(id: number, patch: Partial<InsertChatConversation>): Promise<ChatConversation | undefined>;
+  appendChatMessage(msg: InsertChatMessage): Promise<ChatMessage>;
+  listChatMessages(conversationId: number, sinceId?: number): Promise<ChatMessage[]>;
+  /** Atomic counter bump so concurrent messages cannot lose an increment. */
+  bumpChatUnread(id: number, side: "agent" | "visitor", by?: number): Promise<void>;
+  clearChatUnread(id: number, side: "agent" | "visitor"): Promise<void>;
   insertReconciliationLog(log: InsertReconciliationLog): Promise<ReconciliationLog>;
   getReconciliationLogs(from: Date, to: Date): Promise<ReconciliationLog[]>;
   createPasswordResetToken(token: string, uid: string, email: string, expiresAt: Date): Promise<void>;
@@ -192,6 +203,93 @@ export class MemStorage implements IStorage {
     return this.supportMsgs.filter(m => (!type || m.type === type) && (!status || m.status === status)).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
   async getSupportMessage(id: number): Promise<SupportMessage | undefined> { return this.supportMsgs.find(m => m.id === id); }
+
+  private chatConvos: ChatConversation[] = [];
+  private chatConvoIdCounter = 1;
+  private chatMsgs: ChatMessage[] = [];
+  private chatMsgIdCounter = 1;
+
+  async createChatConversation(data: InsertChatConversation): Promise<ChatConversation> {
+    const now = new Date();
+    const record: ChatConversation = {
+      id: this.chatConvoIdCounter++,
+      visitorId: data.visitorId,
+      odUserId: data.odUserId ?? null,
+      name: data.name ?? null,
+      email: data.email ?? null,
+      phone: data.phone ?? null,
+      status: data.status ?? "bot",
+      source: data.source ?? "app",
+      assignedAgentUid: data.assignedAgentUid ?? null,
+      assignedAgentName: data.assignedAgentName ?? null,
+      unreadForAgent: data.unreadForAgent ?? 0,
+      unreadForVisitor: data.unreadForVisitor ?? 0,
+      lastMessageAt: now,
+      createdAt: now,
+      closedAt: null,
+    };
+    this.chatConvos.push(record);
+    return record;
+  }
+
+  async getChatConversation(id: number): Promise<ChatConversation | undefined> {
+    return this.chatConvos.find(c => c.id === id);
+  }
+
+  async getActiveChatConversationForVisitor(visitorId: string): Promise<ChatConversation | undefined> {
+    return this.chatConvos
+      .filter(c => c.visitorId === visitorId && c.status !== "closed")
+      .sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime())[0];
+  }
+
+  async listChatConversations(status?: string, limit = 100): Promise<ChatConversation[]> {
+    return this.chatConvos
+      .filter(c => !status || c.status === status)
+      .sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime())
+      .slice(0, limit);
+  }
+
+  async updateChatConversation(id: number, patch: Partial<InsertChatConversation>): Promise<ChatConversation | undefined> {
+    const convo = this.chatConvos.find(c => c.id === id);
+    if (!convo) return undefined;
+    Object.assign(convo, patch);
+    return convo;
+  }
+
+  async appendChatMessage(msg: InsertChatMessage): Promise<ChatMessage> {
+    const record: ChatMessage = {
+      id: this.chatMsgIdCounter++,
+      conversationId: msg.conversationId,
+      author: msg.author,
+      authorName: msg.authorName ?? null,
+      content: msg.content,
+      createdAt: new Date(),
+    };
+    this.chatMsgs.push(record);
+    const convo = this.chatConvos.find(c => c.id === msg.conversationId);
+    if (convo) convo.lastMessageAt = record.createdAt;
+    return record;
+  }
+
+  async listChatMessages(conversationId: number, sinceId = 0): Promise<ChatMessage[]> {
+    return this.chatMsgs
+      .filter(m => m.conversationId === conversationId && m.id > sinceId)
+      .sort((a, b) => a.id - b.id);
+  }
+
+  async bumpChatUnread(id: number, side: "agent" | "visitor", by = 1): Promise<void> {
+    const convo = this.chatConvos.find(c => c.id === id);
+    if (!convo) return;
+    if (side === "agent") convo.unreadForAgent += by;
+    else convo.unreadForVisitor += by;
+  }
+
+  async clearChatUnread(id: number, side: "agent" | "visitor"): Promise<void> {
+    const convo = this.chatConvos.find(c => c.id === id);
+    if (!convo) return;
+    if (side === "agent") convo.unreadForAgent = 0;
+    else convo.unreadForVisitor = 0;
+  }
   async insertReconciliationLog(_log: InsertReconciliationLog): Promise<ReconciliationLog> { throw new Error("Not implemented"); }
   async getReconciliationLogs(_from: Date, _to: Date): Promise<ReconciliationLog[]> { return []; }
   private _resetTokens = new Map<string, PasswordResetToken>();
@@ -721,6 +819,65 @@ if (process.env.DATABASE_URL) {
         .where(eq(supportMessages.id, id))
         .returning();
       return result;
+    }
+
+    async createChatConversation(data: InsertChatConversation): Promise<ChatConversation> {
+      const [result] = await db.insert(chatConversations).values(data).returning();
+      return result;
+    }
+
+    async getChatConversation(id: number): Promise<ChatConversation | undefined> {
+      const [result] = await db.select().from(chatConversations).where(eq(chatConversations.id, id));
+      return result;
+    }
+
+    async getActiveChatConversationForVisitor(visitorId: string): Promise<ChatConversation | undefined> {
+      const [result] = await db.select().from(chatConversations)
+        .where(and(eq(chatConversations.visitorId, visitorId), sql`${chatConversations.status} <> 'closed'`))
+        .orderBy(desc(chatConversations.lastMessageAt))
+        .limit(1);
+      return result;
+    }
+
+    async listChatConversations(status?: string, limitNum = 100): Promise<ChatConversation[]> {
+      return db.select().from(chatConversations)
+        .where(status ? eq(chatConversations.status, status as any) : undefined)
+        .orderBy(desc(chatConversations.lastMessageAt))
+        .limit(limitNum);
+    }
+
+    async updateChatConversation(id: number, patch: Partial<InsertChatConversation>): Promise<ChatConversation | undefined> {
+      const [result] = await db.update(chatConversations).set(patch)
+        .where(eq(chatConversations.id, id))
+        .returning();
+      return result;
+    }
+
+    async appendChatMessage(msg: InsertChatMessage): Promise<ChatMessage> {
+      const [result] = await db.insert(chatMessages).values(msg).returning();
+      await db.update(chatConversations)
+        .set({ lastMessageAt: result.createdAt })
+        .where(eq(chatConversations.id, msg.conversationId));
+      return result;
+    }
+
+    async listChatMessages(conversationId: number, sinceId = 0): Promise<ChatMessage[]> {
+      return db.select().from(chatMessages)
+        .where(and(eq(chatMessages.conversationId, conversationId), sql`${chatMessages.id} > ${sinceId}`))
+        .orderBy(asc(chatMessages.id));
+    }
+
+    async bumpChatUnread(id: number, side: "agent" | "visitor", by = 1): Promise<void> {
+      const column = side === "agent" ? chatConversations.unreadForAgent : chatConversations.unreadForVisitor;
+      await db.update(chatConversations)
+        .set({ [side === "agent" ? "unreadForAgent" : "unreadForVisitor"]: sql`${column} + ${by}` })
+        .where(eq(chatConversations.id, id));
+    }
+
+    async clearChatUnread(id: number, side: "agent" | "visitor"): Promise<void> {
+      await db.update(chatConversations)
+        .set(side === "agent" ? { unreadForAgent: 0 } : { unreadForVisitor: 0 })
+        .where(eq(chatConversations.id, id));
     }
 
     async insertReconciliationLog(log: InsertReconciliationLog): Promise<ReconciliationLog> {

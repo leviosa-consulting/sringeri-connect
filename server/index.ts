@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import cron from "node-cron";
 import { registerRoutes } from "./routes";
 import { ensureDailyPracticeSchema } from "./daily-schema";
+import { ensureLiveChatSchema } from "./chat-schema";
 import { serveStatic } from "./static";
 import { runReconciliation } from "./reconciliation-service";
 import { createServer } from "http";
@@ -216,6 +217,12 @@ httpServer.on("error", (err: any) => {
       await ensureDailyPracticeSchema();
     } catch (err) {
       console.error("Failed to ensure daily practice schema:", err);
+    }
+
+    try {
+      await ensureLiveChatSchema();
+    } catch (err) {
+      console.error("Failed to ensure live chat schema:", err);
     }
 
     await registerRoutes(httpServer, app);

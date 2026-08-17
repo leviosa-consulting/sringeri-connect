@@ -6,6 +6,14 @@ import { storage } from "./storage";
 import { initializeApp as initializeFirebaseApp, getApps } from "firebase/app";
 import { getFirestore, collection, getDocs, query, orderBy, limit, where, Timestamp } from "firebase/firestore";
 import { handleChatMessage, setEventsCache, setAnnouncementsCache } from "./chatbot";
+import { generateBotReply } from "./ai-chat";
+import {
+  isEmailServiceConfigured,
+  sendChatOfflineAcknowledgement,
+  sendChatConcernToSupport,
+  sendChatAgentReplyEmail,
+} from "./email-service";
+import { CHAT_PRESENCE_KEY, CHAT_PRESENCE_NAME_KEY, CHAT_PRESENCE_UPDATED_KEY, CHAT_STATUSES } from "@shared/schema";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
 const _filename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
@@ -4579,6 +4587,378 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error in chat:", error);
       res.status(500).json({ error: "Failed to process message" });
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Live Chat — one thread per visitor: AI bot first, human agent on request,
+  // emailed concern when nobody is online.
+  // -------------------------------------------------------------------------
+
+  const liveChatLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many messages. Please wait a moment." },
+  });
+
+  const AGENT_ONLINE_STALE_MS = 12 * 60 * 60 * 1000;
+
+  async function getAgentPresence(): Promise<{ online: boolean; agentName: string | null }> {
+    const [flag, name, updatedAt] = await Promise.all([
+      storage.getAppSetting(CHAT_PRESENCE_KEY),
+      storage.getAppSetting(CHAT_PRESENCE_NAME_KEY),
+      storage.getAppSetting(CHAT_PRESENCE_UPDATED_KEY),
+    ]);
+    // A toggle left on overnight would strand devotees in the queue, so it
+    // lapses on its own after half a day.
+    const stale = updatedAt ? Date.now() - Number(updatedAt) > AGENT_ONLINE_STALE_MS : true;
+    return { online: flag === "true" && !stale, agentName: name || null };
+  }
+
+  /**
+   * Anonymous threads are authorised by the visitorId secret. Once a thread is
+   * bound to a signed-in devotee the Firebase uid must match too, so a leaked
+   * visitorId cannot reach an identified devotee's transcript.
+   */
+  async function loadVisitorConversation(req: any, conversationId: number, visitorId: string) {
+    if (!visitorId || !Number.isFinite(conversationId)) return null;
+    const convo = await storage.getChatConversation(conversationId);
+    if (!convo || convo.visitorId !== visitorId) return null;
+    if (convo.odUserId) {
+      const auth = await getFirebaseUidAndEmail(req).catch(() => null);
+      if (auth?.uid !== convo.odUserId) return null;
+    }
+    return convo;
+  }
+
+  function transcriptFor(messages: { author: string; content: string }[]) {
+    return messages.filter(m => m.author !== "system").map(m => ({ author: m.author, content: m.content }));
+  }
+
+  app.get("/api/live-chat/availability", async (_req, res) => {
+    try {
+      res.json(await getAgentPresence());
+    } catch (error) {
+      console.error("Live chat availability error:", error);
+      res.json({ online: false, agentName: null });
+    }
+  });
+
+  app.post("/api/live-chat/session", liveChatLimiter, async (req, res) => {
+    try {
+      const { visitorId, source } = req.body || {};
+      if (!visitorId || typeof visitorId !== "string" || visitorId.length < 8 || visitorId.length > 100) {
+        return res.status(400).json({ error: "A valid visitorId is required" });
+      }
+
+      const auth = await getFirebaseUidAndEmail(req).catch(() => null);
+      let convo = await storage.getActiveChatConversationForVisitor(visitorId);
+      if (!convo) {
+        convo = await storage.createChatConversation({
+          visitorId,
+          odUserId: auth?.uid || null,
+          email: auth?.email || null,
+          source: typeof source === "string" && source ? source.slice(0, 40) : "app",
+        });
+        await storage.appendChatMessage({
+          conversationId: convo.id,
+          author: "bot",
+          content:
+            "Namaste 🙏 I am Sringeri Sahayak. I can help with donations, accommodation, panchanga, events and services.\n\nAsk me anything, or say \"talk to a person\" to reach our team.",
+        });
+      } else if (auth?.uid && !convo.odUserId) {
+        convo = (await storage.updateChatConversation(convo.id, { odUserId: auth.uid, email: convo.email || auth.email || null })) || convo;
+      }
+
+      const messages = await storage.listChatMessages(convo.id);
+      await storage.clearChatUnread(convo.id, "visitor");
+      const presence = await getAgentPresence();
+      res.json({ conversation: { ...convo, unreadForVisitor: 0 }, messages, agentOnline: presence.online });
+    } catch (error) {
+      console.error("Live chat session error:", error);
+      res.status(500).json({ error: "Could not start the chat" });
+    }
+  });
+
+  // POST, not GET: the visitorId is a bearer secret and must never land in a
+  // URL that browsers, proxies and access logs would keep.
+  app.post("/api/live-chat/poll", async (req, res) => {
+    try {
+      const { visitorId, conversationId, sinceId, markRead } = req.body || {};
+      const convo = await loadVisitorConversation(req, parseInt(String(conversationId), 10), String(visitorId || ""));
+      if (!convo) return res.status(404).json({ error: "Conversation not found" });
+
+      const messages = await storage.listChatMessages(convo.id, parseInt(String(sinceId || "0"), 10) || 0);
+      if (markRead !== false && messages.length) await storage.clearChatUnread(convo.id, "visitor");
+      const presence = await getAgentPresence();
+      res.json({ conversation: convo, messages, agentOnline: presence.online });
+    } catch (error) {
+      console.error("Live chat poll error:", error);
+      res.status(500).json({ error: "Could not load messages" });
+    }
+  });
+
+  app.post("/api/live-chat/message", liveChatLimiter, async (req, res) => {
+    try {
+      const { visitorId, conversationId, content } = req.body || {};
+      if (!content || typeof content !== "string" || !content.trim()) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      const text = content.trim().slice(0, 2000);
+      const convo = await loadVisitorConversation(req, parseInt(String(conversationId), 10), String(visitorId || ""));
+      if (!convo) return res.status(404).json({ error: "Conversation not found" });
+      if (convo.status === "closed") return res.status(409).json({ error: "This conversation is closed" });
+
+      const userMsg = await storage.appendChatMessage({ conversationId: convo.id, author: "user", content: text });
+      await storage.bumpChatUnread(convo.id, "agent");
+
+      const presence = await getAgentPresence();
+      const newMessages: any[] = [userMsg];
+
+      // Once a human is involved the bot stays quiet.
+      if (convo.status === "bot") {
+        const history = (await storage.listChatMessages(convo.id))
+          .filter(m => m.author === "user" || m.author === "bot")
+          .slice(-10)
+          .map(m => ({ role: m.author === "user" ? "user" as const : "assistant" as const, content: m.content }));
+
+        const ai = await generateBotReply(history);
+        const botMsg = await storage.appendChatMessage({ conversationId: convo.id, author: "bot", content: ai.reply });
+        newMessages.push(botMsg);
+
+        if (ai.suggestHandoff) {
+          const notice = presence.online
+            ? "You can tap **Talk to a person** below and a member of our team will join this chat."
+            : "Our team is offline right now. Tap **Talk to a person** to leave your concern — we reply within 2–4 hours.";
+          newMessages.push(await storage.appendChatMessage({ conversationId: convo.id, author: "system", content: notice }));
+        }
+      }
+
+      const updated = await storage.getChatConversation(convo.id);
+      res.json({ conversation: updated, messages: newMessages, agentOnline: presence.online });
+    } catch (error) {
+      console.error("Live chat message error:", error);
+      res.status(500).json({ error: "Could not send the message" });
+    }
+  });
+
+  app.post("/api/live-chat/request-agent", liveChatLimiter, async (req, res) => {
+    try {
+      const { visitorId, conversationId, name, email, phone, concern } = req.body || {};
+      const convo = await loadVisitorConversation(req, parseInt(String(conversationId), 10), String(visitorId || ""));
+      if (!convo) return res.status(404).json({ error: "Conversation not found" });
+      if (convo.status === "closed") return res.status(409).json({ error: "This conversation is closed" });
+
+      const presence = await getAgentPresence();
+      const cleanName = typeof name === "string" ? name.trim().slice(0, 120) : "";
+      const cleanEmail = typeof email === "string" ? email.trim().slice(0, 160) : "";
+      const cleanPhone = typeof phone === "string" ? phone.trim().slice(0, 40) : "";
+      const cleanConcern = typeof concern === "string" ? concern.trim().slice(0, 2000) : "";
+
+      if (presence.online) {
+        await storage.updateChatConversation(convo.id, {
+          status: "waiting",
+          name: cleanName || convo.name,
+          email: cleanEmail || convo.email,
+          phone: cleanPhone || convo.phone,
+        });
+        await storage.bumpChatUnread(convo.id, "agent");
+        if (cleanConcern) {
+          await storage.appendChatMessage({ conversationId: convo.id, author: "user", content: cleanConcern });
+        }
+        await storage.appendChatMessage({
+          conversationId: convo.id,
+          author: "system",
+          content: "Connecting you with a member of our team. Please stay on this chat.",
+        });
+        const updated = await storage.getChatConversation(convo.id);
+        return res.json({ status: updated?.status, agentOnline: true, conversation: updated });
+      }
+
+      // Nobody online: capture the concern and promise a reply by email.
+      if (!cleanEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
+        return res.status(400).json({ error: "email_required" });
+      }
+      if (!cleanConcern) {
+        return res.status(400).json({ error: "concern_required" });
+      }
+
+      await storage.appendChatMessage({ conversationId: convo.id, author: "user", content: cleanConcern });
+      await storage.updateChatConversation(convo.id, {
+        status: "offline_pending",
+        name: cleanName || convo.name,
+        email: cleanEmail,
+        phone: cleanPhone || convo.phone,
+      });
+      await storage.bumpChatUnread(convo.id, "agent");
+
+      const all = await storage.listChatMessages(convo.id);
+      const payload = {
+        conversationId: convo.id,
+        name: cleanName || "Devotee",
+        email: cleanEmail,
+        phone: cleanPhone || null,
+        concern: cleanConcern,
+        transcript: transcriptFor(all),
+      };
+
+      let emailed = false;
+      if (isEmailServiceConfigured()) {
+        const results = await Promise.allSettled([
+          sendChatOfflineAcknowledgement(payload),
+          sendChatConcernToSupport(payload),
+        ]);
+        results.forEach(r => { if (r.status === "rejected") console.error("Live chat email failed:", r.reason); });
+        emailed = results[0].status === "fulfilled";
+      } else {
+        console.warn("Live chat: email service not configured; concern stored without notification.");
+      }
+
+      await storage.appendChatMessage({
+        conversationId: convo.id,
+        author: "system",
+        content: emailed
+          ? `Our team is offline right now. We have recorded your concern and sent a confirmation to ${cleanEmail}. A member of the team will reply within 2–4 hours.`
+          : "Our team is offline right now. We have recorded your concern and a member of the team will reply within 2–4 hours.",
+      });
+
+      const updated = await storage.getChatConversation(convo.id);
+      res.json({ status: "offline_pending", agentOnline: false, emailed, conversation: updated });
+    } catch (error) {
+      console.error("Live chat request-agent error:", error);
+      res.status(500).json({ error: "Could not reach our team. Please try again." });
+    }
+  });
+
+  // --- Live Chat admin console (support role) ------------------------------
+
+  app.get("/api/admin/live-chat/presence", async (req, res) => {
+    try {
+      if (!(await requireRole(req, "support"))) return res.status(403).json({ error: "Admin access required" });
+      res.json(await getAgentPresence());
+    } catch (error) {
+      console.error("Live chat presence read error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/live-chat/presence", async (req, res) => {
+    try {
+      if (!(await requireRole(req, "support"))) return res.status(403).json({ error: "Admin access required" });
+      const { online, agentName } = req.body || {};
+      if (typeof online !== "boolean") return res.status(400).json({ error: "online must be a boolean" });
+      await storage.setAppSetting(CHAT_PRESENCE_KEY, online ? "true" : "false");
+      await storage.setAppSetting(CHAT_PRESENCE_UPDATED_KEY, String(Date.now()));
+      if (typeof agentName === "string" && agentName.trim()) {
+        await storage.setAppSetting(CHAT_PRESENCE_NAME_KEY, agentName.trim().slice(0, 80));
+      }
+      res.json(await getAgentPresence());
+    } catch (error) {
+      console.error("Live chat presence write error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/live-chat/conversations", async (req, res) => {
+    try {
+      if (!(await requireRole(req, "support"))) return res.status(403).json({ error: "Admin access required" });
+      const status = typeof req.query.status === "string" && CHAT_STATUSES.includes(req.query.status as any)
+        ? (req.query.status as string)
+        : undefined;
+      res.json(await storage.listChatConversations(status, 100));
+    } catch (error) {
+      console.error("Live chat list error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/live-chat/conversations/:id/messages", async (req, res) => {
+    try {
+      if (!(await requireRole(req, "support"))) return res.status(403).json({ error: "Admin access required" });
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid conversation ID" });
+      const convo = await storage.getChatConversation(id);
+      if (!convo) return res.status(404).json({ error: "Conversation not found" });
+      const sinceId = parseInt(String(req.query.sinceId || "0"), 10) || 0;
+      const messages = await storage.listChatMessages(id, sinceId);
+      if (convo.unreadForAgent > 0) await storage.clearChatUnread(id, "agent");
+      res.json({ conversation: { ...convo, unreadForAgent: 0 }, messages });
+    } catch (error) {
+      console.error("Live chat transcript error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/live-chat/conversations/:id/reply", async (req, res) => {
+    try {
+      if (!(await requireRole(req, "support"))) return res.status(403).json({ error: "Admin access required" });
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid conversation ID" });
+      const { content, sendEmail } = req.body || {};
+      if (!content || typeof content !== "string" || !content.trim()) {
+        return res.status(400).json({ error: "Reply text is required" });
+      }
+      const convo = await storage.getChatConversation(id);
+      if (!convo) return res.status(404).json({ error: "Conversation not found" });
+
+      const auth = await getUidAndAdminRoles(req);
+      const presence = await getAgentPresence();
+      const agentName = presence.agentName || "Sringeri Team";
+      const text = content.trim().slice(0, 4000);
+
+      const msg = await storage.appendChatMessage({
+        conversationId: id,
+        author: "agent",
+        authorName: agentName,
+        content: text,
+      });
+      // Any agent reply puts the thread in the live queue — an answered offline
+      // concern must not keep showing the "reply within 2–4 hours" promise.
+      await storage.updateChatConversation(id, {
+        status: "live",
+        closedAt: null,
+        assignedAgentUid: convo.assignedAgentUid || auth.uid || null,
+        assignedAgentName: convo.assignedAgentName || agentName,
+      });
+      await storage.bumpChatUnread(id, "visitor");
+
+      let emailed = false;
+      if (sendEmail && convo.email && isEmailServiceConfigured()) {
+        try {
+          await sendChatAgentReplyEmail(convo.email, convo.name || "Devotee", id, text);
+          emailed = true;
+        } catch (err) {
+          console.error("Live chat agent reply email failed:", err);
+        }
+      }
+
+      res.json({ message: msg, emailed, conversation: await storage.getChatConversation(id) });
+    } catch (error) {
+      console.error("Live chat reply error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/live-chat/conversations/:id/close", async (req, res) => {
+    try {
+      if (!(await requireRole(req, "support"))) return res.status(403).json({ error: "Admin access required" });
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid conversation ID" });
+      const convo = await storage.getChatConversation(id);
+      if (!convo) return res.status(404).json({ error: "Conversation not found" });
+      await storage.appendChatMessage({
+        conversationId: id,
+        author: "system",
+        content: "This conversation has been closed by our team. Start a new chat any time.",
+      });
+      await storage.updateChatConversation(id, { status: "closed", closedAt: new Date(), unreadForAgent: 0 });
+      await storage.bumpChatUnread(id, "visitor");
+      res.json(await storage.getChatConversation(id));
+    } catch (error) {
+      console.error("Live chat close error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 

@@ -486,6 +486,36 @@ function buildUnknownResponse(): string {
     "Please try one of these topics, or contact the Sringeri office directly for other queries.";
 }
 
+/**
+ * Compact snapshot of every fact this app can vouch for, assembled from the
+ * same deterministic builders the keyword bot uses. The AI bot is told to
+ * answer only from this text, which keeps it grounded in official data.
+ */
+export async function buildGroundingContext(): Promise<string> {
+  const [donation, accommodation, panchanga, events, announcements] = await Promise.all([
+    buildDonationResponse().catch(() => ""),
+    buildAccommodationResponse(null).catch(() => ""),
+    buildPanchangaResponse().catch(() => ""),
+    buildEventsResponse().catch(() => ""),
+    buildAnnouncementsResponse().catch(() => ""),
+  ]);
+
+  const sections: [string, string][] = [
+    ["DONATIONS", donation],
+    ["ACCOMMODATION (today's availability)", accommodation],
+    ["TODAY'S PANCHANGA", panchanga],
+    ["UPCOMING EVENTS", events],
+    ["ANNOUNCEMENTS", announcements],
+    ["SERVICES", buildServicesResponse()],
+    ["CONTACT & TIMINGS", buildContactResponse()],
+  ];
+
+  return sections
+    .filter(([, body]) => body.trim().length > 0)
+    .map(([title, body]) => `### ${title}\n${body}`)
+    .join("\n\n");
+}
+
 let lastIntent: Intent = "unknown";
 
 export async function handleChatMessage(message: string): Promise<{ reply: string; intent: Intent; suggestedActions?: { label: string; action: string }[] }> {

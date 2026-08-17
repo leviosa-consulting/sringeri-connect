@@ -1,49 +1,61 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MessageCircle, X, Send, Bot, Loader2, RotateCcw, Mail, CheckCircle2 } from "lucide-react";
+import { X, Send, Bot, Loader2, Headset, MessageCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
 
-interface SuggestedAction {
-  label: string;
-  action: string;
-}
+/**
+ * Live Chat: a single thread that starts with the Sringeri Sahayak AI bot,
+ * escalates to a human agent when one is online, and otherwise captures the
+ * devotee's concern for an emailed reply within 2–4 hours.
+ */
 
-interface ChatMessage {
-  role: "user" | "bot";
-  content: string;
-  suggestedActions?: SuggestedAction[];
-  isLoading?: boolean;
-}
+type ChatStatus = "bot" | "waiting" | "live" | "offline_pending" | "closed";
 
-interface SupportMessage {
+interface ChatLine {
   id: number;
-  type: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  subject: string;
-  message: string;
-  adminReply: string | null;
-  status: string;
+  author: "user" | "bot" | "agent" | "system";
+  authorName: string | null;
+  content: string;
   createdAt: string;
-  repliedAt: string | null;
 }
 
-type WidgetTab = "sahayak" | "support" | "feedback";
+interface Conversation {
+  id: number;
+  status: ChatStatus;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  assignedAgentName: string | null;
+}
+
+const VISITOR_KEY = "sringeri_chat_visitor_id";
+const POLL_MS = 3000;
+
+function getVisitorId(): string {
+  try {
+    let id = localStorage.getItem(VISITOR_KEY);
+    if (!id) {
+      id = (crypto.randomUUID?.() || `v${Date.now()}${Math.random().toString(36).slice(2)}`);
+      localStorage.setItem(VISITOR_KEY, id);
+    }
+    return id;
+  } catch {
+    return `v${Date.now()}${Math.random().toString(36).slice(2)}`;
+  }
+}
 
 function renderMarkdown(text: string) {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
 
   lines.forEach((line, i) => {
-    if (line.startsWith("**") && line.endsWith("**") && !line.includes("**", 2)) {
-      elements.push(<strong key={i} className="block mt-2 mb-1">{line.slice(2, -2)}</strong>);
+    if (line.trim() === "") {
+      elements.push(<div key={i} className="h-2" />);
       return;
     }
 
@@ -61,15 +73,11 @@ function renderMarkdown(text: string) {
       if (linkMatch && linkMatch.index !== undefined) {
         firstMatch = { type: "link", index: linkMatch.index, full: linkMatch[0], content: linkMatch[1], url: linkMatch[2] };
       }
-      if (boldMatch && boldMatch.index !== undefined) {
-        if (!firstMatch || boldMatch.index < firstMatch.index) {
-          firstMatch = { type: "bold", index: boldMatch.index, full: boldMatch[0], content: boldMatch[1] };
-        }
+      if (boldMatch && boldMatch.index !== undefined && (!firstMatch || boldMatch.index < firstMatch.index)) {
+        firstMatch = { type: "bold", index: boldMatch.index, full: boldMatch[0], content: boldMatch[1] };
       }
-      if (italicMatch && italicMatch.index !== undefined) {
-        if (!firstMatch || italicMatch.index < firstMatch.index) {
-          firstMatch = { type: "italic", index: italicMatch.index, full: italicMatch[0], content: italicMatch[1] };
-        }
+      if (italicMatch && italicMatch.index !== undefined && (!firstMatch || italicMatch.index < firstMatch.index)) {
+        firstMatch = { type: "italic", index: italicMatch.index, full: italicMatch[0], content: italicMatch[1] };
       }
 
       if (!firstMatch) {
@@ -89,218 +97,75 @@ function renderMarkdown(text: string) {
         );
       } else if (firstMatch.type === "bold") {
         parts.push(<strong key={partKey++}>{firstMatch.content}</strong>);
-      } else if (firstMatch.type === "italic") {
+      } else {
         parts.push(<em key={partKey++} className="text-muted-foreground">{firstMatch.content}</em>);
       }
 
       remaining = remaining.substring(firstMatch.index + firstMatch.full.length);
     }
 
-    if (parts.length > 0) {
-      const isBullet = line.trimStart().startsWith("•");
-      if (isBullet) {
-        elements.push(<div key={i} className="pl-2 py-0.5">{parts}</div>);
-      } else if (line.trim() === "") {
-        elements.push(<div key={i} className="h-2" />);
-      } else {
-        elements.push(<div key={i} className="py-0.5">{parts}</div>);
-      }
-    } else if (line.trim() === "") {
-      elements.push(<div key={i} className="h-2" />);
-    }
+    elements.push(
+      <div key={i} className={line.trimStart().startsWith("•") ? "pl-2 py-0.5" : "py-0.5"}>
+        {parts}
+      </div>
+    );
   });
 
   return <div className="space-y-0">{elements}</div>;
 }
 
-const INITIAL_ACTIONS: SuggestedAction[] = [
-  { label: "🙏 Donations", action: "donation" },
-  { label: "🏨 Accommodation", action: "accommodation" },
-  { label: "📅 Today's Panchanga", action: "panchanga" },
-  { label: "🎉 Events", action: "events" },
-  { label: "📢 Announcements", action: "announcements" },
-  { label: "ℹ️ Services", action: "services" },
-];
-
-const INITIAL_MESSAGE: ChatMessage = {
-  role: "bot",
-  content: "Namaste! 🙏 I am Sringeri Sahayak. I can help you with information about donations, accommodation, panchanga, events, and more.\n\nChoose a topic below or type your question.",
-  suggestedActions: INITIAL_ACTIONS,
-};
-
-function MessageForm({ type }: { type: "support" | "feedback" }) {
-  const { profile, devoteeData, getToken } = useAuth();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [pastMessages, setPastMessages] = useState<SupportMessage[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
-  useEffect(() => {
-    if (profile?.name) setName(profile.name);
-    if (profile?.email) setEmail(profile.email);
-    if (devoteeData?.mobile || profile?.phone) setPhone(devoteeData?.mobile || profile?.phone || "");
-  }, [profile, devoteeData]);
-
-  useEffect(() => {
-    if (profile?.uid) {
-      setLoadingHistory(true);
-      (async () => {
-        try {
-          const token = await getToken();
-          if (!token) return;
-          const r = await fetch(`/api/support-messages/me/${type}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (r.ok) setPastMessages(await r.json());
-        } catch {}
-        finally { setLoadingHistory(false); }
-      })();
-    }
-  }, [profile?.uid, type, submitted]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) return;
-    setSubmitting(true);
-    try {
-      const token = await getToken();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch("/api/support-messages", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          type,
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim() || null,
-          subject: subject.trim(),
-          message: message.trim(),
-        }),
-      });
-      if (res.ok) {
-        setSubmitted(true);
-        setSubject("");
-        setMessage("");
-        setTimeout(() => setSubmitted(false), 3000);
-      }
-    } catch {}
-    finally { setSubmitting(false); }
-  };
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 border-b text-xs text-muted-foreground">
-        <Mail className="h-3 w-3 shrink-0" />
-        <span>You can also write an email to <a href="mailto:online@sringeri.net" className="text-primary underline">online@sringeri.net</a></span>
-      </div>
-
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-3 space-y-3">
-          {submitted && (
-            <div className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700" data-testid="text-message-sent">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>{type === "support" ? "Support request sent!" : "Feedback submitted!"} We'll get back to you soon.</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-2.5">
-            <div>
-              <label className="text-xs text-muted-foreground">Name *</label>
-              <Input value={name} onChange={e => setName(e.target.value)} className="mt-0.5 h-8 text-sm" required data-testid={`input-${type}-name`} />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Email *</label>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-0.5 h-8 text-sm" required data-testid={`input-${type}-email`} />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Phone</label>
-              <Input value={phone} onChange={e => setPhone(e.target.value)} className="mt-0.5 h-8 text-sm" data-testid={`input-${type}-phone`} />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Subject *</label>
-              <Input value={subject} onChange={e => setSubject(e.target.value)} className="mt-0.5 h-8 text-sm" required data-testid={`input-${type}-subject`} />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Message *</label>
-              <Textarea value={message} onChange={e => setMessage(e.target.value)} className="mt-0.5 text-sm min-h-[60px] resize-none" required data-testid={`input-${type}-message`} />
-            </div>
-            <Button type="submit" size="sm" className="w-full" disabled={submitting || !name.trim() || !email.trim() || !subject.trim() || !message.trim()} data-testid={`button-submit-${type}`}>
-              {submitting ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending...</> : type === "support" ? "Send Support Request" : "Submit Feedback"}
-            </Button>
-          </form>
-
-          {profile?.uid && (
-            <div className="pt-2 border-t">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Your Past {type === "support" ? "Requests" : "Feedback"}</p>
-              {loadingHistory ? (
-                <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
-              ) : pastMessages.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-2">No messages yet</p>
-              ) : (
-                <div className="space-y-2">
-                  {pastMessages.map(msg => (
-                    <div key={msg.id} className="border rounded-lg p-2.5 text-xs space-y-1" data-testid={`card-message-${msg.id}`}>
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="font-medium">{msg.subject}</span>
-                        <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] ${msg.status === "open" ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"}`}>{msg.status}</span>
-                      </div>
-                      <p className="text-muted-foreground line-clamp-2">{msg.message}</p>
-                      <p className="text-muted-foreground text-[10px]">{new Date(msg.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
-                      {msg.adminReply && (
-                        <div className="bg-primary/5 border-l-2 border-primary p-2 rounded-r mt-1">
-                          <p className="text-[10px] font-medium text-primary mb-0.5">Admin Reply</p>
-                          <p className="text-muted-foreground">{msg.adminReply}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-    </div>
-  );
-}
-
 export default function ChatbotWidget() {
+  const { profile, devoteeData, getToken } = useAuth();
+
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<WidgetTab>("sahayak");
-  const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [lines, setLines] = useState<ChatLine[]>([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [agentOnline, setAgentOnline] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const [error, setError] = useState("");
+
+  // Offline hand-off form
+  const [showHandoffForm, setShowHandoffForm] = useState(false);
+  const [hName, setHName] = useState("");
+  const [hEmail, setHEmail] = useState("");
+  const [hPhone, setHPhone] = useState("");
+  const [hConcern, setHConcern] = useState("");
+  const [handoffSubmitting, setHandoffSubmitting] = useState(false);
+
+  const visitorIdRef = useRef<string>("");
+  const lastIdRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [, setLocation] = useLocation();
 
   const [btnPos, setBtnPos] = useState<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number; dragged: boolean } | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
+
+  if (!visitorIdRef.current) visitorIdRef.current = getVisitorId();
+
+  useEffect(() => {
+    if (profile?.name) setHName((v) => v || profile.name);
+    if (profile?.email) setHEmail((v) => v || profile.email);
+    const phone = devoteeData?.mobile || profile?.phone;
+    if (phone) setHPhone((v) => v || phone);
+  }, [profile, devoteeData]);
+
+  // --- floating button placement / drag ------------------------------------
 
   const getDefaultPos = useCallback(() => {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const isLg = w >= 1024;
-    return { x: w - 150 - 16, y: h - (isLg ? 32 : 160) - 48 };
+    return { x: w - 56 - 16, y: h - (isLg ? 32 : 160) - 56 };
   }, []);
 
   useEffect(() => {
     setBtnPos(getDefaultPos());
     const onResize = () => {
-      setBtnPos((prev) => {
-        if (!prev) return getDefaultPos();
-        return {
-          x: Math.min(prev.x, window.innerWidth - 150),
-          y: Math.min(prev.y, window.innerHeight - 48),
-        };
-      });
+      setBtnPos((prev) => (prev
+        ? { x: Math.min(prev.x, window.innerWidth - 56), y: Math.min(prev.y, window.innerHeight - 56) }
+        : getDefaultPos()));
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -318,148 +183,283 @@ export default function ChatbotWidget() {
     const dy = e.clientY - dragRef.current.startY;
     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragRef.current.dragged = true;
     if (!dragRef.current.dragged) return;
-    const newX = Math.max(0, Math.min(window.innerWidth - 56, dragRef.current.startPosX + dx));
-    const newY = Math.max(0, Math.min(window.innerHeight - 56, dragRef.current.startPosY + dy));
-    setBtnPos({ x: newX, y: newY });
+    setBtnPos({
+      x: Math.max(0, Math.min(window.innerWidth - 56, dragRef.current.startPosX + dx)),
+      y: Math.max(0, Math.min(window.innerHeight - 56, dragRef.current.startPosY + dy)),
+    });
   }, []);
 
   const handlePointerUp = useCallback(() => {
     const wasDrag = dragRef.current?.dragged;
     dragRef.current = null;
-    if (!wasDrag) {
-      setIsOpen(true);
-    }
+    if (!wasDrag) setIsOpen(true);
   }, []);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      const scrollContainer = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]");
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
+  // --- data ----------------------------------------------------------------
+
+  const mergeLines = useCallback((incoming: ChatLine[]) => {
+    if (!incoming.length) return;
+    setLines((prev) => {
+      const seen = new Set(prev.map((l) => l.id));
+      const merged = [...prev, ...incoming.filter((l) => !seen.has(l.id))];
+      merged.sort((a, b) => a.id - b.id);
+      lastIdRef.current = merged.length ? merged[merged.length - 1].id : 0;
+      return merged;
+    });
+  }, []);
+
+  const authHeaders = useCallback(async () => {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    try {
+      const token = await getToken();
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+    } catch { /* anonymous visitors are fine */ }
+    return headers;
+  }, [getToken]);
+
+  /**
+   * The visitorId is a bearer secret, so it travels in the POST body — never in
+   * a URL that browsers, proxies and access logs would retain.
+   */
+  const pollChat = useCallback(async (conversationId: number, markRead: boolean) => {
+    return fetch("/api/live-chat/poll", {
+      method: "POST",
+      headers: await authHeaders(),
+      body: JSON.stringify({
+        conversationId,
+        visitorId: visitorIdRef.current,
+        sinceId: lastIdRef.current,
+        markRead,
+      }),
+    });
+  }, [authHeaders]);
+
+  const startSession = useCallback(async () => {
+    setStarting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/live-chat/session", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({ visitorId: visitorIdRef.current, source: "app" }),
+      });
+      if (!res.ok) throw new Error("session failed");
+      const data = await res.json();
+      setConversation(data.conversation);
+      lastIdRef.current = 0;
+      setLines([]);
+      mergeLines(data.messages || []);
+      setAgentOnline(!!data.agentOnline);
+      setUnread(0);
+    } catch {
+      setError("We could not open the chat just now. Please try again.");
+    } finally {
+      setStarting(false);
     }
-  }, [messages]);
+  }, [authHeaders, mergeLines]);
+
+  useEffect(() => {
+    if (isOpen && !conversation && !starting) void startSession();
+  }, [isOpen, conversation, starting, startSession]);
+
+  // Poll while the panel is open; a slower loop below keeps the badge fresh
+  // once a conversation exists.
+  useEffect(() => {
+    if (!isOpen || !conversation) return;
+    let cancelled = false;
+
+    const tick = async () => {
+      try {
+        const res = await pollChat(conversation.id, true);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        mergeLines(data.messages || []);
+        setAgentOnline(!!data.agentOnline);
+        if (data.conversation) setConversation(data.conversation);
+      } catch { /* transient network blips are ignored */ }
+    };
+
+    void tick();
+    const interval = setInterval(tick, POLL_MS);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [isOpen, conversation, mergeLines, pollChat]);
+
+  // One quiet check when closed so the badge can appear after an agent replies.
+  useEffect(() => {
+    if (isOpen || !conversation) return;
+    let cancelled = false;
+    const check = async () => {
+      try {
+        // markRead:false — a closed widget has not been read by the devotee.
+        const res = await pollChat(conversation.id, false);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const fresh = (data.messages || []).filter((m: ChatLine) => m.author !== "user");
+        if (fresh.length) {
+          mergeLines(data.messages);
+          setUnread((u) => u + fresh.length);
+        }
+      } catch { /* ignore */ }
+    };
+    const interval = setInterval(check, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [isOpen, conversation, mergeLines, pollChat]);
+
+  useEffect(() => {
+    if (isOpen) setUnread(0);
+  }, [isOpen, lines.length]);
+
+  useEffect(() => {
+    const el = scrollRef.current?.querySelector("[data-radix-scroll-area-viewport]");
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines, showHandoffForm]);
 
   const sendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return;
-
-    const userMsg: ChatMessage = { role: "user", content: text };
-    const loadingMsg: ChatMessage = { role: "bot", content: "", isLoading: true };
-
-    setMessages((prev) => [...prev, userMsg, loadingMsg]);
+    const body = text.trim();
+    if (!body || sending || !conversation) return;
+    setSending(true);
     setInput("");
-    setIsLoading(true);
-
     try {
-      const response = await fetch("/api/chat", {
+      const res = await fetch("/api/live-chat/message", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        headers: await authHeaders(),
+        body: JSON.stringify({ visitorId: visitorIdRef.current, conversationId: conversation.id, content: body }),
       });
-
-      if (!response.ok) throw new Error("Failed to get response");
-
-      const data = await response.json();
-
-      setMessages((prev) => {
-        const updated = prev.filter((m) => !m.isLoading);
-        return [
-          ...updated,
-          {
-            role: "bot" as const,
-            content: data.reply,
-            suggestedActions: data.suggestedActions,
-          },
-        ];
-      });
+      if (!res.ok) throw new Error("send failed");
+      const data = await res.json();
+      mergeLines(data.messages || []);
+      setAgentOnline(!!data.agentOnline);
+      if (data.conversation) setConversation(data.conversation);
     } catch {
-      setMessages((prev) => {
-        const updated = prev.filter((m) => !m.isLoading);
-        return [
-          ...updated,
-          {
-            role: "bot" as const,
-            content: "Sorry, I couldn't process your request. Please try again.",
-            suggestedActions: INITIAL_ACTIONS,
-          },
-        ];
-      });
+      setError("Message not sent. Please check your connection and try again.");
     } finally {
-      setIsLoading(false);
+      setSending(false);
     }
   };
 
-  const clearChat = () => {
-    setMessages([INITIAL_MESSAGE]);
-    setInput("");
-    setIsLoading(false);
-  };
-
-  const handleAction = (action: string) => {
-    if (action.startsWith("navigate:")) {
-      const path = action.replace("navigate:", "");
-      setLocation(path);
-      setIsOpen(false);
+  const requestAgent = async () => {
+    if (!conversation) return;
+    if (!agentOnline) {
+      setShowHandoffForm(true);
       return;
     }
-    sendMessage(action);
+    setSending(true);
+    try {
+      const res = await fetch("/api/live-chat/request-agent", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({
+          visitorId: visitorIdRef.current,
+          conversationId: conversation.id,
+          name: hName || profile?.name || "",
+          email: hEmail || profile?.email || "",
+          phone: hPhone || "",
+        }),
+      });
+      if (!res.ok) {
+        setShowHandoffForm(true);
+        return;
+      }
+      const data = await res.json();
+      if (data.conversation) setConversation(data.conversation);
+      lastIdRef.current = Math.max(0, lastIdRef.current);
+    } catch {
+      setError("Could not reach our team. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
-  const tabLabels: { key: WidgetTab; label: string }[] = [
-    { key: "sahayak", label: "Sahayak" },
-    { key: "support", label: "Support" },
-    { key: "feedback", label: "Feedback" },
-  ];
+  const submitHandoff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!conversation || !hEmail.trim() || !hConcern.trim()) return;
+    setHandoffSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/live-chat/request-agent", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({
+          visitorId: visitorIdRef.current,
+          conversationId: conversation.id,
+          name: hName.trim(),
+          email: hEmail.trim(),
+          phone: hPhone.trim(),
+          concern: hConcern.trim(),
+        }),
+      });
+      if (!res.ok) {
+        setError("We could not record your concern. Please try again.");
+        return;
+      }
+      const data = await res.json();
+      if (data.conversation) setConversation(data.conversation);
+      setShowHandoffForm(false);
+      setHConcern("");
+    } catch {
+      setError("We could not record your concern. Please try again.");
+    } finally {
+      setHandoffSubmitting(false);
+    }
+  };
 
-  const headerTitle = activeTab === "sahayak" ? "Sringeri Sahayak" : activeTab === "support" ? "Support" : "Feedback";
-  const headerSubtitle = activeTab === "sahayak" ? "Verified information only" : activeTab === "support" ? "We're here to help" : "We value your input";
+  const status = conversation?.status ?? "bot";
+  const headerTitle = status === "live"
+    ? conversation?.assignedAgentName || "Sringeri Team"
+    : "Sringeri Sahayak";
+  const headerSubtitle =
+    status === "live" ? "You are chatting with our team"
+    : status === "waiting" ? "Connecting you to our team…"
+    : status === "offline_pending" ? "We will reply within 2–4 hours"
+    : status === "closed" ? "This chat has been closed"
+    : agentOnline ? "AI assistant · team available" : "AI assistant · team offline";
+
+  const canType = status !== "closed" && !!conversation;
 
   return (
     <>
       {!isOpen && btnPos && (
         <button
-          ref={btnRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          className="fixed z-50 rounded-full shadow-xl bg-primary/60 hover:bg-primary flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none px-5 h-12 transition-colors"
+          className="fixed z-50 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none transition-colors"
           style={{ left: btnPos.x, top: btnPos.y }}
+          aria-label="Open live chat"
           data-testid="button-open-chat"
         >
-          <span className="text-white text-sm font-semibold pointer-events-none">Help / Feedback</span>
+          <MessageCircle className="h-6 w-6 text-white pointer-events-none" />
+          {agentOnline && (
+            <span className="absolute bottom-1 right-1 h-3 w-3 rounded-full bg-green-500 border-2 border-white pointer-events-none" />
+          )}
+          {unread > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[11px] font-bold flex items-center justify-center pointer-events-none" data-testid="badge-chat-unread">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
         </button>
       )}
 
       {isOpen && (
         <div className="fixed bottom-24 lg:bottom-8 right-4 z-50" data-testid="chatbot-widget">
-        <Card className="w-[350px] h-[500px] shadow-2xl border-primary/20 flex flex-col animate-in slide-in-from-bottom-10 fade-in duration-300">
-          <CardHeader className="bg-primary text-primary-foreground p-3 pb-0 rounded-t-xl shrink-0">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Avatar className="h-7 w-7 bg-white/20 border border-white/40">
-                  <AvatarImage src="/assets/lamp-icon.jpg" />
-                  <AvatarFallback>
-                    <Bot className="h-3.5 w-3.5" />
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <CardTitle className="text-sm font-serif">{headerTitle}</CardTitle>
-                  <p className="text-[10px] opacity-80">{headerSubtitle}</p>
+          <Card className="w-[350px] h-[500px] shadow-2xl border-primary/20 flex flex-col animate-in slide-in-from-bottom-10 fade-in duration-300">
+            <CardHeader className="bg-primary text-primary-foreground p-3 rounded-t-xl shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8 bg-white/20 border border-white/40">
+                    <AvatarImage src="/assets/lamp-icon.jpg" />
+                    <AvatarFallback>
+                      {status === "live" ? <Headset className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <CardTitle className="text-sm font-serif">{headerTitle}</CardTitle>
+                    <p className="text-[10px] opacity-85 flex items-center gap-1">
+                      <span className={`inline-block h-1.5 w-1.5 rounded-full ${agentOnline ? "bg-green-400" : "bg-white/50"}`} />
+                      {headerSubtitle}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-0.5">
-                {activeTab === "sahayak" && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={clearChat}
-                    className="text-white hover:bg-white/20 h-7 w-7"
-                    title="Clear chat"
-                    data-testid="button-clear-chat"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                  </Button>
-                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -470,100 +470,125 @@ export default function ChatbotWidget() {
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
-            </div>
-            <div className="flex border-b border-white/20">
-              {tabLabels.map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`flex-1 text-xs py-1.5 transition-colors ${activeTab === tab.key ? "text-white border-b-2 border-white font-medium" : "text-white/60 hover:text-white/80"}`}
-                  data-testid={`tab-${tab.key}`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </CardHeader>
+            </CardHeader>
 
-          {activeTab === "sahayak" ? (
-            <>
-              <CardContent className="flex-1 p-0 overflow-hidden bg-background/50 min-h-0">
-                <ScrollArea className="h-full" ref={scrollRef}>
-                  <div className="p-4 space-y-4">
-                    {messages.map((msg, i) => (
-                      <div key={i}>
-                        <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                          <div
-                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                              msg.role === "user"
-                                ? "bg-primary text-primary-foreground rounded-tr-none"
-                                : "bg-muted text-foreground rounded-tl-none"
-                            }`}
-                            data-testid={`chat-message-${msg.role}-${i}`}
-                          >
-                            {msg.isLoading ? (
-                              <div className="flex items-center gap-2 py-1">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                <span className="text-muted-foreground">Looking up information...</span>
-                              </div>
-                            ) : msg.role === "bot" ? (
-                              renderMarkdown(msg.content)
-                            ) : (
-                              msg.content
-                            )}
-                          </div>
+            <CardContent className="flex-1 p-0 overflow-hidden bg-background/50 min-h-0">
+              <ScrollArea className="h-full" ref={scrollRef}>
+                <div className="p-4 space-y-3">
+                  {starting && (
+                    <div className="flex justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+
+                  {lines.map((line) => {
+                    if (line.author === "system") {
+                      return (
+                        <div key={line.id} className="text-center" data-testid={`chat-message-system-${line.id}`}>
+                          <span className="inline-block text-[11px] text-muted-foreground bg-muted/70 rounded-full px-3 py-1">
+                            {renderMarkdown(line.content)}
+                          </span>
                         </div>
-
-                        {msg.suggestedActions && msg.suggestedActions.length > 0 && !msg.isLoading && (
-                          <div className="flex flex-wrap gap-1.5 mt-2 ml-1">
-                            {msg.suggestedActions.map((action, j) => (
-                              <button
-                                key={j}
-                                onClick={() => handleAction(action.action)}
-                                disabled={isLoading}
-                                className="text-xs px-3 py-1.5 rounded-full border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors disabled:opacity-50"
-                                data-testid={`button-action-${action.action}-${i}`}
-                              >
-                                {action.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                      );
+                    }
+                    const mine = line.author === "user";
+                    return (
+                      <div key={line.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                            mine
+                              ? "bg-primary text-primary-foreground rounded-tr-none"
+                              : line.author === "agent"
+                              ? "bg-amber-50 border border-amber-200 text-foreground rounded-tl-none"
+                              : "bg-muted text-foreground rounded-tl-none"
+                          }`}
+                          data-testid={`chat-message-${line.author}-${line.id}`}
+                        >
+                          {line.author === "agent" && (
+                            <p className="text-[10px] font-semibold text-amber-700 mb-0.5">
+                              {line.authorName || "Sringeri Team"}
+                            </p>
+                          )}
+                          {mine ? line.content : renderMarkdown(line.content)}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
+                    );
+                  })}
 
-              <CardFooter className="p-3 border-t bg-background shrink-0">
-                <form
-                  className="flex w-full gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    sendMessage(input);
-                  }}
-                >
-                  <Input
-                    ref={inputRef}
-                    placeholder="Ask about sevas, donations..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    className="flex-1"
-                    disabled={isLoading}
-                    data-testid="input-chat-message"
-                  />
-                  <Button type="submit" size="icon" disabled={!input.trim() || isLoading} data-testid="button-send-chat">
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </form>
-              </CardFooter>
-            </>
-          ) : (
-            <CardContent className="flex-1 p-0 overflow-hidden bg-background min-h-0">
-              <MessageForm type={activeTab} />
+                  {sending && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted rounded-2xl rounded-tl-none px-4 py-2.5 text-sm flex items-center gap-2">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span className="text-muted-foreground text-xs">Typing…</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {showHandoffForm && (
+                    <form onSubmit={submitHandoff} className="border rounded-xl p-3 space-y-2 bg-white" data-testid="form-offline-handoff">
+                      <p className="text-xs text-muted-foreground">
+                        Our team is offline right now. Leave your concern and we will reply within <strong>2–4 hours</strong>.
+                      </p>
+                      <Input value={hName} onChange={(e) => setHName(e.target.value)} placeholder="Your name" className="h-8 text-sm" data-testid="input-handoff-name" />
+                      <Input type="email" value={hEmail} onChange={(e) => setHEmail(e.target.value)} placeholder="Email *" className="h-8 text-sm" required data-testid="input-handoff-email" />
+                      <Input value={hPhone} onChange={(e) => setHPhone(e.target.value)} placeholder="Phone (optional)" className="h-8 text-sm" data-testid="input-handoff-phone" />
+                      <Textarea value={hConcern} onChange={(e) => setHConcern(e.target.value)} placeholder="Describe your concern *" className="text-sm min-h-[64px] resize-none" required data-testid="input-handoff-concern" />
+                      <div className="flex gap-2">
+                        <Button type="submit" size="sm" className="flex-1" disabled={handoffSubmitting || !hEmail.trim() || !hConcern.trim()} data-testid="button-submit-handoff">
+                          {handoffSubmitting ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending…</> : "Send to our team"}
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setShowHandoffForm(false)} data-testid="button-cancel-handoff">
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
+                  )}
+
+                  {error && (
+                    <p className="text-xs text-red-600 text-center" data-testid="text-chat-error">{error}</p>
+                  )}
+                </div>
+              </ScrollArea>
             </CardContent>
-          )}
-        </Card>
+
+            <CardFooter className="p-2.5 border-t bg-background shrink-0 flex-col gap-2 items-stretch">
+              {status !== "closed" && status !== "live" && status !== "waiting" && !showHandoffForm && (
+                <button
+                  onClick={requestAgent}
+                  disabled={sending || !conversation}
+                  className="text-xs text-primary hover:underline flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  data-testid="button-talk-to-person"
+                >
+                  <Headset className="h-3.5 w-3.5" />
+                  Talk to a person
+                  {!agentOnline && <span className="text-muted-foreground">· team offline</span>}
+                </button>
+              )}
+
+              {status === "offline_pending" && (
+                <p className="text-[11px] text-muted-foreground flex items-center justify-center gap-1">
+                  <Mail className="h-3 w-3" /> We will reply to {conversation?.email} within 2–4 hours.
+                </p>
+              )}
+
+              <form
+                className="flex w-full gap-2"
+                onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }}
+              >
+                <Input
+                  placeholder={status === "closed" ? "This chat is closed" : "Type your message…"}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  className="flex-1"
+                  disabled={!canType || sending}
+                  data-testid="input-chat-message"
+                />
+                <Button type="submit" size="icon" disabled={!input.trim() || !canType || sending} data-testid="button-send-chat">
+                  <Send className="h-4 w-4" />
+                </Button>
+              </form>
+            </CardFooter>
+          </Card>
         </div>
       )}
     </>

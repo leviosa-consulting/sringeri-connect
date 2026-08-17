@@ -147,6 +147,65 @@ export const insertSupportMessageSchema = createInsertSchema(supportMessages).om
 export type InsertSupportMessage = z.infer<typeof insertSupportMessageSchema>;
 export type SupportMessage = typeof supportMessages.$inferSelect;
 
+// ---------------------------------------------------------------------------
+// Live Chat: one thread per visitor that starts with the AI bot, can be
+// escalated to a human agent, and falls back to an emailed concern when no
+// agent is online.
+// ---------------------------------------------------------------------------
+
+/** bot -> waiting (agent requested) -> live (agent joined) | offline_pending (emailed) -> closed */
+export const CHAT_STATUSES = ["bot", "waiting", "live", "offline_pending", "closed"] as const;
+export type ChatStatus = (typeof CHAT_STATUSES)[number];
+
+/** Who wrote a line in the transcript. "system" lines are status notices. */
+export const CHAT_AUTHORS = ["user", "bot", "agent", "system"] as const;
+export type ChatAuthor = (typeof CHAT_AUTHORS)[number];
+
+export const chatConversations = pgTable("chat_conversations", {
+  id: serial("id").primaryKey(),
+  /** Client-generated secret held in localStorage; also the bearer for anonymous threads. */
+  visitorId: text("visitor_id").notNull(),
+  odUserId: text("od_user_id"),
+  name: text("name"),
+  email: text("email"),
+  phone: text("phone"),
+  status: text("status").$type<ChatStatus>().default("bot").notNull(),
+  /** "app" today; task #152 will add the embedded website source. */
+  source: text("source").default("app").notNull(),
+  assignedAgentUid: text("assigned_agent_uid"),
+  assignedAgentName: text("assigned_agent_name"),
+  unreadForAgent: integer("unread_for_agent").default(0).notNull(),
+  unreadForVisitor: integer("unread_for_visitor").default(0).notNull(),
+  lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  closedAt: timestamp("closed_at"),
+}, (table) => [
+  index("chat_conversations_visitor_idx").on(table.visitorId),
+  index("chat_conversations_status_idx").on(table.status),
+  index("chat_conversations_last_message_idx").on(table.lastMessageAt),
+]);
+
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => chatConversations.id, { onDelete: "cascade" }),
+  author: text("author").$type<ChatAuthor>().notNull(),
+  authorName: text("author_name"),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("chat_messages_conversation_idx").on(table.conversationId, table.id),
+]);
+
+export type ChatConversation = typeof chatConversations.$inferSelect;
+export type InsertChatConversation = typeof chatConversations.$inferInsert;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+/** Agent presence is a single manual toggle, stored in appSettings. */
+export const CHAT_PRESENCE_KEY = "live_chat_agent_online";
+export const CHAT_PRESENCE_NAME_KEY = "live_chat_agent_name";
+export const CHAT_PRESENCE_UPDATED_KEY = "live_chat_presence_updated_at";
+
 export const appSettings = pgTable("app_settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),

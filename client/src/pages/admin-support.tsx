@@ -6,6 +6,7 @@ import { Link } from "wouter";
 import { ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Send, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import LiveChatConsole from "@/components/live-chat-console";
 
 
 type SupportMessage = {
@@ -222,8 +223,8 @@ export default function AdminSupport() {
           <ArrowLeft className="h-5 w-5 text-muted-foreground" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Support &amp; Feedback</h1>
-          <p className="text-sm text-muted-foreground">Messages from devotees</p>
+          <h1 className="text-2xl font-bold">Support &amp; Live Chat</h1>
+          <p className="text-sm text-muted-foreground">Conversations and messages from devotees</p>
         </div>
         <button
           onClick={() => refetch()}
@@ -232,6 +233,13 @@ export default function AdminSupport() {
         >
           <MessageSquare className="h-4 w-4" />
         </button>
+      </div>
+
+      {token && <LiveChatConsole token={token} />}
+
+      <div className="pt-2">
+        <h2 className="text-lg font-semibold">Support &amp; Feedback messages</h2>
+        <p className="text-xs text-muted-foreground">Form submissions from devotees</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
