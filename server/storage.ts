@@ -86,6 +86,10 @@ export interface IStorage {
   listDharmaAwards(odUserId: string, limit?: number): Promise<DharmaPointsEntry[]>;
   listDailyHistory(odUserId: string, limit?: number): Promise<DailyHistory>;
   listDailySubmissionsForDate(dateStr: string): Promise<DailyHistory>;
+  // Dates on which a devotee completed all three of Guruvani reflection,
+  // Question of the Day and Activity of the Day — the unit the Daily
+  // Practice streak counts, deliberately separate from the older quiz streak.
+  getDailyPracticeCompletionDates(odUserId: string): Promise<string[]>;
 }
 
 /**
@@ -250,6 +254,7 @@ export class MemStorage implements IStorage {
   async listDharmaAwards(_odUserId: string, _limit?: number): Promise<DharmaPointsEntry[]> { return []; }
   async listDailyHistory(_odUserId: string, _limit?: number): Promise<DailyHistory> { return { reflections: [], questions: [], activities: [] }; }
   async listDailySubmissionsForDate(_dateStr: string): Promise<DailyHistory> { return { reflections: [], questions: [], activities: [] }; }
+  async getDailyPracticeCompletionDates(_odUserId: string): Promise<string[]> { return []; }
 }
 
 let storage: IStorage;
@@ -1171,6 +1176,21 @@ if (process.env.DATABASE_URL) {
           .orderBy(desc(dailyActivityResponses.createdAt)).limit(500),
       ]);
       return { reflections, questions, activities } as DailyHistory;
+    }
+
+    async getDailyPracticeCompletionDates(odUserId: string): Promise<string[]> {
+      const rows = await db.select({ contentDate: dailyReflections.contentDate })
+        .from(dailyReflections)
+        .innerJoin(dailyQuestionResponses, and(
+          eq(dailyQuestionResponses.odUserId, dailyReflections.odUserId),
+          eq(dailyQuestionResponses.contentDate, dailyReflections.contentDate),
+        ))
+        .innerJoin(dailyActivityResponses, and(
+          eq(dailyActivityResponses.odUserId, dailyReflections.odUserId),
+          eq(dailyActivityResponses.contentDate, dailyReflections.contentDate),
+        ))
+        .where(eq(dailyReflections.odUserId, odUserId));
+      return rows.map(r => r.contentDate);
     }
   }
 

@@ -12,7 +12,7 @@ export default function DesktopNav() {
   const navItems = [
     { icon: Home, label: "Home", path: "/home" },
     { icon: Bell, label: "Updates", path: "/updates" },
-    { icon: BookOpenCheck, label: "Knowledge Corner", path: "/knowledge" },
+    { icon: BookOpenCheck, label: "Daily Practice", path: "/knowledge" },
     { icon: User, label: "My Account", path: "/profile" },
   ];
 

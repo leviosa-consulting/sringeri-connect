@@ -6,7 +6,6 @@ import { Info, Globe, BookOpen, ChevronDown, AlertTriangle, X, Loader2, Bell, Ch
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { getIdToken } from "@/lib/firebase";
 import FontSizeToggle from "@/components/font-size-toggle";
 import TodayDrawer from "@/components/today-drawer";
 import DharmaPointsCard from "@/components/dharma-points-card";
@@ -37,7 +36,6 @@ export default function Home() {
   const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
   const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
   const [todaySheetOpen, setTodaySheetOpen] = useState(false);
-  const [todayQuiz, setTodayQuiz] = useState<{ id: number; title: string; subtitle?: string | null } | null>(null);
   const displayName = profile?.name || user?.displayName || "Devotee";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
@@ -63,25 +61,17 @@ export default function Home() {
     fetchTodayDetails();
   }, []);
 
+  // Allow other pages (e.g. the Daily Practice hub) to deep-link into the
+  // Today drawer via a query param, since it lives only in Home's state.
   useEffect(() => {
-    const fetchTodayQuiz = async () => {
-      if (!user) return;
-      try {
-        const token = await getIdToken();
-        if (!token) return;
-        const res = await fetch("/api/quiz/today", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.id) {
-            setTodayQuiz({ id: data.id, title: data.title, subtitle: data.subtitle });
-          }
-        }
-      } catch {}
-    };
-    fetchTodayQuiz();
-  }, [user]);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("openToday") === "1") {
+      setTodaySheetOpen(true);
+      params.delete("openToday");
+      const rest = params.toString();
+      window.history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : ""));
+    }
+  }, []);
 
   const checkPendingTransactions = async () => {
     if (!pendingOrderIds.length || pendingChecking) return;
@@ -195,7 +185,6 @@ export default function Home() {
         onClose={() => setTodaySheetOpen(false)}
         todayDetails={todayDetails}
         formattedDate={formatTodayDate()}
-        todayQuiz={todayQuiz}
       />
       {/* Desktop Welcome Banner */}
       <div className="hidden lg:block w-screen relative left-1/2 -translate-x-1/2 h-[300px] overflow-hidden">

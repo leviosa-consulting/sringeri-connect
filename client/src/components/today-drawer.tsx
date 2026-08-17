@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Calendar, BookOpen, Quote, Sparkles, BookOpenCheck, ArrowRight, Landmark,
+  Calendar, BookOpen, Quote, Sparkles, ArrowRight, Landmark,
   Loader2, Check, X, Flower2, PencilLine, Puzzle, HelpCircle,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
@@ -25,12 +24,6 @@ interface TodayDetails {
   tithiK?: string;
   nakshatra?: string;
   nakshatraK?: string;
-}
-
-interface TodayQuiz {
-  id: number;
-  title: string;
-  subtitle?: string | null;
 }
 
 interface Article {
@@ -56,7 +49,6 @@ interface TodayDrawerProps {
   onClose: () => void;
   todayDetails: TodayDetails | null;
   formattedDate: string;
-  todayQuiz?: TodayQuiz | null;
 }
 
 function SectionCard({
@@ -121,7 +113,7 @@ function Feedback({ isCorrect, explanation, answerLabel }: { isCorrect: boolean;
   );
 }
 
-export default function TodayDrawer({ open, onClose, todayDetails, formattedDate, todayQuiz }: TodayDrawerProps) {
+export default function TodayDrawer({ open, onClose, todayDetails, formattedDate }: TodayDrawerProps) {
   const { user, getToken } = useAuth();
   const queryClient = useQueryClient();
   const [stotra, setStotra] = useState<Stotra | null>(null);
@@ -600,21 +592,6 @@ export default function TodayDrawer({ open, onClose, todayDetails, formattedDate
               <p className="text-sm text-foreground/50">Loading…</p>
             )}
           </SectionCard>
-
-          {todayQuiz && (
-            <SectionCard icon={BookOpenCheck} label="Knowledge Corner Quiz" testId="section-quiz">
-              <h3 className="text-base font-serif font-bold text-foreground leading-snug">{todayQuiz.title}</h3>
-              {todayQuiz.subtitle && <p className="text-sm text-foreground/60 mt-1">{todayQuiz.subtitle}</p>}
-              <Link
-                href={`/knowledge/${todayQuiz.id}`}
-                onClick={() => onClose()}
-                className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary text-white text-xs font-semibold active:scale-95 transition-all"
-                data-testid="link-today-quiz"
-              >
-                Take the Quiz <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </SectionCard>
-          )}
 
           <div className="h-2" />
         </div>

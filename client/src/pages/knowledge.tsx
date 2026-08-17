@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { RangoliLoader } from "@/components/rangoli-loader";
+import DailyPracticeHub from "@/components/daily-practice-hub";
 import { useAuth } from "@/contexts/auth-context";
 import { useParams, useLocation } from "wouter";
 import { BookOpenCheck, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Trophy, Clock, CheckCircle2, XCircle, Play, Image as ImageIcon, Volume2, History, Loader2, Share2, Check, Library, Flame, Lock, CalendarDays, GraduationCap } from "lucide-react";
@@ -185,8 +186,12 @@ export default function Knowledge() {
   const permalinkId = params.id ? Number(params.id) : null;
   const [selectedPastQuizId, setSelectedPastQuizId] = useState<number | null>(null);
   const activeQuizId = selectedPastQuizId || permalinkId;
+  // The quiz browsing UI below (Latest Quiz / More Quizzes / Courses) is kept
+  // for direct deep links to a specific past quiz, but nothing in the app
+  // links into it anymore — the default view is the Daily Practice hub.
+  const showHub = !permalinkId;
   const [quiz, setQuiz] = useState<QuizData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!permalinkId);
   const [tab, setTab] = useState<"quiz" | "courses" | "past">("quiz");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -322,6 +327,9 @@ export default function Knowledge() {
   }, [getToken]);
 
   useEffect(() => {
+    // The quiz browsing UI is unreachable without a permalink id — skip its
+    // fetches entirely when showing the Daily Practice hub instead.
+    if (!permalinkId) return;
     setCurrentQuestion(0);
     setAnswers({});
     setSubmitted(false);
@@ -337,7 +345,7 @@ export default function Knowledge() {
       .then(r => r.ok ? r.json() : [])
       .then(data => setUpcomingQuizzes(data))
       .catch(() => {});
-  }, [fetchQuiz, fetchGamification]);
+  }, [fetchQuiz, fetchGamification, permalinkId]);
 
   useEffect(() => {
     if (tab === "courses") { fetchCourses(); fetchHistory(); fetchGamification(); }
@@ -407,6 +415,10 @@ export default function Knowledge() {
   const hasQuestions = quiz && quiz.questions.length > 0;
   const hasContent = quiz && (quiz.description || quiz.videoUrl || quiz.audioUrl || (quiz.imageUrls && quiz.imageUrls.length > 0));
   const quizStarted = !showContent || (!hasContent && hasQuestions);
+
+  if (showHub) {
+    return <DailyPracticeHub />;
+  }
 
   return (
     <div className="px-4 py-6 pb-24 lg:pb-8 space-y-5" data-testid="knowledge-page">

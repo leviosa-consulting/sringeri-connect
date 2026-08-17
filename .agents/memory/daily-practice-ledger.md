@@ -26,3 +26,11 @@ Two rules that fall out of it, and must be preserved:
 
 The daily practice is deliberately separate from the older quiz streak/badge system; they share no
 tables and should not be merged without a decision to do so.
+
+**Daily Practice streak definition:** a day only counts if the devotee completed ALL THREE surfaces
+that day (Guruvani reflection + Question of the Day + Activity of the Day) — reuse the existing
+`computeStreak(sortedDatesDesc)` helper in `server/routes.ts` for this too rather than duplicating
+streak math; it already dedupes/sorts and requires the most recent date to be today or yesterday to
+count as live. Feed it dates from an inner-join across the three response tables on
+devotee+contentDate (one date per row only when all three exist that day), not from any single
+table's own dates.

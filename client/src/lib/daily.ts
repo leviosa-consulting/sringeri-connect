@@ -63,6 +63,9 @@ export interface DailyHistory {
   questions: (DailyHistoryEntry & { questionText: string; options: string[]; selectedIndex: number; correctIndex: number; isCorrect: boolean })[];
   activities: (DailyHistoryEntry & { prompt: string; submittedAnswer: string; correctAnswer: string | null; isCorrect: boolean })[];
   dharmaPoints: DharmaSummary;
+  /** Consecutive days (ending today or yesterday) with all three of a
+   * reflection, a question answer and an activity answer. */
+  streak: number;
 }
 
 type TokenGetter = () => Promise<string | null | undefined>;

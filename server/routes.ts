@@ -5473,11 +5473,12 @@ export async function registerRoutes(
     try {
       const uid = await getFirebaseUid(req);
       if (!uid) return res.status(401).json({ error: "Authentication required" });
-      const [history, summary] = await Promise.all([
+      const [history, summary, completionDates] = await Promise.all([
         storage.listDailyHistory(uid, 30),
         storage.getDharmaPointsSummary(uid, getISTDate()),
+        storage.getDailyPracticeCompletionDates(uid),
       ]);
-      res.json({ ...history, dharmaPoints: summary });
+      res.json({ ...history, dharmaPoints: summary, streak: computeStreak(completionDates) });
     } catch (error) {
       console.error("Error getting daily history:", error);
       res.status(500).json({ error: "Internal server error" });
