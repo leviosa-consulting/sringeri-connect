@@ -24,6 +24,7 @@ interface QuestionForm {
 interface ActivityForm {
   activityType: string;
   answerMode: "text" | "options";
+  instructions: string;
   prompt: string;
   imageUrl: string;
   options: string[];
@@ -47,7 +48,7 @@ interface Submissions {
 
 const EMPTY_QUESTION: QuestionForm = { questionText: "", options: ["", ""], correctIndex: 0, points: 1, explanation: "" };
 const EMPTY_ACTIVITY: ActivityForm = {
-  activityType: "anagram", answerMode: "text", prompt: "", imageUrl: "",
+  activityType: "anagram", answerMode: "text", instructions: "", prompt: "", imageUrl: "",
   options: ["", ""], correctIndex: 0, correctAnswer: "", points: 2, explanation: "",
 };
 
@@ -141,6 +142,7 @@ export default function AdminDaily() {
         setActivity({
           activityType: data.activity.activityType,
           answerMode: data.activity.answerMode,
+          instructions: data.activity.instructions || "",
           prompt: data.activity.prompt,
           imageUrl: data.activity.imageUrl || "",
           options: data.activity.options || ["", ""],
@@ -181,6 +183,7 @@ export default function AdminDaily() {
           ? {
               activityType: activity.activityType,
               answerMode: activity.answerMode,
+              instructions: activity.instructions,
               prompt: activity.prompt,
               imageUrl: activity.imageUrl,
               options: activity.options,
@@ -434,7 +437,17 @@ export default function AdminDaily() {
                   </Field>
                 </div>
 
-                <Field label="Prompt">
+                <Field label="Instructions" hint="Shown to the devotee above the jumbled letters, e.g. “Unscramble the letters below”">
+                  <textarea
+                    rows={2}
+                    value={activity.instructions}
+                    onChange={(e) => setActivity({ ...activity, instructions: e.target.value })}
+                    className="w-full rounded-md border border-input bg-background p-2 text-sm"
+                    data-testid="input-activity-instructions"
+                  />
+                </Field>
+
+                <Field label="Prompt" hint="The jumbled letters/phrase shown prominently to the devotee">
                   <textarea
                     rows={2}
                     value={activity.prompt}
@@ -502,7 +515,14 @@ export default function AdminDaily() {
                     </div>
                   </Field>
                 ) : (
-                  <Field label="Correct answer" hint="Matched ignoring case and extra spaces">
+                  <Field
+                    label="Correct answer"
+                    hint={
+                      activity.activityType === "anagram"
+                        ? "Matched ignoring case, punctuation and all spaces — \"EKASHLOKI\" and \"EKA SHLOKI\" both count as correct"
+                        : "Matched ignoring case and extra spaces"
+                    }
+                  >
                     <Input
                       value={activity.correctAnswer}
                       onChange={(e) => setActivity({ ...activity, correctAnswer: e.target.value })}
@@ -561,7 +581,8 @@ export default function AdminDaily() {
             {activityOn && (
               <div className="rounded-xl bg-white/70 p-3">
                 <div className="text-[11px] font-semibold text-primary uppercase tracking-wider">Activity of the Day</div>
-                <p className="text-sm mt-1">{activity.prompt || "—"}</p>
+                {activity.instructions && <p className="text-xs text-muted-foreground mt-1">{activity.instructions}</p>}
+                <p className="text-sm mt-1 font-semibold">{activity.prompt || "—"}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Answer: {activity.answerMode === "options" ? (activity.options[activity.correctIndex] || "—") : (activity.correctAnswer || "—")}
                 </p>

@@ -10,3 +10,12 @@ export function normalizeDailyAnswer(value: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/**
+ * Anagram answers are matched ignoring spacing entirely, not just collapsed:
+ * a devotee who types "EKASHLOKI" and one who types "EKA SHLOKI" solved the
+ * same anagram, so both must match the one stored answer.
+ */
+export function normalizeAnagramAnswer(value: string): string {
+  return normalizeDailyAnswer(value).replace(/\s+/g, "");
+}

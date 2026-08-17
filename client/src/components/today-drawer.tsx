@@ -374,7 +374,19 @@ export default function TodayDrawer({ open, onClose, todayDetails, formattedDate
               earned={!!activity.isCorrect}
               testId="section-activity-of-day"
             >
-              <p className="text-sm font-medium text-foreground leading-relaxed" data-testid="text-activity-prompt">
+              {activity.instructions && (
+                <p className="text-sm text-foreground/70 leading-relaxed" data-testid="text-activity-instructions">
+                  {activity.instructions}
+                </p>
+              )}
+
+              <p
+                className={cn(
+                  "text-lg font-bold text-foreground leading-relaxed tracking-wide text-center py-2",
+                  activity.instructions && "mt-2"
+                )}
+                data-testid="text-activity-prompt"
+              >
                 {activity.prompt}
               </p>
 
@@ -424,9 +436,9 @@ export default function TodayDrawer({ open, onClose, todayDetails, formattedDate
                   ) : (
                     <input
                       value={activityAnswer}
-                      onChange={(e) => setActivityAnswer(e.target.value)}
+                      onChange={(e) => setActivityAnswer(e.target.value.replace(/[^a-zA-Z ]/g, ""))}
                       maxLength={500}
-                      placeholder="Type your answer"
+                      placeholder="Type your answer (letters only)"
                       className="w-full rounded-xl border border-primary/15 bg-white/80 px-3 py-2.5 text-sm text-foreground placeholder:text-foreground/35 focus:outline-none focus:ring-2 focus:ring-primary/30"
                       data-testid="input-activity-answer"
                     />

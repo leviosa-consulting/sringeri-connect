@@ -251,6 +251,7 @@ export const dailyActivities = pgTable("daily_activities", {
   contentDate: date("content_date").notNull(),
   activityType: text("activity_type").default("anagram").notNull(),
   answerMode: text("answer_mode").default("text").notNull(),
+  instructions: text("instructions"),
   prompt: text("prompt").notNull(),
   imageUrl: text("image_url"),
   options: jsonb("options").$type<string[]>(),

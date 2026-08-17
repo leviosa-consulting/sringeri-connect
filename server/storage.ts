@@ -1,5 +1,5 @@
 import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, passwordResetTokens, adminRoles, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog, type PasswordResetToken, type AdminRole, dailyGuruvani, dailyQuestions, dailyActivities, dailyReflections, dailyQuestionResponses, dailyActivityResponses, dharmaPoints, DHARMA_SOURCE_GURUVANI, DHARMA_SOURCE_QUESTION, DHARMA_SOURCE_ACTIVITY, type DailyQuestion, type DailyActivity, type DailyReflection, type DailyQuestionResponse, type DailyActivityResponse, type DharmaPointsEntry, type InsertDailyQuestion, type InsertDailyActivity } from "@shared/schema";
-import { normalizeDailyAnswer } from "@shared/daily-grading";
+import { normalizeDailyAnswer, normalizeAnagramAnswer } from "@shared/daily-grading";
 import { getGuruvaniForDate } from "@shared/guruvani";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -816,6 +816,7 @@ if (process.env.DATABASE_URL) {
         set: {
           activityType: data.activityType ?? "anagram",
           answerMode: data.answerMode ?? "text",
+          instructions: data.instructions ?? null,
           prompt: data.prompt,
           imageUrl: data.imageUrl ?? null,
           options: data.options ?? null,
@@ -920,6 +921,7 @@ if (process.env.DATABASE_URL) {
           set: {
             activityType: data.activityType ?? "anagram",
             answerMode: data.answerMode ?? "text",
+            instructions: data.instructions ?? null,
             prompt: data.prompt,
             imageUrl: data.imageUrl ?? null,
             options: data.options ?? null,
@@ -1038,9 +1040,12 @@ if (process.env.DATABASE_URL) {
           isCorrect = selectedIndex === activity.correctIndex;
         } else {
           const answer = typeof input.answer === "string" ? input.answer.trim() : "";
-          if (!answer || answer.length > 500) return { status: "invalid" };
+          // Mirrors the client's input restriction server-side so a direct API
+          // call cannot submit anything the UI would have blocked while typing.
+          if (!answer || answer.length > 500 || !/^[A-Za-z ]+$/.test(answer)) return { status: "invalid" };
           submittedAnswer = answer;
-          isCorrect = !!activity.correctAnswer && normalizeDailyAnswer(answer) === normalizeDailyAnswer(activity.correctAnswer);
+          const normalize = activity.activityType === "anagram" ? normalizeAnagramAnswer : normalizeDailyAnswer;
+          isCorrect = !!activity.correctAnswer && normalize(answer) === normalize(activity.correctAnswer);
         }
 
         const points = isCorrect ? activity.points : 0;

@@ -30,6 +30,7 @@ export interface DailyActivityItem {
   id: number;
   activityType: string;
   answerMode: "text" | "options";
+  instructions: string | null;
   prompt: string;
   imageUrl: string | null;
   options: string[] | null;

@@ -43,6 +43,7 @@ export const DAILY_PRACTICE_DDL: string[] = [
     content_date date NOT NULL,
     activity_type text DEFAULT 'anagram' NOT NULL,
     answer_mode text DEFAULT 'text' NOT NULL,
+    instructions text,
     prompt text NOT NULL,
     image_url text,
     options jsonb,
@@ -54,6 +55,9 @@ export const DAILY_PRACTICE_DDL: string[] = [
     created_at timestamp DEFAULT now() NOT NULL,
     updated_at timestamp DEFAULT now() NOT NULL
   )`,
+  // Added after the initial table so environments created before this field
+  // existed still get it — CREATE TABLE IF NOT EXISTS above is a no-op there.
+  `ALTER TABLE daily_activities ADD COLUMN IF NOT EXISTS instructions text`,
   `CREATE TABLE IF NOT EXISTS daily_reflections (
     id serial PRIMARY KEY NOT NULL,
     od_user_id text NOT NULL,

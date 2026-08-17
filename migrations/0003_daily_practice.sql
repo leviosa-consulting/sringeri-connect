@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS daily_activities (
     content_date date NOT NULL,
     activity_type text DEFAULT 'anagram' NOT NULL,
     answer_mode text DEFAULT 'text' NOT NULL,
+    instructions text,
     prompt text NOT NULL,
     image_url text,
     options jsonb,
@@ -42,6 +43,8 @@ CREATE TABLE IF NOT EXISTS daily_activities (
     created_at timestamp DEFAULT now() NOT NULL,
     updated_at timestamp DEFAULT now() NOT NULL
   );
+--> statement-breakpoint
+ALTER TABLE daily_activities ADD COLUMN IF NOT EXISTS instructions text;
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS daily_reflections (
     id serial PRIMARY KEY NOT NULL,
