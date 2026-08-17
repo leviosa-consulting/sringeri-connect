@@ -258,8 +258,23 @@
     return added.length;
   }
 
+  /** Returns the current page path (no query string or fragment). */
+  function pagePath() {
+    try { return location.pathname || "/"; } catch (e) { return "/"; }
+  }
+
+  /** Returns the current page title, truncated to 200 chars. */
+  function pageTitle() {
+    try { return (document.title || "").slice(0, 200); } catch (e) { return ""; }
+  }
+
   function startSession() {
-    return api("/api/live-chat/session", { visitorId: visitorId(), source: "website" })
+    return api("/api/live-chat/session", {
+      visitorId: visitorId(),
+      source: "website",
+      pagePath: pagePath(),
+      pageTitle: pageTitle(),
+    })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
       .then(function (data) {
         state.convo = data.conversation;
@@ -284,6 +299,8 @@
       conversationId: state.convo.id,
       sinceId: state.lastId,
       markRead: !!markRead,
+      pagePath: pagePath(),
+      pageTitle: pageTitle(),
     })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
       .then(function (data) {
@@ -394,6 +411,27 @@
       })
       .catch(function () { /* the website must never break because chat is down */ });
   }
+
+  // For single-page apps: fire a poll immediately whenever the visitor
+  // navigates so the team sees the latest page without waiting for the timer.
+  function onNavigate() {
+    if (state.convo) poll(state.open);
+  }
+  window.addEventListener("popstate", onNavigate);
+  // Patch pushState / replaceState so hash-free SPA routers are also covered.
+  (function () {
+    function wrap(orig) {
+      return function () {
+        var ret = orig.apply(this, arguments);
+        onNavigate();
+        return ret;
+      };
+    }
+    try {
+      history.pushState = wrap(history.pushState);
+      history.replaceState = wrap(history.replaceState);
+    } catch (e) { /* CSP may block this on some hosts; silently skip */ }
+  })();
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

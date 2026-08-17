@@ -4805,10 +4805,18 @@ export async function registerRoutes(
 
   app.post("/api/live-chat/session", liveChatLimiter, async (req, res) => {
     try {
-      const { visitorId, source } = req.body || {};
+      const { visitorId, source, pagePath, pageTitle } = req.body || {};
       if (!visitorId || typeof visitorId !== "string" || visitorId.length < 8 || visitorId.length > 100) {
         return res.status(400).json({ error: "A valid visitorId is required" });
       }
+
+      // Keep only the path (strip host, query strings and fragments that may contain PII).
+      const cleanPageUrl = (typeof pagePath === "string" && pagePath)
+        ? ("/" + pagePath.replace(/^\/+/, "")).split("?")[0].split("#")[0].slice(0, 300)
+        : null;
+      const cleanPageTitle = (typeof pageTitle === "string" && pageTitle)
+        ? pageTitle.slice(0, 200)
+        : null;
 
       const auth = await getFirebaseUidAndEmail(req).catch(() => null);
       const cleanSource = source === "website" ? "website" : "app";
@@ -4819,6 +4827,8 @@ export async function registerRoutes(
           odUserId: auth?.uid || null,
           email: auth?.email || null,
           source: cleanSource,
+          pageUrl: cleanPageUrl,
+          pageTitle: cleanPageTitle,
         });
         // Website visitors get the greeting the team controls from the admin
         // console; the in-app greeting is fixed.
@@ -4830,8 +4840,18 @@ export async function registerRoutes(
           author: "bot",
           content: greeting,
         });
-      } else if (auth?.uid && !convo.odUserId) {
-        convo = (await storage.updateChatConversation(convo.id, { odUserId: auth.uid, email: convo.email || auth.email || null })) || convo;
+      } else {
+        // Returning visitor: update page context and optionally link a newly-authed uid.
+        const pageUpdate: Record<string, any> = {};
+        if (cleanPageUrl) pageUpdate.pageUrl = cleanPageUrl;
+        if (cleanPageTitle) pageUpdate.pageTitle = cleanPageTitle;
+        if (auth?.uid && !convo.odUserId) {
+          pageUpdate.odUserId = auth.uid;
+          pageUpdate.email = convo.email || auth.email || null;
+        }
+        if (Object.keys(pageUpdate).length) {
+          convo = (await storage.updateChatConversation(convo.id, pageUpdate)) || convo;
+        }
       }
 
       const messages = await storage.listChatMessages(convo.id);
@@ -4848,9 +4868,22 @@ export async function registerRoutes(
   // URL that browsers, proxies and access logs would keep.
   app.post("/api/live-chat/poll", liveChatPollLimiter, async (req, res) => {
     try {
-      const { visitorId, conversationId, sinceId, markRead } = req.body || {};
-      const convo = await loadVisitorConversation(req, parseInt(String(conversationId), 10), String(visitorId || ""));
+      const { visitorId, conversationId, sinceId, markRead, pagePath, pageTitle } = req.body || {};
+      let convo = await loadVisitorConversation(req, parseInt(String(conversationId), 10), String(visitorId || ""));
       if (!convo) return res.status(404).json({ error: "Conversation not found" });
+
+      // Update page context if the visitor navigated to a new page.
+      const cleanPageUrl = (typeof pagePath === "string" && pagePath)
+        ? ("/" + pagePath.replace(/^\/+/, "")).split("?")[0].split("#")[0].slice(0, 300)
+        : null;
+      const cleanPageTitle = (typeof pageTitle === "string" && pageTitle)
+        ? pageTitle.slice(0, 200)
+        : null;
+      if (cleanPageUrl && cleanPageUrl !== convo.pageUrl) {
+        const patch: Record<string, any> = { pageUrl: cleanPageUrl };
+        if (cleanPageTitle) patch.pageTitle = cleanPageTitle;
+        convo = (await storage.updateChatConversation(convo.id, patch)) || convo;
+      }
 
       const messages = await storage.listChatMessages(convo.id, parseInt(String(sinceId || "0"), 10) || 0);
       if (markRead !== false && messages.length) await storage.clearChatUnread(convo.id, "visitor");

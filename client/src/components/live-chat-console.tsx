@@ -19,6 +19,8 @@ interface Conversation {
   phone: string | null;
   status: ChatStatus;
   source: string;
+  pageUrl: string | null;
+  pageTitle: string | null;
   assignedAgentName: string | null;
   unreadForAgent: number;
   lastMessageAt: string;
@@ -302,6 +304,12 @@ export default function LiveChatConsole({ token }: { token: string }) {
                   <p className="text-xs text-muted-foreground truncate">
                     {selected.email || "no email"}{selected.phone ? ` · ${selected.phone}` : ""} · via {selected.source}
                   </p>
+                  {selected.source === "website" && selected.pageUrl && (
+                    <p className="text-xs text-muted-foreground truncate mt-0.5" title={selected.pageTitle || selected.pageUrl}>
+                      <span className="font-medium text-foreground/70">Page:</span>{" "}
+                      {selected.pageTitle ? `${selected.pageTitle} (${selected.pageUrl})` : selected.pageUrl}
+                    </p>
+                  )}
                 </div>
                 {selected.status !== "closed" && (
                   <Button size="sm" variant="ghost" onClick={closeConversation} data-testid="button-close-conversation">

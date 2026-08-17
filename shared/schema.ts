@@ -170,8 +170,12 @@ export const chatConversations = pgTable("chat_conversations", {
   email: text("email"),
   phone: text("phone"),
   status: text("status").$type<ChatStatus>().default("bot").notNull(),
-  /** "app" today; task #152 will add the embedded website source. */
+  /** "app" | "website" */
   source: text("source").default("app").notNull(),
+  /** Path-only URL of the page the visitor was on when they opened the chat (no query string). */
+  pageUrl: text("page_url"),
+  /** Title of that page, e.g. "Donations – Sringeri". */
+  pageTitle: text("page_title"),
   assignedAgentUid: text("assigned_agent_uid"),
   assignedAgentName: text("assigned_agent_name"),
   unreadForAgent: integer("unread_for_agent").default(0).notNull(),
