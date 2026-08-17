@@ -1,1 +1,2 @@
 - [Admin Corrections tool extension pattern](admin-corrections-pattern.md) — how to add a new record type (yatri/fastline/seva style) to the corrections tool and its admin-role testing limitation.
+- [Daily practice & Dharma Points](daily-practice-ledger.md) — points are an append-only ledger, grading is server-side, and scheduled content freezes once answered.

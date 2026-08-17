@@ -1,4 +1,5 @@
-import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, passwordResetTokens, adminRoles, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog, type PasswordResetToken, type AdminRole } from "@shared/schema";
+import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, passwordResetTokens, adminRoles, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog, type PasswordResetToken, type AdminRole, dailyGuruvani, dailyQuestions, dailyActivities, dailyReflections, dailyQuestionResponses, dailyActivityResponses, dharmaPoints, DHARMA_SOURCE_GURUVANI, DHARMA_SOURCE_QUESTION, DHARMA_SOURCE_ACTIVITY, type DailyGuruvani, type DailyQuestion, type DailyActivity, type DailyReflection, type DailyQuestionResponse, type DailyActivityResponse, type DharmaPointsEntry, type InsertDailyGuruvani, type InsertDailyQuestion, type InsertDailyActivity } from "@shared/schema";
+import { normalizeDailyAnswer } from "@shared/daily-grading";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql, eq, and, gte, lte, desc, asc, count, countDistinct, avg } from "drizzle-orm";
@@ -55,6 +56,71 @@ export interface IStorage {
   listAllAdminRoles(): Promise<AdminRole[]>;
   grantAdminRole(firebaseUid: string, email: string, role: string, grantedByUid: string): Promise<AdminRole>;
   revokeAdminRole(id: number): Promise<void>;
+
+  // --- Daily practice content (admin-scheduled, one item per date) ---
+  getDailyGuruvani(dateStr: string): Promise<DailyGuruvani | undefined>;
+  getDailyQuestion(dateStr: string): Promise<DailyQuestion | undefined>;
+  getDailyActivity(dateStr: string): Promise<DailyActivity | undefined>;
+  upsertDailyGuruvani(data: InsertDailyGuruvani): Promise<DailyGuruvani>;
+  upsertDailyQuestion(data: InsertDailyQuestion): Promise<DailyQuestion>;
+  upsertDailyActivity(data: InsertDailyActivity): Promise<DailyActivity>;
+  deleteDailyGuruvani(dateStr: string): Promise<void>;
+  deleteDailyQuestion(dateStr: string): Promise<void>;
+  deleteDailyActivity(dateStr: string): Promise<void>;
+  listDailyContentDates(limit?: number): Promise<DailyContentDateRow[]>;
+
+  // --- Devotee submissions (private to the devotee and admins) ---
+  getDailyReflection(odUserId: string, dateStr: string): Promise<DailyReflection | undefined>;
+  getDailyQuestionResponse(odUserId: string, dateStr: string): Promise<DailyQuestionResponse | undefined>;
+  getDailyActivityResponse(odUserId: string, dateStr: string): Promise<DailyActivityResponse | undefined>;
+  saveDailyQuestionIfUnanswered(data: InsertDailyQuestion): Promise<DailyContentSaveResult>;
+  saveDailyActivityIfUnanswered(data: InsertDailyActivity): Promise<DailyContentSaveResult>;
+  deleteDailyQuestionIfUnanswered(dateStr: string): Promise<DailyContentSaveResult>;
+  deleteDailyActivityIfUnanswered(dateStr: string): Promise<DailyContentSaveResult>;
+  countDailyQuestionResponses(dateStr: string): Promise<number>;
+  countDailyActivityResponses(dateStr: string): Promise<number>;
+  submitDailyReflection(odUserId: string, dateStr: string, guruvaniId: number | null, reflectionText: string, points: number): Promise<DailyReflection | null>;
+  gradeDailyQuestion(odUserId: string, dateStr: string, selectedIndex: number): Promise<DailyGradeResult<DailyQuestionResponse, DailyQuestion>>;
+  gradeDailyActivity(odUserId: string, dateStr: string, input: DailyAnswerInput): Promise<DailyGradeResult<DailyActivityResponse, DailyActivity>>;
+
+  // --- Dharma Points ledger ---
+  getDharmaPointsSummary(odUserId: string, dateStr: string): Promise<{ total: number; today: number }>;
+  listDharmaAwards(odUserId: string, limit?: number): Promise<DharmaPointsEntry[]>;
+  listDailyHistory(odUserId: string, limit?: number): Promise<DailyHistory>;
+  listDailySubmissionsForDate(dateStr: string): Promise<DailyHistory>;
+}
+
+/**
+ * Grading happens inside the same transaction that locks the scheduled item, so
+ * these results describe every way a submission can end.
+ */
+export type DailyGradeResult<TResponse, TContent> =
+  | { status: "missing" }
+  | { status: "invalid" }
+  | { status: "duplicate" }
+  | { status: "graded"; response: TResponse; content: TContent };
+
+export interface DailyAnswerInput {
+  /** Chosen option, for multiple-choice items. */
+  selectedIndex?: number;
+  /** Typed answer, for free-text activities. */
+  answer?: string;
+}
+
+/** Scheduled items freeze once a devotee has responded to them. */
+export type DailyContentSaveResult = "saved" | "frozen";
+
+export interface DailyContentDateRow {
+  contentDate: string;
+  hasGuruvani: boolean;
+  hasQuestion: boolean;
+  hasActivity: boolean;
+}
+
+export interface DailyHistory {
+  reflections: (DailyReflection & { quote: string | null })[];
+  questions: (DailyQuestionResponse & { questionText: string; options: string[]; correctIndex: number })[];
+  activities: (DailyActivityResponse & { prompt: string; correctAnswer: string | null })[];
 }
 
 export class MemStorage implements IStorage {
@@ -163,6 +229,33 @@ export class MemStorage implements IStorage {
   async revokeAdminRole(id: number): Promise<void> {
     this._adminRoles = this._adminRoles.filter(r => r.id !== id);
   }
+
+  async getDailyGuruvani(_dateStr: string): Promise<DailyGuruvani | undefined> { return undefined; }
+  async getDailyQuestion(_dateStr: string): Promise<DailyQuestion | undefined> { return undefined; }
+  async getDailyActivity(_dateStr: string): Promise<DailyActivity | undefined> { return undefined; }
+  async upsertDailyGuruvani(_data: InsertDailyGuruvani): Promise<DailyGuruvani> { throw new Error("Not implemented"); }
+  async upsertDailyQuestion(_data: InsertDailyQuestion): Promise<DailyQuestion> { throw new Error("Not implemented"); }
+  async upsertDailyActivity(_data: InsertDailyActivity): Promise<DailyActivity> { throw new Error("Not implemented"); }
+  async deleteDailyGuruvani(_dateStr: string): Promise<void> {}
+  async deleteDailyQuestion(_dateStr: string): Promise<void> {}
+  async deleteDailyActivity(_dateStr: string): Promise<void> {}
+  async listDailyContentDates(_limit?: number): Promise<DailyContentDateRow[]> { return []; }
+  async getDailyReflection(_odUserId: string, _dateStr: string): Promise<DailyReflection | undefined> { return undefined; }
+  async getDailyQuestionResponse(_odUserId: string, _dateStr: string): Promise<DailyQuestionResponse | undefined> { return undefined; }
+  async getDailyActivityResponse(_odUserId: string, _dateStr: string): Promise<DailyActivityResponse | undefined> { return undefined; }
+  async saveDailyQuestionIfUnanswered(_data: InsertDailyQuestion): Promise<DailyContentSaveResult> { throw new Error("Not implemented"); }
+  async saveDailyActivityIfUnanswered(_data: InsertDailyActivity): Promise<DailyContentSaveResult> { throw new Error("Not implemented"); }
+  async deleteDailyQuestionIfUnanswered(_dateStr: string): Promise<DailyContentSaveResult> { return "saved"; }
+  async deleteDailyActivityIfUnanswered(_dateStr: string): Promise<DailyContentSaveResult> { return "saved"; }
+  async countDailyQuestionResponses(_dateStr: string): Promise<number> { return 0; }
+  async countDailyActivityResponses(_dateStr: string): Promise<number> { return 0; }
+  async submitDailyReflection(_odUserId: string, _dateStr: string, _guruvaniId: number | null, _reflectionText: string, _points: number): Promise<DailyReflection | null> { throw new Error("Not implemented"); }
+  async gradeDailyQuestion(_odUserId: string, _dateStr: string, _selectedIndex: number): Promise<DailyGradeResult<DailyQuestionResponse, DailyQuestion>> { return { status: "missing" }; }
+  async gradeDailyActivity(_odUserId: string, _dateStr: string, _input: DailyAnswerInput): Promise<DailyGradeResult<DailyActivityResponse, DailyActivity>> { return { status: "missing" }; }
+  async getDharmaPointsSummary(_odUserId: string, _dateStr: string): Promise<{ total: number; today: number }> { return { total: 0, today: 0 }; }
+  async listDharmaAwards(_odUserId: string, _limit?: number): Promise<DharmaPointsEntry[]> { return []; }
+  async listDailyHistory(_odUserId: string, _limit?: number): Promise<DailyHistory> { return { reflections: [], questions: [], activities: [] }; }
+  async listDailySubmissionsForDate(_dateStr: string): Promise<DailyHistory> { return { reflections: [], questions: [], activities: [] }; }
 }
 
 let storage: IStorage;
@@ -686,6 +779,429 @@ if (process.env.DATABASE_URL) {
 
     async revokeAdminRole(id: number): Promise<void> {
       await db.delete(adminRoles).where(eq(adminRoles.id, id));
+    }
+
+    // ----- Daily practice content -----
+
+    async getDailyGuruvani(dateStr: string): Promise<DailyGuruvani | undefined> {
+      const [row] = await db.select().from(dailyGuruvani)
+        .where(and(eq(dailyGuruvani.contentDate, dateStr), eq(dailyGuruvani.isActive, true)));
+      return row;
+    }
+
+    async getDailyQuestion(dateStr: string): Promise<DailyQuestion | undefined> {
+      const [row] = await db.select().from(dailyQuestions)
+        .where(and(eq(dailyQuestions.contentDate, dateStr), eq(dailyQuestions.isActive, true)));
+      return row;
+    }
+
+    async getDailyActivity(dateStr: string): Promise<DailyActivity | undefined> {
+      const [row] = await db.select().from(dailyActivities)
+        .where(and(eq(dailyActivities.contentDate, dateStr), eq(dailyActivities.isActive, true)));
+      return row;
+    }
+
+    async upsertDailyGuruvani(data: InsertDailyGuruvani): Promise<DailyGuruvani> {
+      const [row] = await db.insert(dailyGuruvani).values(data).onConflictDoUpdate({
+        target: dailyGuruvani.contentDate,
+        set: {
+          quote: data.quote,
+          attribution: data.attribution ?? null,
+          points: data.points ?? 2,
+          isActive: data.isActive ?? true,
+          updatedAt: new Date(),
+        },
+      }).returning();
+      return row;
+    }
+
+    async upsertDailyQuestion(data: InsertDailyQuestion): Promise<DailyQuestion> {
+      const [row] = await db.insert(dailyQuestions).values(data).onConflictDoUpdate({
+        target: dailyQuestions.contentDate,
+        set: {
+          questionText: data.questionText,
+          options: data.options,
+          correctIndex: data.correctIndex,
+          points: data.points ?? 1,
+          explanation: data.explanation ?? null,
+          isActive: data.isActive ?? true,
+          updatedAt: new Date(),
+        },
+      }).returning();
+      return row;
+    }
+
+    async upsertDailyActivity(data: InsertDailyActivity): Promise<DailyActivity> {
+      const [row] = await db.insert(dailyActivities).values(data).onConflictDoUpdate({
+        target: dailyActivities.contentDate,
+        set: {
+          activityType: data.activityType ?? "anagram",
+          answerMode: data.answerMode ?? "text",
+          prompt: data.prompt,
+          imageUrl: data.imageUrl ?? null,
+          options: data.options ?? null,
+          correctIndex: data.correctIndex ?? null,
+          correctAnswer: data.correctAnswer ?? null,
+          points: data.points ?? 2,
+          explanation: data.explanation ?? null,
+          isActive: data.isActive ?? true,
+          updatedAt: new Date(),
+        },
+      }).returning();
+      return row;
+    }
+
+    async deleteDailyGuruvani(dateStr: string): Promise<void> {
+      await db.delete(dailyGuruvani).where(eq(dailyGuruvani.contentDate, dateStr));
+    }
+
+    async deleteDailyQuestion(dateStr: string): Promise<void> {
+      await db.delete(dailyQuestions).where(eq(dailyQuestions.contentDate, dateStr));
+    }
+
+    async deleteDailyActivity(dateStr: string): Promise<void> {
+      await db.delete(dailyActivities).where(eq(dailyActivities.contentDate, dateStr));
+    }
+
+    async listDailyContentDates(limitNum: number = 60): Promise<DailyContentDateRow[]> {
+      const rows = await db.execute(sql`
+        SELECT d.content_date::text AS content_date,
+               bool_or(d.kind = 'g') AS has_guruvani,
+               bool_or(d.kind = 'q') AS has_question,
+               bool_or(d.kind = 'a') AS has_activity
+        FROM (
+          SELECT content_date, 'g' AS kind FROM daily_guruvani
+          UNION ALL SELECT content_date, 'q' FROM daily_questions
+          UNION ALL SELECT content_date, 'a' FROM daily_activities
+        ) d
+        GROUP BY d.content_date
+        ORDER BY d.content_date DESC
+        LIMIT ${limitNum}
+      `);
+      return (rows.rows as any[]).map(r => ({
+        contentDate: r.content_date,
+        hasGuruvani: !!r.has_guruvani,
+        hasQuestion: !!r.has_question,
+        hasActivity: !!r.has_activity,
+      }));
+    }
+
+    // ----- Devotee submissions -----
+
+    async getDailyReflection(odUserId: string, dateStr: string): Promise<DailyReflection | undefined> {
+      const [row] = await db.select().from(dailyReflections)
+        .where(and(eq(dailyReflections.odUserId, odUserId), eq(dailyReflections.contentDate, dateStr)));
+      return row;
+    }
+
+    async getDailyQuestionResponse(odUserId: string, dateStr: string): Promise<DailyQuestionResponse | undefined> {
+      const [row] = await db.select().from(dailyQuestionResponses)
+        .where(and(eq(dailyQuestionResponses.odUserId, odUserId), eq(dailyQuestionResponses.contentDate, dateStr)));
+      return row;
+    }
+
+    async getDailyActivityResponse(odUserId: string, dateStr: string): Promise<DailyActivityResponse | undefined> {
+      const [row] = await db.select().from(dailyActivityResponses)
+        .where(and(eq(dailyActivityResponses.odUserId, odUserId), eq(dailyActivityResponses.contentDate, dateStr)));
+      return row;
+    }
+
+    // The lock taken here is the same one the submission path takes, so a
+    // devotee cannot slip an answer in between the check and the write: whoever
+    // gets the row lock first wins, and the loser sees the other's outcome.
+    async saveDailyQuestionIfUnanswered(data: InsertDailyQuestion): Promise<DailyContentSaveResult> {
+      return db.transaction(async (tx) => {
+        const existing = await tx.select().from(dailyQuestions)
+          .where(eq(dailyQuestions.contentDate, data.contentDate)).for("update");
+        if (existing.length > 0) {
+          const answered = await tx.select({ id: dailyQuestionResponses.id }).from(dailyQuestionResponses)
+            .where(eq(dailyQuestionResponses.contentDate, data.contentDate)).limit(1);
+          if (answered.length > 0) return "frozen";
+        }
+        await tx.insert(dailyQuestions).values(data).onConflictDoUpdate({
+          target: dailyQuestions.contentDate,
+          set: {
+            questionText: data.questionText,
+            options: data.options,
+            correctIndex: data.correctIndex,
+            points: data.points ?? 1,
+            explanation: data.explanation ?? null,
+            isActive: data.isActive ?? true,
+            updatedAt: new Date(),
+          },
+        });
+        return "saved";
+      });
+    }
+
+    async saveDailyActivityIfUnanswered(data: InsertDailyActivity): Promise<DailyContentSaveResult> {
+      return db.transaction(async (tx) => {
+        const existing = await tx.select().from(dailyActivities)
+          .where(eq(dailyActivities.contentDate, data.contentDate)).for("update");
+        if (existing.length > 0) {
+          const answered = await tx.select({ id: dailyActivityResponses.id }).from(dailyActivityResponses)
+            .where(eq(dailyActivityResponses.contentDate, data.contentDate)).limit(1);
+          if (answered.length > 0) return "frozen";
+        }
+        await tx.insert(dailyActivities).values(data).onConflictDoUpdate({
+          target: dailyActivities.contentDate,
+          set: {
+            activityType: data.activityType ?? "anagram",
+            answerMode: data.answerMode ?? "text",
+            prompt: data.prompt,
+            imageUrl: data.imageUrl ?? null,
+            options: data.options ?? null,
+            correctIndex: data.correctIndex ?? null,
+            correctAnswer: data.correctAnswer ?? null,
+            points: data.points ?? 2,
+            explanation: data.explanation ?? null,
+            isActive: data.isActive ?? true,
+            updatedAt: new Date(),
+          },
+        });
+        return "saved";
+      });
+    }
+
+    async deleteDailyQuestionIfUnanswered(dateStr: string): Promise<DailyContentSaveResult> {
+      return db.transaction(async (tx) => {
+        const existing = await tx.select().from(dailyQuestions)
+          .where(eq(dailyQuestions.contentDate, dateStr)).for("update");
+        if (existing.length === 0) return "saved";
+        const answered = await tx.select({ id: dailyQuestionResponses.id }).from(dailyQuestionResponses)
+          .where(eq(dailyQuestionResponses.contentDate, dateStr)).limit(1);
+        if (answered.length > 0) return "frozen";
+        await tx.delete(dailyQuestions).where(eq(dailyQuestions.contentDate, dateStr));
+        return "saved";
+      });
+    }
+
+    async deleteDailyActivityIfUnanswered(dateStr: string): Promise<DailyContentSaveResult> {
+      return db.transaction(async (tx) => {
+        const existing = await tx.select().from(dailyActivities)
+          .where(eq(dailyActivities.contentDate, dateStr)).for("update");
+        if (existing.length === 0) return "saved";
+        const answered = await tx.select({ id: dailyActivityResponses.id }).from(dailyActivityResponses)
+          .where(eq(dailyActivityResponses.contentDate, dateStr)).limit(1);
+        if (answered.length > 0) return "frozen";
+        await tx.delete(dailyActivities).where(eq(dailyActivities.contentDate, dateStr));
+        return "saved";
+      });
+    }
+
+    async countDailyQuestionResponses(dateStr: string): Promise<number> {
+      const rows = await db.select({ id: dailyQuestionResponses.id }).from(dailyQuestionResponses)
+        .where(eq(dailyQuestionResponses.contentDate, dateStr));
+      return rows.length;
+    }
+
+    async countDailyActivityResponses(dateStr: string): Promise<number> {
+      const rows = await db.select({ id: dailyActivityResponses.id }).from(dailyActivityResponses)
+        .where(eq(dailyActivityResponses.contentDate, dateStr));
+      return rows.length;
+    }
+
+    async submitDailyReflection(odUserId: string, dateStr: string, guruvaniId: number | null, reflectionText: string, points: number): Promise<DailyReflection | null> {
+      return db.transaction(async (tx) => {
+        const inserted = await tx.insert(dailyReflections).values({
+          odUserId, contentDate: dateStr, guruvaniId, reflectionText, pointsAwarded: points,
+        }).onConflictDoNothing().returning();
+        if (inserted.length === 0) return null;
+        if (points > 0) {
+          await tx.insert(dharmaPoints).values({
+            odUserId, sourceType: DHARMA_SOURCE_GURUVANI, sourceDate: dateStr, sourceId: guruvaniId, points,
+          }).onConflictDoNothing();
+        }
+        return inserted[0];
+      });
+    }
+
+    // Everything that decides the outcome — reading the scheduled item, checking
+    // the option, grading it, recording the response and awarding the points —
+    // happens inside one transaction, after the row lock. An admin editing the
+    // item waits on the same lock, so an answer can never be graded against a
+    // revision other than the one that is saved.
+    async gradeDailyQuestion(odUserId: string, dateStr: string, selectedIndex: number): Promise<DailyGradeResult<DailyQuestionResponse, DailyQuestion>> {
+      return db.transaction(async (tx) => {
+        const [question] = await tx.select().from(dailyQuestions)
+          .where(eq(dailyQuestions.contentDate, dateStr)).for("update");
+        if (!question || !question.isActive) return { status: "missing" };
+        if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= question.options.length) {
+          return { status: "invalid" };
+        }
+
+        const isCorrect = selectedIndex === question.correctIndex;
+        const points = isCorrect ? question.points : 0;
+
+        const inserted = await tx.insert(dailyQuestionResponses).values({
+          odUserId, contentDate: dateStr, questionId: question.id, selectedIndex, isCorrect, pointsAwarded: points,
+        }).onConflictDoNothing().returning();
+        if (inserted.length === 0) return { status: "duplicate" };
+
+        if (points > 0) {
+          await tx.insert(dharmaPoints).values({
+            odUserId, sourceType: DHARMA_SOURCE_QUESTION, sourceDate: dateStr, sourceId: question.id, points,
+          }).onConflictDoNothing();
+        }
+        return { status: "graded", response: inserted[0], content: question };
+      });
+    }
+
+    async gradeDailyActivity(odUserId: string, dateStr: string, input: DailyAnswerInput): Promise<DailyGradeResult<DailyActivityResponse, DailyActivity>> {
+      return db.transaction(async (tx) => {
+        const [activity] = await tx.select().from(dailyActivities)
+          .where(eq(dailyActivities.contentDate, dateStr)).for("update");
+        if (!activity || !activity.isActive) return { status: "missing" };
+
+        let isCorrect = false;
+        let submittedAnswer = "";
+
+        if (activity.answerMode === "options") {
+          const options = activity.options ?? [];
+          const selectedIndex = input.selectedIndex;
+          if (typeof selectedIndex !== "number" || !Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= options.length) {
+            return { status: "invalid" };
+          }
+          submittedAnswer = options[selectedIndex];
+          isCorrect = selectedIndex === activity.correctIndex;
+        } else {
+          const answer = typeof input.answer === "string" ? input.answer.trim() : "";
+          if (!answer || answer.length > 500) return { status: "invalid" };
+          submittedAnswer = answer;
+          isCorrect = !!activity.correctAnswer && normalizeDailyAnswer(answer) === normalizeDailyAnswer(activity.correctAnswer);
+        }
+
+        const points = isCorrect ? activity.points : 0;
+
+        const inserted = await tx.insert(dailyActivityResponses).values({
+          odUserId, contentDate: dateStr, activityId: activity.id, submittedAnswer, isCorrect, pointsAwarded: points,
+        }).onConflictDoNothing().returning();
+        if (inserted.length === 0) return { status: "duplicate" };
+
+        if (points > 0) {
+          await tx.insert(dharmaPoints).values({
+            odUserId, sourceType: DHARMA_SOURCE_ACTIVITY, sourceDate: dateStr, sourceId: activity.id, points,
+          }).onConflictDoNothing();
+        }
+        return { status: "graded", response: inserted[0], content: activity };
+      });
+    }
+
+    // ----- Dharma Points ledger -----
+
+    async getDharmaPointsSummary(odUserId: string, dateStr: string): Promise<{ total: number; today: number }> {
+      const [row] = await db.select({
+        total: sql<string>`COALESCE(SUM(${dharmaPoints.points}), 0)`,
+        today: sql<string>`COALESCE(SUM(CASE WHEN ${dharmaPoints.sourceDate} = ${dateStr} THEN ${dharmaPoints.points} ELSE 0 END), 0)`,
+      }).from(dharmaPoints).where(eq(dharmaPoints.odUserId, odUserId));
+      return { total: Number(row?.total ?? 0), today: Number(row?.today ?? 0) };
+    }
+
+    async listDharmaAwards(odUserId: string, limitNum: number = 50): Promise<DharmaPointsEntry[]> {
+      return db.select().from(dharmaPoints)
+        .where(eq(dharmaPoints.odUserId, odUserId))
+        .orderBy(desc(dharmaPoints.sourceDate))
+        .limit(limitNum);
+    }
+
+    async listDailyHistory(odUserId: string, limitNum: number = 30): Promise<DailyHistory> {
+      const [reflections, questions, activities] = await Promise.all([
+        db.select({
+          id: dailyReflections.id,
+          odUserId: dailyReflections.odUserId,
+          contentDate: dailyReflections.contentDate,
+          guruvaniId: dailyReflections.guruvaniId,
+          reflectionText: dailyReflections.reflectionText,
+          pointsAwarded: dailyReflections.pointsAwarded,
+          createdAt: dailyReflections.createdAt,
+          quote: dailyGuruvani.quote,
+        }).from(dailyReflections)
+          .leftJoin(dailyGuruvani, eq(dailyReflections.guruvaniId, dailyGuruvani.id))
+          .where(eq(dailyReflections.odUserId, odUserId))
+          .orderBy(desc(dailyReflections.contentDate)).limit(limitNum),
+        db.select({
+          id: dailyQuestionResponses.id,
+          odUserId: dailyQuestionResponses.odUserId,
+          contentDate: dailyQuestionResponses.contentDate,
+          questionId: dailyQuestionResponses.questionId,
+          selectedIndex: dailyQuestionResponses.selectedIndex,
+          isCorrect: dailyQuestionResponses.isCorrect,
+          pointsAwarded: dailyQuestionResponses.pointsAwarded,
+          createdAt: dailyQuestionResponses.createdAt,
+          questionText: dailyQuestions.questionText,
+          options: dailyQuestions.options,
+          correctIndex: dailyQuestions.correctIndex,
+        }).from(dailyQuestionResponses)
+          .innerJoin(dailyQuestions, eq(dailyQuestionResponses.questionId, dailyQuestions.id))
+          .where(eq(dailyQuestionResponses.odUserId, odUserId))
+          .orderBy(desc(dailyQuestionResponses.contentDate)).limit(limitNum),
+        db.select({
+          id: dailyActivityResponses.id,
+          odUserId: dailyActivityResponses.odUserId,
+          contentDate: dailyActivityResponses.contentDate,
+          activityId: dailyActivityResponses.activityId,
+          submittedAnswer: dailyActivityResponses.submittedAnswer,
+          isCorrect: dailyActivityResponses.isCorrect,
+          pointsAwarded: dailyActivityResponses.pointsAwarded,
+          createdAt: dailyActivityResponses.createdAt,
+          prompt: dailyActivities.prompt,
+          correctAnswer: dailyActivities.correctAnswer,
+        }).from(dailyActivityResponses)
+          .innerJoin(dailyActivities, eq(dailyActivityResponses.activityId, dailyActivities.id))
+          .where(eq(dailyActivityResponses.odUserId, odUserId))
+          .orderBy(desc(dailyActivityResponses.contentDate)).limit(limitNum),
+      ]);
+      return { reflections, questions, activities } as DailyHistory;
+    }
+
+    async listDailySubmissionsForDate(dateStr: string): Promise<DailyHistory> {
+      const [reflections, questions, activities] = await Promise.all([
+        db.select({
+          id: dailyReflections.id,
+          odUserId: dailyReflections.odUserId,
+          contentDate: dailyReflections.contentDate,
+          guruvaniId: dailyReflections.guruvaniId,
+          reflectionText: dailyReflections.reflectionText,
+          pointsAwarded: dailyReflections.pointsAwarded,
+          createdAt: dailyReflections.createdAt,
+          quote: dailyGuruvani.quote,
+        }).from(dailyReflections)
+          .leftJoin(dailyGuruvani, eq(dailyReflections.guruvaniId, dailyGuruvani.id))
+          .where(eq(dailyReflections.contentDate, dateStr))
+          .orderBy(desc(dailyReflections.createdAt)).limit(500),
+        db.select({
+          id: dailyQuestionResponses.id,
+          odUserId: dailyQuestionResponses.odUserId,
+          contentDate: dailyQuestionResponses.contentDate,
+          questionId: dailyQuestionResponses.questionId,
+          selectedIndex: dailyQuestionResponses.selectedIndex,
+          isCorrect: dailyQuestionResponses.isCorrect,
+          pointsAwarded: dailyQuestionResponses.pointsAwarded,
+          createdAt: dailyQuestionResponses.createdAt,
+          questionText: dailyQuestions.questionText,
+          options: dailyQuestions.options,
+          correctIndex: dailyQuestions.correctIndex,
+        }).from(dailyQuestionResponses)
+          .innerJoin(dailyQuestions, eq(dailyQuestionResponses.questionId, dailyQuestions.id))
+          .where(eq(dailyQuestionResponses.contentDate, dateStr))
+          .orderBy(desc(dailyQuestionResponses.createdAt)).limit(500),
+        db.select({
+          id: dailyActivityResponses.id,
+          odUserId: dailyActivityResponses.odUserId,
+          contentDate: dailyActivityResponses.contentDate,
+          activityId: dailyActivityResponses.activityId,
+          submittedAnswer: dailyActivityResponses.submittedAnswer,
+          isCorrect: dailyActivityResponses.isCorrect,
+          pointsAwarded: dailyActivityResponses.pointsAwarded,
+          createdAt: dailyActivityResponses.createdAt,
+          prompt: dailyActivities.prompt,
+          correctAnswer: dailyActivities.correctAnswer,
+        }).from(dailyActivityResponses)
+          .innerJoin(dailyActivities, eq(dailyActivityResponses.activityId, dailyActivities.id))
+          .where(eq(dailyActivityResponses.contentDate, dateStr))
+          .orderBy(desc(dailyActivityResponses.createdAt)).limit(500),
+      ]);
+      return { reflections, questions, activities } as DailyHistory;
     }
   }
 

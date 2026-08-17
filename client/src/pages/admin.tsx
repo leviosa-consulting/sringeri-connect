@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { RangoliLoader } from "@/components/rangoli-loader";
-import { BarChart3, BookOpenCheck, Brain, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare, ClipboardList, TrendingUp, ShieldCheck, Loader2, ChevronDown, ChevronUp, Eye, EyeOff, FileEdit } from "lucide-react";
+import { BarChart3, BookOpenCheck, Brain, CalendarHeart, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare, ClipboardList, TrendingUp, ShieldCheck, Loader2, ChevronDown, ChevronUp, Eye, EyeOff, FileEdit } from "lucide-react";
 import { Link } from "wouter";
 
 const adminTools = [
@@ -19,6 +19,14 @@ const adminTools = [
     icon: BookOpenCheck,
     path: "/admin/quizzes",
     color: "bg-green-50 text-green-600",
+    role: "quiz",
+  },
+  {
+    title: "Daily Content",
+    description: "Schedule the Guruvani, Question of the Day and Activity of the Day shown in Today",
+    icon: CalendarHeart,
+    path: "/admin/daily",
+    color: "bg-fuchsia-50 text-fuchsia-600",
     role: "quiz",
   },
   {

@@ -8,7 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { getIdToken } from "@/lib/firebase";
 import FontSizeToggle from "@/components/font-size-toggle";
-import TodayCarousel from "@/components/today-carousel";
+import TodayDrawer from "@/components/today-drawer";
+import DharmaPointsCard from "@/components/dharma-points-card";
 import guruBanner from "@assets/footer-collage-web_(1)_1773382448292.webp";
 import calendarBg from "@assets/background-writing-web_1770978468122.jpg";
 
@@ -188,8 +189,8 @@ export default function Home() {
           </button>
         </div>
       </div>
-      {/* Today Carousel Sheet */}
-      <TodayCarousel
+      {/* Today Drawer */}
+      <TodayDrawer
         open={todaySheetOpen}
         onClose={() => setTodaySheetOpen(false)}
         todayDetails={todayDetails}
@@ -322,6 +323,9 @@ export default function Home() {
         {/* Main Content Column */}
         <div className="lg:col-span-12 space-y-8">
           
+          {/* Dharma Points summary */}
+          <DharmaPointsCard onClick={() => setTodaySheetOpen(true)} />
+
           {/* Online Services */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">

@@ -1,6 +1,8 @@
 import { useState, useMemo, useRef } from "react";
 import CountryStateCityFields from "@/components/country-state-city-fields";
 import { RangoliLoader } from "@/components/rangoli-loader";
+import DharmaPointsCard from "@/components/dharma-points-card";
+import DharmaHistory from "@/components/dharma-history";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -818,6 +820,9 @@ export default function Profile() {
       </Dialog>
 
       <div className="px-4 -mt-10 relative z-20 space-y-4">
+        {/* Dharma Points earned through the daily practice */}
+        <DharmaPointsCard />
+
         {/* Tabs for History & Saved Info */}
         <Tabs defaultValue="history" className="w-full" data-testid="tabs-profile">
           <TabsList className="grid w-full grid-cols-2">
@@ -826,6 +831,8 @@ export default function Profile() {
           </TabsList>
           
           <TabsContent value="history" className="space-y-3 mt-4">
+            <DharmaHistory />
+
             {devoteeLoading ? (
               <div className="flex justify-center py-8">
                 <RangoliLoader size={48} />

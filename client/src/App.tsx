@@ -22,6 +22,7 @@ import Knowledge from "@/pages/knowledge";
 import AdminQuizzes from "@/pages/admin-quizzes";
 import AdminHub from "@/pages/admin";
 import AdminQuizAnalytics from "@/pages/admin-quiz-analytics";
+import AdminDaily from "@/pages/admin-daily";
 import AdminReconciliation from "@/pages/admin-reconciliation";
 import AdminAllTransactions from "@/pages/admin-all-transactions";
 import AdminCorrections from "@/pages/admin-corrections";
@@ -77,6 +78,7 @@ function Router() {
             <Route path="/admin" component={AdminHub} />
             <Route path="/admin/quizzes">{() => <ProtectedRoute component={AdminQuizzes} />}</Route>
             <Route path="/admin/quiz-analytics" component={AdminQuizAnalytics} />
+            <Route path="/admin/daily">{() => <ProtectedRoute component={AdminDaily} />}</Route>
             <Route path="/admin/reconciliation" component={AdminReconciliation} />
             <Route path="/admin/all-transactions" component={AdminAllTransactions} />
             <Route path="/admin/corrections" component={AdminCorrections} />

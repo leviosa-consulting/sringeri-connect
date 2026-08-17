@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import cron from "node-cron";
 import { registerRoutes } from "./routes";
+import { ensureDailyPracticeSchema } from "./daily-schema";
 import { serveStatic } from "./static";
 import { runReconciliation } from "./reconciliation-service";
 import { createServer } from "http";
@@ -209,6 +210,14 @@ httpServer.on("error", (err: any) => {
 
 (async () => {
   try {
+    // The daily-practice tables are created on the fly if the deployed database
+    // does not have them yet; the statements are no-ops once it does.
+    try {
+      await ensureDailyPracticeSchema();
+    } catch (err) {
+      console.error("Failed to ensure daily practice schema:", err);
+    }
+
     await registerRoutes(httpServer, app);
 
     app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

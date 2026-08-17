@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { getFallbackGuruvani, GURU_VANI_ATTRIBUTION } from "@shared/guruvani";
 import { createServer, type Server } from "http";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
@@ -5276,6 +5277,381 @@ export async function registerRoutes(
       });
     } catch (error) {
       console.error("Error getting gamification data:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // =========================================================================
+  // Daily devotee practice: Guruvani reflection, Question of the Day,
+  // Activity of the Day, and the Dharma Points ledger.
+  //
+  // Correct answers are never sent to the client before the devotee submits.
+  // Grading and point awarding happen server-side in one transaction.
+  // =========================================================================
+
+  const GURUVANI_DEFAULT_POINTS = 2;
+
+
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  app.get("/api/daily/today", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const dateStr = getISTDate();
+
+      const [guruvani, question, activity, reflection, questionResponse, activityResponse, points] = await Promise.all([
+        storage.getDailyGuruvani(dateStr),
+        storage.getDailyQuestion(dateStr),
+        storage.getDailyActivity(dateStr),
+        storage.getDailyReflection(uid, dateStr),
+        storage.getDailyQuestionResponse(uid, dateStr),
+        storage.getDailyActivityResponse(uid, dateStr),
+        storage.getDharmaPointsSummary(uid, dateStr),
+      ]);
+
+      const guruvaniPayload = {
+        id: guruvani?.id ?? null,
+        quote: guruvani?.quote ?? getFallbackGuruvani(dateStr),
+        attribution: guruvani?.attribution ?? GURU_VANI_ATTRIBUTION,
+        points: guruvani?.points ?? GURUVANI_DEFAULT_POINTS,
+        isFallback: !guruvani,
+        reflected: !!reflection,
+        reflectionText: reflection?.reflectionText ?? null,
+        pointsAwarded: reflection?.pointsAwarded ?? null,
+      };
+
+      // Correct answers and explanations are withheld until the devotee submits.
+      const questionPayload = question ? {
+        id: question.id,
+        questionText: question.questionText,
+        options: question.options,
+        points: question.points,
+        answered: !!questionResponse,
+        selectedIndex: questionResponse?.selectedIndex ?? null,
+        isCorrect: questionResponse?.isCorrect ?? null,
+        pointsAwarded: questionResponse?.pointsAwarded ?? null,
+        correctIndex: questionResponse ? question.correctIndex : undefined,
+        explanation: questionResponse ? question.explanation : undefined,
+      } : null;
+
+      const activityPayload = activity ? {
+        id: activity.id,
+        activityType: activity.activityType,
+        answerMode: activity.answerMode,
+        prompt: activity.prompt,
+        imageUrl: activity.imageUrl,
+        options: activity.options ?? null,
+        points: activity.points,
+        answered: !!activityResponse,
+        submittedAnswer: activityResponse?.submittedAnswer ?? null,
+        isCorrect: activityResponse?.isCorrect ?? null,
+        pointsAwarded: activityResponse?.pointsAwarded ?? null,
+        correctAnswer: activityResponse
+          ? (activity.answerMode === "options"
+              ? (activity.options?.[activity.correctIndex ?? -1] ?? null)
+              : activity.correctAnswer)
+          : undefined,
+        correctIndex: activityResponse ? activity.correctIndex : undefined,
+        explanation: activityResponse ? activity.explanation : undefined,
+      } : null;
+
+      res.json({
+        date: dateStr,
+        guruvani: guruvaniPayload,
+        question: questionPayload,
+        activity: activityPayload,
+        dharmaPoints: points,
+      });
+    } catch (error) {
+      console.error("Error getting today's daily content:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/daily/guruvani/reflect", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const text = typeof req.body?.reflectionText === "string" ? req.body.reflectionText.trim() : "";
+      if (!text) return res.status(400).json({ error: "A reflection is required" });
+      if (text.length > 2000) return res.status(400).json({ error: "Reflection is too long (max 2000 characters)" });
+
+      const dateStr = getISTDate();
+      const guruvani = await storage.getDailyGuruvani(dateStr);
+      const points = guruvani?.points ?? GURUVANI_DEFAULT_POINTS;
+
+      const reflection = await storage.submitDailyReflection(uid, dateStr, guruvani?.id ?? null, text, points);
+      if (!reflection) return res.status(409).json({ error: "You have already reflected today" });
+
+      const summary = await storage.getDharmaPointsSummary(uid, dateStr);
+      res.json({ reflection, pointsAwarded: reflection.pointsAwarded, dharmaPoints: summary });
+    } catch (error) {
+      console.error("Error saving reflection:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/daily/question/answer", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const rawSelectedIndex = req.body?.selectedIndex;
+      if (typeof rawSelectedIndex !== "number") {
+        return res.status(400).json({ error: "selectedIndex is required" });
+      }
+      const selectedIndex = rawSelectedIndex;
+      if (!Number.isInteger(selectedIndex) || selectedIndex < 0) {
+        return res.status(400).json({ error: "selectedIndex is required" });
+      }
+
+      const dateStr = getISTDate();
+      const result = await storage.gradeDailyQuestion(uid, dateStr, selectedIndex);
+      if (result.status === "missing") return res.status(404).json({ error: "No question scheduled for today" });
+      if (result.status === "invalid") return res.status(400).json({ error: "Invalid option" });
+      if (result.status === "duplicate") return res.status(409).json({ error: "You have already answered today's question" });
+
+      const question = result.content;
+      const summary = await storage.getDharmaPointsSummary(uid, dateStr);
+      res.json({
+        isCorrect: result.response.isCorrect,
+        correctIndex: question.correctIndex,
+        explanation: question.explanation,
+        pointsAwarded: result.response.pointsAwarded,
+        selectedIndex,
+        dharmaPoints: summary,
+      });
+    } catch (error) {
+      console.error("Error answering question of the day:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/daily/activity/answer", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+
+      const dateStr = getISTDate();
+      const result = await storage.gradeDailyActivity(uid, dateStr, {
+        selectedIndex: typeof req.body?.selectedIndex === "number" ? req.body.selectedIndex : undefined,
+        answer: typeof req.body?.answer === "string" ? req.body.answer : undefined,
+      });
+      if (result.status === "missing") return res.status(404).json({ error: "No activity scheduled for today" });
+      if (result.status === "invalid") return res.status(400).json({ error: "Please give a valid answer" });
+      if (result.status === "duplicate") return res.status(409).json({ error: "You have already attempted today's activity" });
+
+      const activity = result.content;
+      const summary = await storage.getDharmaPointsSummary(uid, dateStr);
+      res.json({
+        isCorrect: result.response.isCorrect,
+        correctAnswer: activity.answerMode === "options"
+          ? (activity.options?.[activity.correctIndex ?? -1] ?? null)
+          : activity.correctAnswer,
+        correctIndex: activity.correctIndex,
+        explanation: activity.explanation,
+        pointsAwarded: result.response.pointsAwarded,
+        submittedAnswer: result.response.submittedAnswer,
+        dharmaPoints: summary,
+      });
+    } catch (error) {
+      console.error("Error answering activity of the day:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/daily/points", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const summary = await storage.getDharmaPointsSummary(uid, getISTDate());
+      res.json(summary);
+    } catch (error) {
+      console.error("Error getting dharma points:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/daily/history", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+      const [history, summary] = await Promise.all([
+        storage.listDailyHistory(uid, 30),
+        storage.getDharmaPointsSummary(uid, getISTDate()),
+      ]);
+      res.json({ ...history, dharmaPoints: summary });
+    } catch (error) {
+      console.error("Error getting daily history:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ----- Admin: schedule daily content -----
+
+  app.get("/api/admin/daily/dates", async (req, res) => {
+    try {
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
+      res.json(await storage.listDailyContentDates(90));
+    } catch (error) {
+      console.error("Error listing daily content dates:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/daily/:date", async (req, res) => {
+    try {
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
+      const dateStr = req.params.date;
+      if (!DATE_RE.test(dateStr)) return res.status(400).json({ error: "Invalid date" });
+      const [guruvani, question, activity, questionAnswers, activityAnswers] = await Promise.all([
+        storage.getDailyGuruvani(dateStr),
+        storage.getDailyQuestion(dateStr),
+        storage.getDailyActivity(dateStr),
+        storage.countDailyQuestionResponses(dateStr),
+        storage.countDailyActivityResponses(dateStr),
+      ]);
+      res.json({
+        date: dateStr,
+        guruvani: guruvani ?? null,
+        question: question ?? null,
+        activity: activity ?? null,
+        // Once a devotee has answered, that item is frozen: changing it would
+        // move the answer key underneath answers that were already graded.
+        questionFrozen: questionAnswers > 0,
+        activityFrozen: activityAnswers > 0,
+        questionAnswers,
+        activityAnswers,
+        fallbackGuruvani: getFallbackGuruvani(dateStr),
+      });
+    } catch (error) {
+      console.error("Error getting daily content:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/daily/:date", async (req, res) => {
+    try {
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
+      const dateStr = req.params.date;
+      if (!DATE_RE.test(dateStr)) return res.status(400).json({ error: "Invalid date" });
+      const { guruvani, question, activity } = req.body || {};
+      // Each section is saved on its own: a frozen question must not stop the
+      // Guruvani or activity for that day from being edited.
+      const frozen: string[] = [];
+
+      if (guruvani === null) {
+        await storage.deleteDailyGuruvani(dateStr);
+      } else if (guruvani) {
+        if (typeof guruvani.quote !== "string" || !guruvani.quote.trim()) {
+          return res.status(400).json({ error: "Guruvani quote is required" });
+        }
+        await storage.upsertDailyGuruvani({
+          contentDate: dateStr,
+          quote: guruvani.quote.trim(),
+          attribution: guruvani.attribution?.trim() || null,
+          points: Number.isInteger(guruvani.points) && guruvani.points > 0 ? guruvani.points : GURUVANI_DEFAULT_POINTS,
+          isActive: guruvani.isActive !== false,
+        });
+      }
+
+      if (question === null) {
+        if (await storage.deleteDailyQuestionIfUnanswered(dateStr) === "frozen") frozen.push("question");
+      } else if (question) {
+        const options: string[] = Array.isArray(question.options)
+          ? question.options.map((o: any) => String(o ?? "").trim()).filter(Boolean)
+          : [];
+        if (typeof question.questionText !== "string" || !question.questionText.trim()) {
+          return res.status(400).json({ error: "Question text is required" });
+        }
+        if (options.length < 2) return res.status(400).json({ error: "At least two options are required" });
+        if (!Number.isInteger(question.correctIndex) || question.correctIndex < 0 || question.correctIndex >= options.length) {
+          return res.status(400).json({ error: "A valid correct option must be selected" });
+        }
+        const questionResult = await storage.saveDailyQuestionIfUnanswered({
+          contentDate: dateStr,
+          questionText: question.questionText.trim(),
+          options,
+          correctIndex: question.correctIndex,
+          points: Number.isInteger(question.points) && question.points > 0 ? question.points : 1,
+          explanation: question.explanation?.trim() || null,
+          isActive: question.isActive !== false,
+        });
+        if (questionResult === "frozen") frozen.push("question");
+      }
+
+      if (activity === null) {
+        if (await storage.deleteDailyActivityIfUnanswered(dateStr) === "frozen") frozen.push("activity");
+      } else if (activity) {
+        const answerMode = activity.answerMode === "options" ? "options" : "text";
+        if (typeof activity.prompt !== "string" || !activity.prompt.trim()) {
+          return res.status(400).json({ error: "Activity prompt is required" });
+        }
+        let options: string[] | null = null;
+        let correctIndex: number | null = null;
+        let correctAnswer: string | null = null;
+        if (answerMode === "options") {
+          const activityOptions: string[] = Array.isArray(activity.options)
+            ? activity.options.map((o: any) => String(o ?? "").trim()).filter(Boolean)
+            : [];
+          options = activityOptions;
+          if (activityOptions.length < 2) return res.status(400).json({ error: "At least two activity options are required" });
+          if (!Number.isInteger(activity.correctIndex) || activity.correctIndex < 0 || activity.correctIndex >= activityOptions.length) {
+            return res.status(400).json({ error: "A valid correct activity option must be selected" });
+          }
+          correctIndex = activity.correctIndex;
+        } else {
+          correctAnswer = typeof activity.correctAnswer === "string" ? activity.correctAnswer.trim() : "";
+          if (!correctAnswer) return res.status(400).json({ error: "A correct answer is required" });
+        }
+        const activityResult = await storage.saveDailyActivityIfUnanswered({
+          contentDate: dateStr,
+          activityType: typeof activity.activityType === "string" && activity.activityType.trim() ? activity.activityType.trim() : "anagram",
+          answerMode,
+          prompt: activity.prompt.trim(),
+          imageUrl: activity.imageUrl?.trim() || null,
+          options,
+          correctIndex,
+          correctAnswer,
+          points: Number.isInteger(activity.points) && activity.points > 0 ? activity.points : 2,
+          explanation: activity.explanation?.trim() || null,
+          isActive: activity.isActive !== false,
+        });
+        if (activityResult === "frozen") frozen.push("activity");
+      }
+
+      const [g, q, a, questionAnswers, activityAnswers] = await Promise.all([
+        storage.getDailyGuruvani(dateStr),
+        storage.getDailyQuestion(dateStr),
+        storage.getDailyActivity(dateStr),
+        storage.countDailyQuestionResponses(dateStr),
+        storage.countDailyActivityResponses(dateStr),
+      ]);
+      res.json({
+        date: dateStr,
+        guruvani: g ?? null,
+        question: q ?? null,
+        activity: a ?? null,
+        questionFrozen: questionAnswers > 0,
+        activityFrozen: activityAnswers > 0,
+        // Everything not listed here was saved; a listed item was left untouched
+        // because a devotee had already answered it.
+        frozen,
+      });
+    } catch (error) {
+      console.error("Error saving daily content:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/daily/:date/submissions", async (req, res) => {
+    try {
+      if (!await requireRole(req, "quiz")) return res.status(403).json({ error: "Forbidden" });
+      const dateStr = req.params.date;
+      if (!DATE_RE.test(dateStr)) return res.status(400).json({ error: "Invalid date" });
+      res.json(await storage.listDailySubmissionsForDate(dateStr));
+    } catch (error) {
+      console.error("Error listing daily submissions:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

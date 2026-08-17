@@ -206,3 +206,135 @@ export const adminRoles = pgTable("admin_roles", {
 export const insertAdminRoleSchema = createInsertSchema(adminRoles).omit({ id: true, createdAt: true });
 export type InsertAdminRole = z.infer<typeof insertAdminRoleSchema>;
 export type AdminRole = typeof adminRoles.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Daily devotee practice: Guruvani reflection, Question of the Day,
+// Activity of the Day, and the Dharma Points ledger that backs them.
+// ---------------------------------------------------------------------------
+
+export const dailyGuruvani = pgTable("daily_guruvani", {
+  id: serial("id").primaryKey(),
+  contentDate: date("content_date").notNull(),
+  quote: text("quote").notNull(),
+  attribution: text("attribution"),
+  points: integer("points").default(2).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("daily_guruvani_date_idx").on(table.contentDate),
+]);
+
+export const dailyQuestions = pgTable("daily_questions", {
+  id: serial("id").primaryKey(),
+  contentDate: date("content_date").notNull(),
+  questionText: text("question_text").notNull(),
+  options: jsonb("options").notNull().$type<string[]>(),
+  correctIndex: integer("correct_index").notNull(),
+  points: integer("points").default(1).notNull(),
+  explanation: text("explanation"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("daily_questions_date_idx").on(table.contentDate),
+]);
+
+/**
+ * answerMode "options" -> devotee picks one of `options` (correctIndex decides).
+ * answerMode "text"    -> devotee types an answer (correctAnswer decides,
+ *                         compared case- and whitespace-insensitively).
+ * Either mode may carry an imageUrl, which covers picture puzzles.
+ */
+export const dailyActivities = pgTable("daily_activities", {
+  id: serial("id").primaryKey(),
+  contentDate: date("content_date").notNull(),
+  activityType: text("activity_type").default("anagram").notNull(),
+  answerMode: text("answer_mode").default("text").notNull(),
+  prompt: text("prompt").notNull(),
+  imageUrl: text("image_url"),
+  options: jsonb("options").$type<string[]>(),
+  correctIndex: integer("correct_index"),
+  correctAnswer: text("correct_answer"),
+  points: integer("points").default(2).notNull(),
+  explanation: text("explanation"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("daily_activities_date_idx").on(table.contentDate),
+]);
+
+export const dailyReflections = pgTable("daily_reflections", {
+  id: serial("id").primaryKey(),
+  odUserId: text("od_user_id").notNull(),
+  contentDate: date("content_date").notNull(),
+  guruvaniId: integer("guruvani_id"),
+  reflectionText: text("reflection_text").notNull(),
+  pointsAwarded: integer("points_awarded").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("daily_reflections_user_date_idx").on(table.odUserId, table.contentDate),
+  index("daily_reflections_date_idx").on(table.contentDate),
+]);
+
+export const dailyQuestionResponses = pgTable("daily_question_responses", {
+  id: serial("id").primaryKey(),
+  odUserId: text("od_user_id").notNull(),
+  contentDate: date("content_date").notNull(),
+  questionId: integer("question_id").notNull().references(() => dailyQuestions.id, { onDelete: "cascade" }),
+  selectedIndex: integer("selected_index").notNull(),
+  isCorrect: boolean("is_correct").notNull(),
+  pointsAwarded: integer("points_awarded").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("daily_question_responses_user_date_idx").on(table.odUserId, table.contentDate),
+  index("daily_question_responses_date_idx").on(table.contentDate),
+]);
+
+export const dailyActivityResponses = pgTable("daily_activity_responses", {
+  id: serial("id").primaryKey(),
+  odUserId: text("od_user_id").notNull(),
+  contentDate: date("content_date").notNull(),
+  activityId: integer("activity_id").notNull().references(() => dailyActivities.id, { onDelete: "cascade" }),
+  submittedAnswer: text("submitted_answer").notNull(),
+  isCorrect: boolean("is_correct").notNull(),
+  pointsAwarded: integer("points_awarded").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("daily_activity_responses_user_date_idx").on(table.odUserId, table.contentDate),
+  index("daily_activity_responses_date_idx").on(table.contentDate),
+]);
+
+/**
+ * Append-only ledger. A devotee's balance is the sum of their rows; the unique
+ * index makes a second award for the same source on the same date impossible.
+ */
+export const dharmaPoints = pgTable("dharma_points", {
+  id: serial("id").primaryKey(),
+  odUserId: text("od_user_id").notNull(),
+  sourceType: text("source_type").notNull(),
+  sourceDate: date("source_date").notNull(),
+  sourceId: integer("source_id"),
+  points: integer("points").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("dharma_points_user_source_idx").on(table.odUserId, table.sourceType, table.sourceDate),
+  index("dharma_points_user_idx").on(table.odUserId),
+]);
+
+export type DailyGuruvani = typeof dailyGuruvani.$inferSelect;
+export type DailyQuestion = typeof dailyQuestions.$inferSelect;
+export type DailyActivity = typeof dailyActivities.$inferSelect;
+export type DailyReflection = typeof dailyReflections.$inferSelect;
+export type DailyQuestionResponse = typeof dailyQuestionResponses.$inferSelect;
+export type DailyActivityResponse = typeof dailyActivityResponses.$inferSelect;
+export type DharmaPointsEntry = typeof dharmaPoints.$inferSelect;
+
+export type InsertDailyGuruvani = typeof dailyGuruvani.$inferInsert;
+export type InsertDailyQuestion = typeof dailyQuestions.$inferInsert;
+export type InsertDailyActivity = typeof dailyActivities.$inferInsert;
+
+export const DHARMA_SOURCE_GURUVANI = "guruvani_reflection";
+export const DHARMA_SOURCE_QUESTION = "question_of_day";
+export const DHARMA_SOURCE_ACTIVITY = "activity_of_day";
