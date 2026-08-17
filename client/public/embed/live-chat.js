@@ -138,6 +138,9 @@
     agentOnline: false,
     sending: false,
     showForm: false,
+    // Team is offline and no thread exists yet: visitor must pick bot or email.
+    needsChoice: false,
+    preEmailMode: false,
     error: "",
     timer: null,
   };
@@ -152,6 +155,7 @@
   }
 
   function statusLine() {
+    if (!state.convo && state.needsChoice) return "Our team is offline right now";
     var s = state.convo ? state.convo.status : "bot";
     if (s === "live") return "You are chatting with our team";
     if (s === "waiting") return "Connecting you to our team…";
@@ -173,19 +177,45 @@
       return;
     }
 
-    var title = (state.convo && state.convo.status === "live" && state.convo.assignedAgentName) || "Sringeri Sahayak";
+    var offerChoice = !state.convo && state.needsChoice;
+    var title = offerChoice
+      ? "Sringeri Team"
+      : (state.convo && state.convo.status === "live" && state.convo.assignedAgentName) || "Sringeri Sahayak";
     var canTalk = state.convo && state.convo.status !== "closed";
     var showTalk = canTalk && state.convo.status !== "live" && state.convo.status !== "waiting" && !state.showForm;
 
-    var bodyHtml = state.lines.map(function (l) {
-      if (l.author === "system") return '<div class="sys"><span>' + markup(l.content) + "</span></div>";
-      if (l.author === "user") return '<div class="msg me" style="background:' + esc(accent()) + '">' + markup(l.content) + "</div>";
-      var who = l.author === "agent" ? (l.authorName || "Sringeri Team") : "Sringeri Sahayak";
-      return '<div class="who">' + esc(who) + '</div><div class="msg them">' + markup(l.content) + "</div>";
-    }).join("");
+    var bodyHtml;
+    if (offerChoice) {
+      bodyHtml = '<div class="choice">' +
+        '<p style="font-size:12px;color:#4b5563;text-align:center;margin:0 0 10px">Our team is offline right now. Choose how you\'d like to continue:</p>' +
+        (!state.preEmailMode
+          ? '<div style="display:grid;gap:8px">' +
+            '<button class="send" id="chooseBot" style="background:' + esc(accent()) + ';width:100%;padding:9px">Chat with AI assistant</button>' +
+            '<button class="send" id="chooseEmail" style="background:#fff;border:1px solid #ddd5cc;color:#1f2937;width:100%;padding:9px">Email us instead</button>' +
+            "</div>"
+          : '<form class="form" id="prechatEmail">' +
+            '<input name="name" placeholder="Your name" autocomplete="name">' +
+            '<input name="email" type="email" required placeholder="Email address" autocomplete="email">' +
+            '<input name="phone" placeholder="Phone (optional)" autocomplete="tel">' +
+            '<textarea name="concern" rows="3" required placeholder="How can we help?"></textarea>' +
+            '<div class="row"><button class="send" type="submit" style="background:' + esc(accent()) + ';flex:1;padding:9px">Send to our team</button></div>' +
+            '<button class="link" type="button" id="cancelPrechat" style="color:' + esc(accent()) + '">Back</button>' +
+            "</form>") +
+        (state.error ? '<p class="err">' + esc(state.error) + "</p>" : "") +
+        "</div>";
+    } else {
+      bodyHtml = state.lines.map(function (l) {
+        if (l.author === "system") return '<div class="sys"><span>' + markup(l.content) + "</span></div>";
+        if (l.author === "user") return '<div class="msg me" style="background:' + esc(accent()) + '">' + markup(l.content) + "</div>";
+        var who = l.author === "agent" ? (l.authorName || "Sringeri Team") : "Sringeri Sahayak";
+        return '<div class="who">' + esc(who) + '</div><div class="msg them">' + markup(l.content) + "</div>";
+      }).join("");
+    }
 
     var footHtml;
-    if (state.showForm) {
+    if (offerChoice) {
+      footHtml = "";
+    } else if (state.showForm) {
       footHtml =
         '<form class="form" id="handoff">' +
         "<p>Our team is offline. Leave your details and we will reply within 2–4 hours.</p>" +
@@ -201,8 +231,10 @@
         '<div class="row"><input id="msg" placeholder="Type your message…" autocomplete="off">' +
         '<button class="send" id="send" style="background:' + esc(accent()) + '"' + (state.sending ? " disabled" : "") + ">Send</button></div>" +
         (showTalk ? '<button class="link" id="talk" style="color:' + esc(accent()) + '">Talk to a person</button>' : "");
-    } else {
+    } else if (state.convo) {
       footHtml = '<button class="link" id="restart" style="color:' + esc(accent()) + '">Start a new chat</button>';
+    } else {
+      footHtml = "";
     }
 
     root.innerHTML =
@@ -243,8 +275,20 @@
       store(CONVO_KEY, "");
       state.convo = null; state.lines = []; state.lastId = 0;
       render();
-      startSession();
+      startSession("team");
     });
+
+    var chooseBot = root.querySelector("#chooseBot");
+    if (chooseBot) chooseBot.addEventListener("click", function () { startSession("bot"); });
+
+    var chooseEmail = root.querySelector("#chooseEmail");
+    if (chooseEmail) chooseEmail.addEventListener("click", function () { state.preEmailMode = true; state.error = ""; render(); });
+
+    var cancelPrechat = root.querySelector("#cancelPrechat");
+    if (cancelPrechat) cancelPrechat.addEventListener("click", function () { state.preEmailMode = false; state.error = ""; render(); });
+
+    var prechatForm = root.querySelector("#prechatEmail");
+    if (prechatForm) prechatForm.addEventListener("submit", submitPrechatEmail);
   }
 
   function mergeLines(incoming) {
@@ -268,15 +312,37 @@
     try { return (document.title || "").slice(0, 200); } catch (e) { return ""; }
   }
 
-  function startSession() {
-    return api("/api/live-chat/session", {
+  function startSession(mode, extra) {
+    var payload = {
       visitorId: visitorId(),
       source: "website",
       pagePath: pagePath(),
       pageTitle: pageTitle(),
-    })
-      .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
-      .then(function (data) {
+      mode: mode || "team",
+    };
+    if (extra) {
+      for (var k in extra) { if (Object.prototype.hasOwnProperty.call(extra, k)) payload[k] = extra[k]; }
+    }
+    return api("/api/live-chat/session", payload)
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          state.error = (res.data && (res.data.error === "email_required" || res.data.error === "concern_required"))
+            ? "Please share a valid email and a short note about your concern."
+            : "We could not open the chat just now. Please try again.";
+          render();
+          return;
+        }
+        var data = res.data;
+        if (data.needsChoice) {
+          state.needsChoice = true;
+          state.convo = null;
+          state.error = "";
+          render();
+          return;
+        }
+        state.needsChoice = false;
+        state.preEmailMode = false;
         state.convo = data.conversation;
         store(CONVO_KEY, String(data.conversation.id));
         state.lines = []; state.lastId = 0;
@@ -290,6 +356,15 @@
         state.error = "We could not open the chat just now. Please try again.";
         render();
       });
+  }
+
+  function submitPrechatEmail(e) {
+    e.preventDefault();
+    var f = e.target.elements;
+    var val = function (n) { return (f.namedItem(n) && f.namedItem(n).value || "").trim(); };
+    var payload = { name: val("name"), email: val("email"), phone: val("phone"), concern: val("concern") };
+    if (!payload.email || !payload.concern) return;
+    startSession("email", payload);
   }
 
   function poll(markRead) {
@@ -323,12 +398,13 @@
     state.open = true;
     state.unread = 0;
     render();
-    (state.convo ? poll(true) : startSession()).then(schedule);
+    (state.convo ? poll(true) : startSession("team")).then(schedule);
   }
 
   function closePanel() {
     state.open = false;
     state.showForm = false;
+    if (!state.convo) { state.needsChoice = false; state.preEmailMode = false; }
     render();
     schedule();
   }

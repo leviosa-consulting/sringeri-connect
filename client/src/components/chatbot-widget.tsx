@@ -127,6 +127,11 @@ export default function ChatbotWidget() {
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState("");
 
+  // Team is offline and no conversation exists yet: let the visitor choose
+  // between quick AI answers and leaving an email for the team.
+  const [needsChoice, setNeedsChoice] = useState(false);
+  const [preEmailMode, setPreEmailMode] = useState(false);
+
   // Offline hand-off form
   const [showHandoffForm, setShowHandoffForm] = useState(false);
   const [hName, setHName] = useState("");
@@ -234,23 +239,41 @@ export default function ChatbotWidget() {
     });
   }, [authHeaders]);
 
-  const startSession = useCallback(async () => {
+  const startSession = useCallback(async (
+    requestedMode: "team" | "bot" | "email" = "team",
+    extra?: { name?: string; email?: string; phone?: string; concern?: string },
+  ) => {
     setStarting(true);
     setError("");
     try {
       const res = await fetch("/api/live-chat/session", {
         method: "POST",
         headers: await authHeaders(),
-        body: JSON.stringify({ visitorId: visitorIdRef.current, source: "app" }),
+        body: JSON.stringify({ visitorId: visitorIdRef.current, source: "app", mode: requestedMode, ...extra }),
       });
-      if (!res.ok) throw new Error("session failed");
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(
+          data?.error === "email_required" || data?.error === "concern_required"
+            ? "Please share a valid email and a short note about your concern."
+            : "We could not open the chat just now. Please try again."
+        );
+        return;
+      }
+      if (data.needsChoice) {
+        setNeedsChoice(true);
+        setConversation(null);
+        return;
+      }
+      setNeedsChoice(false);
+      setPreEmailMode(false);
       setConversation(data.conversation);
       lastIdRef.current = 0;
       setLines([]);
       mergeLines(data.messages || []);
       setAgentOnline(!!data.agentOnline);
       setUnread(0);
+      if (requestedMode === "email") setHConcern("");
     } catch {
       setError("We could not open the chat just now. Please try again.");
     } finally {
@@ -259,8 +282,24 @@ export default function ChatbotWidget() {
   }, [authHeaders, mergeLines]);
 
   useEffect(() => {
-    if (isOpen && !conversation && !starting) void startSession();
-  }, [isOpen, conversation, starting, startSession]);
+    if (isOpen && !conversation && !starting && !needsChoice) void startSession();
+  }, [isOpen, conversation, starting, needsChoice, startSession]);
+
+  // Re-check the team's availability every time the widget is reopened, so a
+  // visitor who saw the offline choice earlier gets routed to the team once
+  // someone comes back online.
+  useEffect(() => {
+    if (!isOpen) {
+      setNeedsChoice(false);
+      setPreEmailMode(false);
+    }
+  }, [isOpen]);
+
+  const submitPreChatEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hEmail.trim() || !hConcern.trim()) return;
+    await startSession("email", { name: hName.trim(), email: hEmail.trim(), phone: hPhone.trim(), concern: hConcern.trim() });
+  };
 
   // Poll while the panel is open; a slower loop below keeps the badge fresh
   // once a conversation exists.
@@ -410,15 +449,20 @@ export default function ChatbotWidget() {
     setUnread(0);
     setError("");
     setShowHandoffForm(false);
+    setNeedsChoice(false);
+    setPreEmailMode(false);
     void startSession();
   }, [startSession]);
 
   const status = conversation?.status ?? "bot";
-  const headerTitle = status === "live"
+  const headerTitle = !conversation && needsChoice
+    ? "Sringeri Team"
+    : status === "live"
     ? conversation?.assignedAgentName || "Sringeri Team"
     : "Sringeri Sahayak";
   const headerSubtitle =
-    status === "live" ? "You are chatting with our team"
+    !conversation && needsChoice ? "Our team is offline right now"
+    : status === "live" ? "You are chatting with our team"
     : status === "waiting" ? "Connecting you to our team…"
     : status === "offline_pending" ? "We will reply within 2–4 hours"
     : status === "closed" ? "This chat has been closed"
@@ -459,7 +503,7 @@ export default function ChatbotWidget() {
                   <Avatar className="h-8 w-8 bg-white/20 border border-white/40">
                     <AvatarImage src="/assets/lamp-icon.jpg" />
                     <AvatarFallback>
-                      {status === "live" ? <Headset className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                      {status === "live" || (!conversation && needsChoice) ? <Headset className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                     </AvatarFallback>
                   </Avatar>
                   <div>
@@ -485,13 +529,64 @@ export default function ChatbotWidget() {
             <CardContent className="flex-1 p-0 overflow-hidden bg-background/50 min-h-0">
               <ScrollArea className="h-full" ref={scrollRef}>
                 <div className="p-4 space-y-3">
-                  {starting && (
+                  {starting && !needsChoice && (
                     <div className="flex justify-center py-6">
                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
                   )}
 
-                  {lines.map((line) => {
+                  {!conversation && needsChoice && (
+                    <div className="space-y-3 py-2" data-testid="chat-offline-choice">
+                      <p className="text-xs text-muted-foreground text-center">
+                        Our team is offline right now. Choose how you'd like to continue:
+                      </p>
+                      {!preEmailMode ? (
+                        <div className="space-y-2">
+                          <Button
+                            type="button"
+                            className="w-full justify-center gap-1.5"
+                            size="sm"
+                            onClick={() => void startSession("bot")}
+                            disabled={starting}
+                            data-testid="button-choose-bot"
+                          >
+                            {starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Bot className="h-3.5 w-3.5" /> Chat with AI assistant</>}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-center gap-1.5"
+                            size="sm"
+                            onClick={() => setPreEmailMode(true)}
+                            disabled={starting}
+                            data-testid="button-choose-email"
+                          >
+                            <Mail className="h-3.5 w-3.5" /> Email us instead
+                          </Button>
+                        </div>
+                      ) : (
+                        <form onSubmit={submitPreChatEmail} className="border rounded-xl p-3 space-y-2 bg-white" data-testid="form-prechat-email">
+                          <Input value={hName} onChange={(e) => setHName(e.target.value)} placeholder="Your name" className="h-8 text-sm" data-testid="input-prechat-name" />
+                          <Input type="email" value={hEmail} onChange={(e) => setHEmail(e.target.value)} placeholder="Email *" className="h-8 text-sm" required data-testid="input-prechat-email" />
+                          <Input value={hPhone} onChange={(e) => setHPhone(e.target.value)} placeholder="Phone (optional)" className="h-8 text-sm" data-testid="input-prechat-phone" />
+                          <Textarea value={hConcern} onChange={(e) => setHConcern(e.target.value)} placeholder="Describe your concern *" className="text-sm min-h-[64px] resize-none" required data-testid="input-prechat-concern" />
+                          <div className="flex gap-2">
+                            <Button type="submit" size="sm" className="flex-1" disabled={starting || !hEmail.trim() || !hConcern.trim()} data-testid="button-submit-prechat-email">
+                              {starting ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending…</> : "Send to our team"}
+                            </Button>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => setPreEmailMode(false)} disabled={starting} data-testid="button-cancel-prechat-email">
+                              Back
+                            </Button>
+                          </div>
+                        </form>
+                      )}
+                      {error && (
+                        <p className="text-xs text-red-600 text-center" data-testid="text-chat-error">{error}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {!needsChoice && lines.map((line) => {
                     if (line.author === "system") {
                       return (
                         <div key={line.id} className="text-center" data-testid={`chat-message-system-${line.id}`}>
@@ -525,7 +620,7 @@ export default function ChatbotWidget() {
                     );
                   })}
 
-                  {sending && (
+                  {!needsChoice && sending && (
                     <div className="flex justify-start">
                       <div className="bg-muted rounded-2xl rounded-tl-none px-4 py-2.5 text-sm flex items-center gap-2">
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -534,7 +629,7 @@ export default function ChatbotWidget() {
                     </div>
                   )}
 
-                  {showHandoffForm && (
+                  {!needsChoice && showHandoffForm && (
                     <form onSubmit={submitHandoff} className="border rounded-xl p-3 space-y-2 bg-white" data-testid="form-offline-handoff">
                       <p className="text-xs text-muted-foreground">
                         Our team is offline right now. Leave your concern and we will reply within <strong>2–4 hours</strong>.
@@ -554,13 +649,14 @@ export default function ChatbotWidget() {
                     </form>
                   )}
 
-                  {error && (
+                  {!needsChoice && error && (
                     <p className="text-xs text-red-600 text-center" data-testid="text-chat-error">{error}</p>
                   )}
                 </div>
               </ScrollArea>
             </CardContent>
 
+            {(!needsChoice || conversation) && (
             <CardFooter className="p-2.5 border-t bg-background shrink-0 flex-col gap-2 items-stretch">
               {status === "closed" ? (
                 <Button
@@ -614,6 +710,7 @@ export default function ChatbotWidget() {
                 </>
               )}
             </CardFooter>
+            )}
           </Card>
         </div>
       )}

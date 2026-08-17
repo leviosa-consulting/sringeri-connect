@@ -4805,7 +4805,7 @@ export async function registerRoutes(
 
   app.post("/api/live-chat/session", liveChatLimiter, async (req, res) => {
     try {
-      const { visitorId, source, pagePath, pageTitle } = req.body || {};
+      const { visitorId, source, pagePath, pageTitle, mode, name, email, phone, concern } = req.body || {};
       if (!visitorId || typeof visitorId !== "string" || visitorId.length < 8 || visitorId.length > 100) {
         return res.status(400).json({ error: "A valid visitorId is required" });
       }
@@ -4821,7 +4821,115 @@ export async function registerRoutes(
       const auth = await getFirebaseUidAndEmail(req).catch(() => null);
       const cleanSource = source === "website" ? "website" : "app";
       let convo = await storage.getActiveChatConversationForVisitor(visitorId);
-      if (!convo) {
+
+      if (convo) {
+        // Returning visitor with an open thread: resume it as-is regardless of
+        // the requested mode — a bot chat stays a bot chat, a live one stays live.
+        const pageUpdate: Record<string, any> = {};
+        if (cleanPageUrl) pageUpdate.pageUrl = cleanPageUrl;
+        if (cleanPageTitle) pageUpdate.pageTitle = cleanPageTitle;
+        if (auth?.uid && !convo.odUserId) {
+          pageUpdate.odUserId = auth.uid;
+          pageUpdate.email = convo.email || auth.email || null;
+        }
+        if (Object.keys(pageUpdate).length) {
+          convo = (await storage.updateChatConversation(convo.id, pageUpdate)) || convo;
+        }
+        const messages = await storage.listChatMessages(convo.id);
+        await storage.clearChatUnread(convo.id, "visitor");
+        const presence = await getAgentPresence();
+        return res.json({ conversation: { ...convo, unreadForVisitor: 0 }, messages, agentOnline: presence.online });
+      }
+
+      // New thread. Default ("team") reaches our live team directly; "bot" and
+      // "email" are explicit choices the visitor makes when the team is offline.
+      const presence = await getAgentPresence();
+      const requestedMode: "team" | "bot" | "email" = mode === "bot" || mode === "email" ? mode : "team";
+
+      if (requestedMode === "team" && !presence.online) {
+        // Nobody to hand this to right now — let the client offer the
+        // bot-or-email choice instead of silently creating a conversation.
+        return res.json({ needsChoice: true, agentOnline: false });
+      }
+
+      if (requestedMode === "email") {
+        const cleanName = typeof name === "string" ? name.trim().slice(0, 120) : "";
+        const cleanEmail = typeof email === "string" ? email.trim().slice(0, 160) : "";
+        const cleanPhone = typeof phone === "string" ? phone.trim().slice(0, 40) : "";
+        const cleanConcern = typeof concern === "string" ? concern.trim().slice(0, 2000) : "";
+        if (!cleanEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
+          return res.status(400).json({ error: "email_required" });
+        }
+        if (!cleanConcern) {
+          return res.status(400).json({ error: "concern_required" });
+        }
+
+        convo = await storage.createChatConversation({
+          visitorId,
+          odUserId: auth?.uid || null,
+          name: cleanName || null,
+          email: cleanEmail,
+          phone: cleanPhone || null,
+          source: cleanSource,
+          pageUrl: cleanPageUrl,
+          pageTitle: cleanPageTitle,
+          status: "offline_pending",
+        });
+        await storage.appendChatMessage({ conversationId: convo.id, author: "user", content: cleanConcern });
+        await storage.bumpChatUnread(convo.id, "agent");
+
+        const allSoFar = await storage.listChatMessages(convo.id);
+        const payload = {
+          conversationId: convo.id,
+          name: cleanName || "Devotee",
+          email: cleanEmail,
+          phone: cleanPhone || null,
+          concern: cleanConcern,
+          transcript: transcriptFor(allSoFar),
+        };
+        let emailed = false;
+        if (isEmailServiceConfigured()) {
+          const results = await Promise.allSettled([
+            sendChatOfflineAcknowledgement(payload),
+            sendChatConcernToSupport(payload),
+          ]);
+          results.forEach(r => { if (r.status === "rejected") console.error("Live chat email failed:", r.reason); });
+          emailed = results[0].status === "fulfilled";
+        } else {
+          console.warn("Live chat: email service not configured; concern stored without notification.");
+        }
+        await storage.appendChatMessage({
+          conversationId: convo.id,
+          author: "system",
+          content: emailed
+            ? `Our team is offline right now. We have recorded your concern and sent a confirmation to ${cleanEmail}. A member of the team will reply within 2–4 hours.`
+            : "Our team is offline right now. We have recorded your concern and a member of the team will reply within 2–4 hours.",
+        });
+
+        const messages = await storage.listChatMessages(convo.id);
+        await storage.clearChatUnread(convo.id, "visitor");
+        return res.json({ conversation: { ...convo, unreadForVisitor: 0 }, messages, agentOnline: false, emailed });
+      }
+
+      if (requestedMode === "team") {
+        // presence.online is guaranteed true here.
+        convo = await storage.createChatConversation({
+          visitorId,
+          odUserId: auth?.uid || null,
+          email: auth?.email || null,
+          source: cleanSource,
+          pageUrl: cleanPageUrl,
+          pageTitle: cleanPageTitle,
+          status: "waiting",
+        });
+        await storage.appendChatMessage({
+          conversationId: convo.id,
+          author: "system",
+          content: "Connecting you with a member of our team. Please stay on this chat.",
+        });
+        await storage.bumpChatUnread(convo.id, "agent");
+      } else {
+        // requestedMode === "bot": explicit choice for quick AI answers.
         convo = await storage.createChatConversation({
           visitorId,
           odUserId: auth?.uid || null,
@@ -4840,23 +4948,10 @@ export async function registerRoutes(
           author: "bot",
           content: greeting,
         });
-      } else {
-        // Returning visitor: update page context and optionally link a newly-authed uid.
-        const pageUpdate: Record<string, any> = {};
-        if (cleanPageUrl) pageUpdate.pageUrl = cleanPageUrl;
-        if (cleanPageTitle) pageUpdate.pageTitle = cleanPageTitle;
-        if (auth?.uid && !convo.odUserId) {
-          pageUpdate.odUserId = auth.uid;
-          pageUpdate.email = convo.email || auth.email || null;
-        }
-        if (Object.keys(pageUpdate).length) {
-          convo = (await storage.updateChatConversation(convo.id, pageUpdate)) || convo;
-        }
       }
 
       const messages = await storage.listChatMessages(convo.id);
       await storage.clearChatUnread(convo.id, "visitor");
-      const presence = await getAgentPresence();
       res.json({ conversation: { ...convo, unreadForVisitor: 0 }, messages, agentOnline: presence.online });
     } catch (error) {
       console.error("Live chat session error:", error);
