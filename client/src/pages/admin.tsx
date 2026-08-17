@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { RangoliLoader } from "@/components/rangoli-loader";
-import { BarChart3, BookOpenCheck, Brain, CalendarHeart, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare, ClipboardList, TrendingUp, ShieldCheck, Loader2, ChevronDown, ChevronUp, Eye, EyeOff, FileEdit } from "lucide-react";
+import { BarChart3, BookOpenCheck, Brain, CalendarHeart, Rocket, ArrowLeft, RefreshCw, ScrollText, MessageSquare, ClipboardList, TrendingUp, ShieldCheck, Loader2, ChevronDown, ChevronUp, Eye, EyeOff, FileEdit, Headset } from "lucide-react";
 import { Link } from "wouter";
 
 const adminTools = [
@@ -68,6 +68,14 @@ const adminTools = [
     path: "/admin/reconciliation-logs",
     color: "bg-indigo-50 text-indigo-600",
     role: "accounts",
+  },
+  {
+    title: "Live Chat & Tickets",
+    description: "Work the devotee chat queue, reply to tickets and set the team's online status",
+    icon: Headset,
+    path: "/admin/live-chat",
+    color: "bg-amber-50 text-amber-600",
+    role: "support",
   },
   {
     title: "Support & Feedback",

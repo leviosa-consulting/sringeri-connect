@@ -3,10 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/auth-context";
 import { RangoliLoader } from "@/components/rangoli-loader";
 import { Link } from "wouter";
-import { ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Send, Check } from "lucide-react";
+import { ArrowLeft, MessageSquare, ChevronDown, ChevronUp, Send, Check, Headset, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import LiveChatConsole from "@/components/live-chat-console";
 
 
 type SupportMessage = {
@@ -235,7 +234,21 @@ export default function AdminSupport() {
         </button>
       </div>
 
-      {token && <LiveChatConsole token={token} />}
+      {/* Chats and tickets are worked from their own full-page console now. */}
+      <Link
+        href="/admin/live-chat"
+        className="flex items-center gap-3 bg-white border border-border rounded-xl p-4 hover:bg-muted/40 transition-colors"
+        data-testid="link-live-chat-console"
+      >
+        <Headset className="h-5 w-5 text-primary" />
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">Live Chat &amp; Tickets</p>
+          <p className="text-xs text-muted-foreground">
+            Work the devotee chat queue, reply to tickets and set your online status
+          </p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </Link>
 
       <div className="pt-2">
         <h2 className="text-lg font-semibold">Support &amp; Feedback messages</h2>

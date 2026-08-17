@@ -28,6 +28,7 @@ import AdminAllTransactions from "@/pages/admin-all-transactions";
 import AdminCorrections from "@/pages/admin-corrections";
 import AdminReconciliationLogs from "@/pages/admin-reconciliation-logs";
 import AdminSupport from "@/pages/admin-support";
+import AdminLiveChat from "@/pages/admin-live-chat";
 import AdminLaunch from "@/pages/admin-launch";
 import AdminLaunchReset from "@/pages/admin-launch-reset";
 import AdminRoles from "@/pages/admin-roles";
@@ -88,6 +89,7 @@ function Router() {
             <Route path="/admin/corrections" component={AdminCorrections} />
             <Route path="/admin/reconciliation-logs" component={AdminReconciliationLogs} />
             <Route path="/admin/support" component={AdminSupport} />
+            <Route path="/admin/live-chat" component={AdminLiveChat} />
             <Route path="/admin/launch" component={AdminLaunch} />
             <Route path="/admin/launch/reset" component={AdminLaunchReset} />
             <Route path="/admin/stats" component={AdminStats} />

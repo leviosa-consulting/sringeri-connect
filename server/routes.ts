@@ -5578,7 +5578,7 @@ export async function registerRoutes(
       if (!(await requireRole(req, "support"))) return res.status(403).json({ error: "Admin access required" });
       const id = parseInt(req.params.id, 10);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid conversation ID" });
-      const { content, sendEmail } = req.body || {};
+      const { content, sendEmail, takeOver } = req.body || {};
       if (!content || typeof content !== "string" || !content.trim()) {
         return res.status(400).json({ error: "Reply text is required" });
       }
@@ -5586,6 +5586,14 @@ export async function registerRoutes(
       if (!convo) return res.status(404).json({ error: "Conversation not found" });
 
       const auth = await getUidAndAdminRoles(req);
+      // Replying to a colleague's thread is allowed, but only deliberately —
+      // the console asks the agent to confirm before it retries with takeOver.
+      if (convo.assignedAgentUid && auth.uid && convo.assignedAgentUid !== auth.uid && !takeOver) {
+        return res.status(409).json({
+          error: "already_assigned",
+          assignedAgentName: convo.assignedAgentName || "another agent",
+        });
+      }
       const presence = await getAgentPresence();
       const agentName = presence.agentName || "Sringeri Team";
       const text = content.trim().slice(0, 4000);
@@ -5622,6 +5630,40 @@ export async function registerRoutes(
       res.json({ message: msg, emailed, conversation: await storage.getChatConversation(id) });
     } catch (error) {
       console.error("Live chat reply error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  /** "Assign to me" — the queue shows who is working a thread so two agents do not both answer. */
+  app.post("/api/admin/live-chat/conversations/:id/assign", async (req, res) => {
+    try {
+      if (!(await requireRole(req, "support"))) return res.status(403).json({ error: "Admin access required" });
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid conversation ID" });
+      const convo = await storage.getChatConversation(id);
+      if (!convo) return res.status(404).json({ error: "Conversation not found" });
+
+      const auth = await getUidAndAdminRoles(req);
+      if (!auth.uid) return res.status(403).json({ error: "Admin access required" });
+      const { agentName, takeOver } = req.body || {};
+      const presence = await getAgentPresence();
+      const name = (typeof agentName === "string" && agentName.trim())
+        ? agentName.trim().slice(0, 80)
+        : presence.agentName || "Sringeri Team";
+
+      // A thread already being worked by somebody else is only taken over on
+      // purpose — otherwise two agents silently answer the same devotee.
+      if (convo.assignedAgentUid && convo.assignedAgentUid !== auth.uid && !takeOver) {
+        return res.status(409).json({
+          error: "already_assigned",
+          assignedAgentName: convo.assignedAgentName || "another agent",
+        });
+      }
+
+      await storage.updateChatConversation(id, { assignedAgentUid: auth.uid, assignedAgentName: name });
+      res.json(await storage.getChatConversation(id));
+    } catch (error) {
+      console.error("Live chat assign error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
