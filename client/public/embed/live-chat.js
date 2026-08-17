@@ -114,6 +114,7 @@
     ".form p { margin: 0 0 2px; font-size: 12px; color: #4b5563; }",
     ".err { color: #b91c1c; font-size: 12px; margin: 6px 0 0; }",
     ".hint { font-size: 11px; color: #6b7280; margin: 7px 0 0; text-align: center; }",
+    ".full { display: block; width: 100%; text-align: center; padding-top: 8px; }",
   ].join("\n");
 
   var ICON = '<svg viewBox="0 0 24 24"><path d="M12 3C6.99 3 3 6.36 3 10.5c0 2.3 1.24 4.35 3.2 5.72-.13 1.2-.6 2.36-1.4 3.3a.5.5 0 0 0 .46.82c2-.3 3.6-1.1 4.72-1.9.96.23 1.98.36 3.02.36 5.01 0 9-3.36 9-7.5S17.01 3 12 3z"/></svg>';
@@ -244,6 +245,7 @@
       '<div class="body" id="body">' + bodyHtml + "</div>" +
       '<div class="foot">' + footHtml +
       (state.error ? '<p class="err">' + esc(state.error) + "</p>" : "") +
+      '<button class="link full" id="fullchat" style="color:' + esc(accent()) + '">View all my conversations</button>' +
       '<p class="hint">Powered by Sri Sringeri Sharada Peetham</p>' +
       "</div></div>";
 
@@ -289,6 +291,9 @@
 
     var prechatForm = root.querySelector("#prechatEmail");
     if (prechatForm) prechatForm.addEventListener("submit", submitPrechatEmail);
+
+    var fullChat = root.querySelector("#fullchat");
+    if (fullChat) fullChat.addEventListener("click", openFullChat);
   }
 
   function mergeLines(incoming) {
@@ -459,6 +464,28 @@
         return poll(true);
       })
       .catch(function () { state.error = "We could not record your concern. Please try again."; render(); });
+  }
+
+  /**
+   * Opens the hosted chat page — the full conversation list, tickets and image
+   * attachments — carrying this visitor's identity across in a one-shot ticket
+   * so their existing thread follows them instead of starting over.
+   */
+  function openFullChat() {
+    // Open synchronously: a tab opened later, inside the fetch callback, is
+    // treated as a popup and blocked.
+    var tab = window.open("", "_blank");
+    api("/api/live-chat/handoff", { visitorId: visitorId() })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
+      .then(function (data) {
+        var url = API + "/chat" + (data.token ? "#handoff=" + encodeURIComponent(data.token) : "");
+        if (tab) tab.location.href = url;
+        else window.open(url, "_blank");
+      })
+      .catch(function () {
+        if (tab) tab.location.href = API + "/chat";
+        state.error = "";
+      });
   }
 
   function boot() {

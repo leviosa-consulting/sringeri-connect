@@ -1,4 +1,4 @@
-import { chatConversations, chatMessages, type ChatConversation, type InsertChatConversation, type ChatMessage, type InsertChatMessage } from "@shared/schema";
+import { chatConversations, chatMessages, chatAttachments, type ChatConversation, type InsertChatConversation, type ChatMessage, type InsertChatMessage, type ChatAttachment, type InsertChatAttachment } from "@shared/schema";
 import { type User, type InsertUser, type InsertAnalyticsEvent, analyticsEvents, analyticsDailySummary, quizzes, quizQuestions, quizAttempts, userBadges, appSettings, supportMessages, reconciliationLogs, passwordResetTokens, adminRoles, type InsertQuiz, type Quiz, type InsertQuizQuestion, type QuizQuestion, type InsertQuizAttempt, type QuizAttempt, type UserBadge, type InsertSupportMessage, type SupportMessage, type ReconciliationLog, type InsertReconciliationLog, type PasswordResetToken, type AdminRole, dailyGuruvani, dailyQuestions, dailyActivities, dailyReflections, dailyQuestionResponses, dailyActivityResponses, dharmaPoints, DHARMA_SOURCE_GURUVANI, DHARMA_SOURCE_QUESTION, DHARMA_SOURCE_ACTIVITY, type DailyQuestion, type DailyActivity, type DailyReflection, type DailyQuestionResponse, type DailyActivityResponse, type DharmaPointsEntry, type InsertDailyQuestion, type InsertDailyActivity } from "@shared/schema";
 import { normalizeDailyAnswer, normalizeAnagramAnswer } from "@shared/daily-grading";
 import { getGuruvaniForDate } from "@shared/guruvani";
@@ -51,7 +51,12 @@ export interface IStorage {
   createChatConversation(data: InsertChatConversation): Promise<ChatConversation>;
   getChatConversation(id: number): Promise<ChatConversation | undefined>;
   getActiveChatConversationForVisitor(visitorId: string): Promise<ChatConversation | undefined>;
+  /** Every thread this visitor (or signed-in devotee) owns, newest activity first. */
+  listChatConversationsForVisitor(visitorId: string, odUserId?: string | null, limit?: number): Promise<ChatConversation[]>;
   listChatConversations(status?: string, limit?: number): Promise<ChatConversation[]>;
+  getLastChatMessage(conversationId: number): Promise<ChatMessage | undefined>;
+  saveChatAttachment(data: InsertChatAttachment): Promise<ChatAttachment>;
+  getChatAttachmentByMessage(messageId: number): Promise<ChatAttachment | undefined>;
   updateChatConversation(id: number, patch: Partial<InsertChatConversation>): Promise<ChatConversation | undefined>;
   appendChatMessage(msg: InsertChatMessage): Promise<ChatMessage>;
   listChatMessages(conversationId: number, sinceId?: number): Promise<ChatMessage[]>;
@@ -218,6 +223,7 @@ export class MemStorage implements IStorage {
       name: data.name ?? null,
       email: data.email ?? null,
       phone: data.phone ?? null,
+      subject: data.subject ?? null,
       status: data.status ?? "bot",
       source: data.source ?? "app",
       pageUrl: data.pageUrl ?? null,
@@ -244,6 +250,15 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime())[0];
   }
 
+  async listChatConversationsForVisitor(visitorId: string, odUserId?: string | null, limit = 50): Promise<ChatConversation[]> {
+    // A conversation bound to an account is only ever listed for that verified
+    // account; the visitorId bearer reaches anonymous conversations only.
+    return this.chatConvos
+      .filter(c => (!c.odUserId && c.visitorId === visitorId) || (!!odUserId && c.odUserId === odUserId))
+      .sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime())
+      .slice(0, limit);
+  }
+
   async listChatConversations(status?: string, limit = 100): Promise<ChatConversation[]> {
     return this.chatConvos
       .filter(c => !status || c.status === status)
@@ -265,6 +280,9 @@ export class MemStorage implements IStorage {
       author: msg.author,
       authorName: msg.authorName ?? null,
       content: msg.content,
+      attachmentMime: msg.attachmentMime ?? null,
+      attachmentSize: msg.attachmentSize ?? null,
+      attachmentName: msg.attachmentName ?? null,
       createdAt: new Date(),
     };
     this.chatMsgs.push(record);
@@ -277,6 +295,33 @@ export class MemStorage implements IStorage {
     return this.chatMsgs
       .filter(m => m.conversationId === conversationId && m.id > sinceId)
       .sort((a, b) => a.id - b.id);
+  }
+
+  async getLastChatMessage(conversationId: number): Promise<ChatMessage | undefined> {
+    return this.chatMsgs
+      .filter(m => m.conversationId === conversationId)
+      .sort((a, b) => b.id - a.id)[0];
+  }
+
+  private chatFiles: ChatAttachment[] = [];
+  private chatFileIdCounter = 1;
+
+  async saveChatAttachment(data: InsertChatAttachment): Promise<ChatAttachment> {
+    const record: ChatAttachment = {
+      id: this.chatFileIdCounter++,
+      messageId: data.messageId,
+      conversationId: data.conversationId,
+      mimeType: data.mimeType,
+      sizeBytes: data.sizeBytes,
+      data: data.data,
+      createdAt: new Date(),
+    };
+    this.chatFiles.push(record);
+    return record;
+  }
+
+  async getChatAttachmentByMessage(messageId: number): Promise<ChatAttachment | undefined> {
+    return this.chatFiles.find(f => f.messageId === messageId);
   }
 
   async bumpChatUnread(id: number, side: "agent" | "visitor", by = 1): Promise<void> {
@@ -841,6 +886,19 @@ if (process.env.DATABASE_URL) {
       return result;
     }
 
+    async listChatConversationsForVisitor(visitorId: string, odUserId?: string | null, limitNum = 50): Promise<ChatConversation[]> {
+      // A conversation bound to an account is only ever listed for that
+      // verified account; the visitorId bearer reaches anonymous ones only.
+      const anonymous = sql`(${chatConversations.visitorId} = ${visitorId} AND ${chatConversations.odUserId} IS NULL)`;
+      const owner = odUserId
+        ? sql`(${anonymous} OR ${chatConversations.odUserId} = ${odUserId})`
+        : anonymous;
+      return db.select().from(chatConversations)
+        .where(owner)
+        .orderBy(desc(chatConversations.lastMessageAt))
+        .limit(limitNum);
+    }
+
     async listChatConversations(status?: string, limitNum = 100): Promise<ChatConversation[]> {
       return db.select().from(chatConversations)
         .where(status ? eq(chatConversations.status, status as any) : undefined)
@@ -867,6 +925,26 @@ if (process.env.DATABASE_URL) {
       return db.select().from(chatMessages)
         .where(and(eq(chatMessages.conversationId, conversationId), sql`${chatMessages.id} > ${sinceId}`))
         .orderBy(asc(chatMessages.id));
+    }
+
+    async getLastChatMessage(conversationId: number): Promise<ChatMessage | undefined> {
+      const [result] = await db.select().from(chatMessages)
+        .where(eq(chatMessages.conversationId, conversationId))
+        .orderBy(desc(chatMessages.id))
+        .limit(1);
+      return result;
+    }
+
+    async saveChatAttachment(data: InsertChatAttachment): Promise<ChatAttachment> {
+      const [result] = await db.insert(chatAttachments).values(data).returning();
+      return result;
+    }
+
+    async getChatAttachmentByMessage(messageId: number): Promise<ChatAttachment | undefined> {
+      const [result] = await db.select().from(chatAttachments)
+        .where(eq(chatAttachments.messageId, messageId))
+        .limit(1);
+      return result;
     }
 
     async bumpChatUnread(id: number, side: "agent" | "visitor", by = 1): Promise<void> {

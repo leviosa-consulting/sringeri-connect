@@ -31,3 +31,21 @@ CREATE INDEX IF NOT EXISTS chat_conversations_visitor_idx ON chat_conversations 
 CREATE INDEX IF NOT EXISTS chat_conversations_status_idx ON chat_conversations (status);
 CREATE INDEX IF NOT EXISTS chat_conversations_last_message_idx ON chat_conversations (last_message_at);
 CREATE INDEX IF NOT EXISTS chat_messages_conversation_idx ON chat_messages (conversation_id, id);
+
+-- Ticket-style chat: subject lines and image attachments.
+ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS subject text;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_mime text;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_size integer;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_name text;
+
+CREATE TABLE IF NOT EXISTS chat_attachments (
+  id serial PRIMARY KEY NOT NULL,
+  message_id integer NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+  conversation_id integer NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+  mime_type text NOT NULL,
+  size_bytes integer NOT NULL,
+  data text NOT NULL,
+  created_at timestamp DEFAULT now() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS chat_attachments_message_idx ON chat_attachments (message_id);

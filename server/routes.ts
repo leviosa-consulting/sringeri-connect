@@ -28,6 +28,7 @@ import {
 } from "@shared/schema";
 import fsPromises from "fs/promises";
 import nodePath from "path";
+import nodeCrypto from "crypto";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
 const _filename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
@@ -4738,12 +4739,15 @@ export async function registerRoutes(
   async function loadVisitorConversation(req: any, conversationId: number, visitorId: string) {
     if (!visitorId || !Number.isFinite(conversationId)) return null;
     const convo = await storage.getChatConversation(conversationId);
-    if (!convo || convo.visitorId !== visitorId) return null;
+    if (!convo) return null;
+    // A conversation bound to a signed-in devotee is reachable only with that
+    // account's verified token — a leaked visitorId must not open it. Anonymous
+    // conversations are guarded by the visitorId bearer alone.
     if (convo.odUserId) {
       const auth = await getFirebaseUidAndEmail(req).catch(() => null);
-      if (auth?.uid !== convo.odUserId) return null;
+      return auth?.uid === convo.odUserId ? convo : null;
     }
-    return convo;
+    return convo.visitorId === visitorId ? convo : null;
   }
 
   function transcriptFor(messages: { author: string; content: string }[]) {
@@ -4983,7 +4987,7 @@ export async function registerRoutes(
       const messages = await storage.listChatMessages(convo.id, parseInt(String(sinceId || "0"), 10) || 0);
       if (markRead !== false && messages.length) await storage.clearChatUnread(convo.id, "visitor");
       const presence = await getAgentPresence();
-      res.json({ conversation: convo, messages, agentOnline: presence.online });
+      res.json({ conversation: convo, messages: withAttachments(messages), agentOnline: presence.online });
     } catch (error) {
       console.error("Live chat poll error:", error);
       res.status(500).json({ error: "Could not load messages" });
@@ -5027,7 +5031,7 @@ export async function registerRoutes(
       }
 
       const updated = await storage.getChatConversation(convo.id);
-      res.json({ conversation: updated, messages: newMessages, agentOnline: presence.online });
+      res.json({ conversation: updated, messages: withAttachments(newMessages), agentOnline: presence.online });
     } catch (error) {
       console.error("Live chat message error:", error);
       res.status(500).json({ error: "Could not send the message" });
@@ -5119,6 +5123,341 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Live chat request-agent error:", error);
       res.status(500).json({ error: "Could not reach our team. Please try again." });
+    }
+  });
+
+  // --- Ticket-style chat: many threads per visitor, subjects, attachments ---
+
+  const CHAT_ATTACHMENT_MAX_BYTES = 2 * 1024 * 1024;
+  const CHAT_ATTACHMENT_TYPES: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  };
+
+  /** Magic-byte check: the declared type is a hint, the bytes are the truth. */
+  function sniffImageMime(buf: Buffer): string | null {
+    if (buf.length < 12) return null;
+    if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
+    if (buf.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
+    if (buf.slice(0, 4).toString("ascii") === "RIFF" && buf.slice(8, 12).toString("ascii") === "WEBP") return "image/webp";
+    return null;
+  }
+
+  const ATTACHMENT_TOKEN_TTL_MS = 6 * 60 * 60 * 1000;
+
+  // No fallback on purpose: an attachment URL signed with a guessable secret
+  // would let anyone walk the message IDs and read devotees' photos.
+  function attachmentSecret(): string {
+    const secret = process.env.SESSION_SECRET;
+    if (!secret) throw new Error("SESSION_SECRET is required to sign chat attachment links");
+    return secret;
+  }
+
+  /** Short-lived signed handle so an <img src> can fetch bytes without the visitorId. */
+  function signAttachmentToken(messageId: number): string {
+    const expires = Date.now() + ATTACHMENT_TOKEN_TTL_MS;
+    const sig = nodeCrypto.createHmac("sha256", attachmentSecret())
+      .update(`${messageId}.${expires}`)
+      .digest("base64url");
+    return `${expires}.${sig}`;
+  }
+
+  function verifyAttachmentToken(messageId: number, token: string): boolean {
+    if (!process.env.SESSION_SECRET) return false;
+    const [expiresRaw, sig] = String(token || "").split(".");
+    const expires = Number(expiresRaw);
+    if (!expires || !sig || Date.now() > expires) return false;
+    const expected = nodeCrypto.createHmac("sha256", attachmentSecret())
+      .update(`${messageId}.${expires}`)
+      .digest("base64url");
+    return expected.length === sig.length && nodeCrypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+  }
+
+  /** Adds a fetchable URL to any line that carries an image. */
+  function withAttachments<T extends { id: number; attachmentMime?: string | null }>(messages: T[]) {
+    if (!process.env.SESSION_SECRET) {
+      console.warn("Live chat: SESSION_SECRET missing, attachment links cannot be signed.");
+      return messages;
+    }
+    return messages.map(m => (m.attachmentMime
+      ? { ...m, attachmentUrl: `/api/live-chat/attachment/${m.id}?t=${signAttachmentToken(m.id)}` }
+      : m));
+  }
+
+  function cleanSubject(value: unknown): string {
+    return typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, 140) : "";
+  }
+
+  /** Every thread this visitor owns, with a one-line preview for the list screen. */
+  app.post("/api/live-chat/conversations", liveChatPollLimiter, async (req, res) => {
+    try {
+      const { visitorId } = req.body || {};
+      if (!visitorId || typeof visitorId !== "string" || visitorId.length < 8 || visitorId.length > 100) {
+        return res.status(400).json({ error: "A valid visitorId is required" });
+      }
+      const auth = await getFirebaseUidAndEmail(req).catch(() => null);
+      const convos = await storage.listChatConversationsForVisitor(visitorId, auth?.uid || null);
+      const list = await Promise.all(convos.map(async c => {
+        const last = await storage.getLastChatMessage(c.id);
+        return {
+          id: c.id,
+          subject: c.subject,
+          status: c.status,
+          source: c.source,
+          unreadForVisitor: c.unreadForVisitor,
+          lastMessageAt: c.lastMessageAt,
+          assignedAgentName: c.assignedAgentName,
+          preview: last ? (last.attachmentMime && !last.content ? "📷 Photo" : last.content.slice(0, 120)) : "",
+          previewAuthor: last?.author || null,
+        };
+      }));
+      const presence = await getAgentPresence();
+      res.json({ conversations: list, agentOnline: presence.online });
+    } catch (error) {
+      console.error("Live chat conversation list error:", error);
+      res.status(500).json({ error: "Could not load your conversations" });
+    }
+  });
+
+  /** Full transcript of one thread the visitor owns. */
+  app.post("/api/live-chat/conversation", liveChatPollLimiter, async (req, res) => {
+    try {
+      const { visitorId, conversationId } = req.body || {};
+      const convo = await loadVisitorConversation(req, parseInt(String(conversationId), 10), String(visitorId || ""));
+      if (!convo) return res.status(404).json({ error: "Conversation not found" });
+      const messages = await storage.listChatMessages(convo.id);
+      await storage.clearChatUnread(convo.id, "visitor");
+      const presence = await getAgentPresence();
+      res.json({
+        conversation: { ...convo, unreadForVisitor: 0 },
+        messages: withAttachments(messages),
+        agentOnline: presence.online,
+      });
+    } catch (error) {
+      console.error("Live chat conversation read error:", error);
+      res.status(500).json({ error: "Could not load this conversation" });
+    }
+  });
+
+  /**
+   * Start a thread from a subject line. Team online → it reaches the queue;
+   * team offline → it is registered as a ticket and emailed to support.
+   */
+  app.post("/api/live-chat/start", liveChatLimiter, async (req, res) => {
+    try {
+      const { visitorId, source, pagePath, pageTitle, subject, name, email, phone, message } = req.body || {};
+      if (!visitorId || typeof visitorId !== "string" || visitorId.length < 8 || visitorId.length > 100) {
+        return res.status(400).json({ error: "A valid visitorId is required" });
+      }
+      const topic = cleanSubject(subject);
+      if (!topic) return res.status(400).json({ error: "subject_required" });
+
+      const auth = await getFirebaseUidAndEmail(req).catch(() => null);
+      const cleanName = typeof name === "string" ? name.trim().slice(0, 120) : "";
+      const cleanEmail = (typeof email === "string" ? email.trim().slice(0, 160) : "") || auth?.email || "";
+      const cleanPhone = typeof phone === "string" ? phone.trim().slice(0, 40) : "";
+      const firstMessage = typeof message === "string" ? message.trim().slice(0, 2000) : "";
+
+      // A guest must leave an email — otherwise a ticket has no way back to them.
+      if (!auth?.uid && (!cleanEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail))) {
+        return res.status(400).json({ error: "email_required" });
+      }
+
+      const cleanPageUrl = (typeof pagePath === "string" && pagePath)
+        ? ("/" + pagePath.replace(/^\/+/, "")).split("?")[0].split("#")[0].slice(0, 300)
+        : null;
+      const cleanPageTitle = (typeof pageTitle === "string" && pageTitle) ? pageTitle.slice(0, 200) : null;
+      const presence = await getAgentPresence();
+
+      const convo = await storage.createChatConversation({
+        visitorId,
+        odUserId: auth?.uid || null,
+        name: cleanName || null,
+        email: cleanEmail || null,
+        phone: cleanPhone || null,
+        subject: topic,
+        source: source === "website" ? "website" : "app",
+        pageUrl: cleanPageUrl,
+        pageTitle: cleanPageTitle,
+        status: presence.online ? "waiting" : "offline_pending",
+      });
+
+      if (firstMessage) {
+        await storage.appendChatMessage({ conversationId: convo.id, author: "user", content: firstMessage });
+      }
+      await storage.bumpChatUnread(convo.id, "agent");
+
+      let emailed = false;
+      if (presence.online) {
+        await storage.appendChatMessage({
+          conversationId: convo.id,
+          author: "system",
+          content: "Connecting you with a member of our team. Please stay on this conversation.",
+        });
+      } else {
+        const all = await storage.listChatMessages(convo.id);
+        const payload = {
+          conversationId: convo.id,
+          name: cleanName || "Devotee",
+          email: cleanEmail,
+          phone: cleanPhone || null,
+          concern: `${topic}${firstMessage ? `\n\n${firstMessage}` : ""}`,
+          transcript: transcriptFor(all),
+        };
+        if (cleanEmail && isEmailServiceConfigured()) {
+          const results = await Promise.allSettled([
+            sendChatOfflineAcknowledgement(payload),
+            sendChatConcernToSupport(payload),
+          ]);
+          results.forEach(r => { if (r.status === "rejected") console.error("Live chat email failed:", r.reason); });
+          emailed = results[0].status === "fulfilled";
+        } else if (!isEmailServiceConfigured()) {
+          console.warn("Live chat: email service not configured; ticket stored without notification.");
+        }
+        await storage.appendChatMessage({
+          conversationId: convo.id,
+          author: "system",
+          content: emailed
+            ? `Our team is offline right now. Your request has been registered and a confirmation sent to ${cleanEmail}. We reply within 2–4 hours.`
+            : "Our team is offline right now. Your request has been registered and we reply within 2–4 hours.",
+        });
+      }
+
+      const messages = await storage.listChatMessages(convo.id);
+      await storage.clearChatUnread(convo.id, "visitor");
+      const fresh = await storage.getChatConversation(convo.id);
+      res.json({
+        conversation: { ...(fresh || convo), unreadForVisitor: 0 },
+        messages: withAttachments(messages),
+        agentOnline: presence.online,
+        emailed,
+      });
+    } catch (error) {
+      console.error("Live chat start error:", error);
+      res.status(500).json({ error: "Could not start the conversation" });
+    }
+  });
+
+  /** One image per message, ≤2MB. Its own body parser handles the base64 payload. */
+  app.post("/api/live-chat/attachment", liveChatLimiter, async (req, res) => {
+    try {
+      const { visitorId, conversationId, dataBase64, fileName, caption } = req.body || {};
+      const convo = await loadVisitorConversation(req, parseInt(String(conversationId), 10), String(visitorId || ""));
+      if (!convo) return res.status(404).json({ error: "Conversation not found" });
+      if (convo.status === "closed") return res.status(409).json({ error: "This conversation is closed" });
+      if (typeof dataBase64 !== "string" || !dataBase64) return res.status(400).json({ error: "No image received" });
+
+      const buf = Buffer.from(dataBase64.replace(/^data:[^;]+;base64,/, ""), "base64");
+      if (!buf.length) return res.status(400).json({ error: "No image received" });
+      if (buf.length > CHAT_ATTACHMENT_MAX_BYTES) {
+        return res.status(413).json({ error: "too_large" });
+      }
+      const sniffed = sniffImageMime(buf);
+      if (!sniffed || !CHAT_ATTACHMENT_TYPES[sniffed]) {
+        return res.status(415).json({ error: "unsupported_type" });
+      }
+
+      const msg = await storage.appendChatMessage({
+        conversationId: convo.id,
+        author: "user",
+        content: typeof caption === "string" ? caption.trim().slice(0, 2000) : "",
+        attachmentMime: sniffed,
+        attachmentSize: buf.length,
+        attachmentName: typeof fileName === "string" ? fileName.trim().slice(0, 120) : null,
+      });
+      await storage.saveChatAttachment({
+        messageId: msg.id,
+        conversationId: convo.id,
+        mimeType: sniffed,
+        sizeBytes: buf.length,
+        data: buf.toString("base64"),
+      });
+      await storage.bumpChatUnread(convo.id, "agent");
+
+      const presence = await getAgentPresence();
+      res.json({
+        conversation: await storage.getChatConversation(convo.id),
+        messages: withAttachments([msg]),
+        agentOnline: presence.online,
+      });
+    } catch (error) {
+      console.error("Live chat attachment error:", error);
+      res.status(500).json({ error: "Could not attach the image" });
+    }
+  });
+
+  /**
+   * Serves the bytes. Authorised by the signed token handed out with the
+   * transcript, so the visitorId never travels in an image URL. Support staff
+   * reach it the same way from the admin console.
+   */
+  app.get("/api/live-chat/attachment/:messageId", async (req, res) => {
+    try {
+      const messageId = parseInt(req.params.messageId, 10);
+      if (!Number.isFinite(messageId)) return res.status(400).end();
+      const token = String(req.query.t || "");
+      const viaToken = verifyAttachmentToken(messageId, token);
+      if (!viaToken && !(await requireRole(req, "support"))) {
+        return res.status(403).json({ error: "Not authorised" });
+      }
+      const file = await storage.getChatAttachmentByMessage(messageId);
+      if (!file) return res.status(404).end();
+      const buf = Buffer.from(file.data, "base64");
+      res.setHeader("Content-Type", file.mimeType);
+      res.setHeader("Content-Length", String(buf.length));
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      res.setHeader("Content-Disposition", "inline");
+      res.send(buf);
+    } catch (error) {
+      console.error("Live chat attachment read error:", error);
+      res.status(500).end();
+    }
+  });
+
+  // --- Widget → hosted chat page hand-off -----------------------------------
+  //
+  // The widget's visitorId lives in the website's storage; the hosted page is a
+  // different origin with its own. A one-shot ticket carries the identity
+  // across without ever putting the visitorId in a URL.
+
+  const chatHandoffs = new Map<string, { visitorId: string; expires: number }>();
+  const CHAT_HANDOFF_TTL_MS = 10 * 60 * 1000;
+
+  function pruneHandoffs() {
+    const now = Date.now();
+    chatHandoffs.forEach((v, k) => { if (v.expires < now) chatHandoffs.delete(k); });
+  }
+
+  app.post("/api/live-chat/handoff", liveChatLimiter, async (req, res) => {
+    try {
+      const { visitorId } = req.body || {};
+      if (!visitorId || typeof visitorId !== "string" || visitorId.length < 8 || visitorId.length > 100) {
+        return res.status(400).json({ error: "A valid visitorId is required" });
+      }
+      pruneHandoffs();
+      if (chatHandoffs.size > 5000) return res.status(503).json({ error: "Please try again in a moment" });
+      const token = nodeCrypto.randomBytes(24).toString("base64url");
+      chatHandoffs.set(token, { visitorId, expires: Date.now() + CHAT_HANDOFF_TTL_MS });
+      res.json({ token, expiresInMs: CHAT_HANDOFF_TTL_MS });
+    } catch (error) {
+      console.error("Live chat handoff error:", error);
+      res.status(500).json({ error: "Could not open the full chat page" });
+    }
+  });
+
+  app.post("/api/live-chat/handoff/claim", liveChatLimiter, async (req, res) => {
+    try {
+      const { token } = req.body || {};
+      pruneHandoffs();
+      const entry = token ? chatHandoffs.get(String(token)) : undefined;
+      if (!entry) return res.status(404).json({ error: "link_expired" });
+      // One shot only: a link that leaks from history cannot be replayed.
+      chatHandoffs.delete(String(token));
+      res.json({ visitorId: entry.visitorId });
+    } catch (error) {
+      console.error("Live chat handoff claim error:", error);
+      res.status(500).json({ error: "Could not open the full chat page" });
     }
   });
 
@@ -5227,7 +5566,7 @@ export async function registerRoutes(
       const sinceId = parseInt(String(req.query.sinceId || "0"), 10) || 0;
       const messages = await storage.listChatMessages(id, sinceId);
       if (convo.unreadForAgent > 0) await storage.clearChatUnread(id, "agent");
-      res.json({ conversation: { ...convo, unreadForAgent: 0 }, messages });
+      res.json({ conversation: { ...convo, unreadForAgent: 0 }, messages: withAttachments(messages) });
     } catch (error) {
       console.error("Live chat transcript error:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -5267,8 +5606,11 @@ export async function registerRoutes(
       });
       await storage.bumpChatUnread(id, "visitor");
 
+      // A ticket raised while the team was offline always earns an email — the
+      // devotee is not sitting on the page waiting for it.
+      const notifyByDefault = convo.status === "offline_pending";
       let emailed = false;
-      if (sendEmail && convo.email && isEmailServiceConfigured()) {
+      if ((sendEmail || notifyByDefault) && convo.email && isEmailServiceConfigured()) {
         try {
           await sendChatAgentReplyEmail(convo.email, convo.name || "Devotee", id, text);
           emailed = true;

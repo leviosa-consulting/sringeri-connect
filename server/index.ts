@@ -18,6 +18,11 @@ declare module "http" {
   }
 }
 
+// Chat image uploads arrive as base64 JSON and would blow past the default
+// 100kb ceiling, so that one path gets a roomier parser. It runs first; the
+// general parser below sees the body as already read and leaves it alone.
+app.use("/api/live-chat/attachment", express.json({ limit: "4mb" }));
+
 app.use(
   express.json({
     verify: (req, _res, buf) => {

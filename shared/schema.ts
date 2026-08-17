@@ -169,6 +169,8 @@ export const chatConversations = pgTable("chat_conversations", {
   name: text("name"),
   email: text("email"),
   phone: text("phone"),
+  /** Subject line the visitor typed when starting the conversation. Null for pre-subject threads. */
+  subject: text("subject"),
   status: text("status").$type<ChatStatus>().default("bot").notNull(),
   /** "app" | "website" */
   source: text("source").default("app").notNull(),
@@ -195,10 +197,34 @@ export const chatMessages = pgTable("chat_messages", {
   author: text("author").$type<ChatAuthor>().notNull(),
   authorName: text("author_name"),
   content: text("content").notNull(),
+  /** Set when the line carries an image; the bytes live in chat_attachments. */
+  attachmentMime: text("attachment_mime"),
+  attachmentSize: integer("attachment_size"),
+  attachmentName: text("attachment_name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("chat_messages_conversation_idx").on(table.conversationId, table.id),
 ]);
+
+/**
+ * Image bytes are kept out of chat_messages so listing a transcript never
+ * drags megabytes of base64 along with it.
+ */
+export const chatAttachments = pgTable("chat_attachments", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").notNull().references(() => chatMessages.id, { onDelete: "cascade" }),
+  conversationId: integer("conversation_id").notNull().references(() => chatConversations.id, { onDelete: "cascade" }),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  /** base64 payload — images are capped at 2MB before they reach here. */
+  data: text("data").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("chat_attachments_message_idx").on(table.messageId),
+]);
+
+export type ChatAttachment = typeof chatAttachments.$inferSelect;
+export type InsertChatAttachment = typeof chatAttachments.$inferInsert;
 
 export type ChatConversation = typeof chatConversations.$inferSelect;
 export type InsertChatConversation = typeof chatConversations.$inferInsert;

@@ -32,6 +32,8 @@ interface ChatLine {
   author: "user" | "bot" | "agent" | "system";
   authorName: string | null;
   content: string;
+  attachmentMime?: string | null;
+  attachmentUrl?: string | null;
   createdAt: string;
 }
 
@@ -341,6 +343,16 @@ export default function LiveChatConsole({ token }: { token: string }) {
                         data-testid={`transcript-${line.author}-${line.id}`}
                       >
                         {line.author === "bot" && <p className="text-[10px] font-semibold mb-0.5 opacity-70">Sahayak (bot)</p>}
+                        {line.attachmentUrl && (
+                          <a href={line.attachmentUrl} target="_blank" rel="noreferrer" className="block mb-1">
+                            <img
+                              src={line.attachmentUrl}
+                              alt={line.content || "Attachment"}
+                              className="rounded-lg max-h-48 max-w-full object-contain bg-black/5"
+                              data-testid={`transcript-attachment-${line.id}`}
+                            />
+                          </a>
+                        )}
                         {line.content}
                       </div>
                     </div>

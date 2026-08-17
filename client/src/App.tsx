@@ -38,6 +38,7 @@ import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
 import ResetPassword from "@/pages/reset-password";
 import AsLaunch from "@/pages/aslaunch";
+import ChatPage from "@/pages/chat";
 import { PageLoader } from "@/components/rangoli-loader";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -74,6 +75,7 @@ function Router() {
             <Route path="/seva">{() => <ProtectedRoute component={Seva} />}</Route>
             <Route path="/knowledge">{() => <ProtectedRoute component={Knowledge} />}</Route>
             <Route path="/knowledge/:id">{() => <ProtectedRoute component={Knowledge} />}</Route>
+            <Route path="/chat" component={ChatPage} />
             <Route path="/fastline" component={Fastline} />
             <Route path="/payment-result" component={PaymentResult} />
             <Route path="/analytics" component={Analytics} />

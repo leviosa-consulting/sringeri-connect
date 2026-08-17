@@ -47,6 +47,22 @@ export const LIVE_CHAT_DDL: string[] = [
   // columns added after the table's first release need their own ALTERs here.
   `ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS page_url text`,
   `ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS page_title text`,
+  `ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS subject text`,
+  `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_mime text`,
+  `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_size integer`,
+  `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_name text`,
+  // Attachment bytes live apart from the transcript so reading a conversation
+  // never drags base64 payloads along with it.
+  `CREATE TABLE IF NOT EXISTS chat_attachments (
+    id serial PRIMARY KEY NOT NULL,
+    message_id integer NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+    conversation_id integer NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+    mime_type text NOT NULL,
+    size_bytes integer NOT NULL,
+    data text NOT NULL,
+    created_at timestamp DEFAULT now() NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS chat_attachments_message_idx ON chat_attachments (message_id)`,
 ];
 
 export async function ensureLiveChatSchema(): Promise<void> {

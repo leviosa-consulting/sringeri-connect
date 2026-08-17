@@ -4,7 +4,7 @@ import { Home, Bell, User, BookOpenCheck, Flame, Heart, Hotel } from "lucide-rea
 import { cn } from "@/lib/utils";
 import DesktopNav from "./desktop-nav";
 import ServicesDesktopNav from "./services-desktop-nav";
-import ChatbotWidget from "./chatbot-widget";
+import ChatLauncher from "./chat-launcher";
 import SiteFooter from "./site-footer";
 import { useMedia } from "react-use";
 import { useSubdomainMode, SERVICE_ROUTES, type ServiceMode } from "@/contexts/subdomain-mode-context";
@@ -120,8 +120,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
       )}
 
-      {/* Chatbot is available on both views */}
-      <ChatbotWidget />
+      {/* Chat is available on both views; the button opens the full screen. */}
+      <ChatLauncher />
     </div>
   );
 }

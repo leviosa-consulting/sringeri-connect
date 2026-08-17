@@ -54,6 +54,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Features
 - **Chatbot (Sringeri Sahayak)**: A rule-based chatbot providing verified information from Sringeri APIs, with cached responses and a frontend widget. This is not an AI/LLM based chatbot.
+- **Ticket-style chat (`/chat`)**: A dedicated screen listing a devotee's conversations by subject. Starting one while the team is online reaches them live; while offline it becomes a ticket answered by email. Supports image attachments up to 2MB (bytes stored in the `chat_attachments` table, served through short-lived signed URLs) and works for guests who leave name and email. The AI assistant floats over this screen; the website embed widget links out to it via a one-shot identity hand-off token.
 - **Analytics Tracking**: Lightweight client-side tracking of user interactions, batched and sent to the backend. Admin dashboard for viewing aggregated analytics.
 - **Knowledge Corner (Daily Quiz)**: Daily quiz feature with questions, multimedia content, and score tracking. Includes an admin interface for quiz management and user history.
 - **Gamification**: Implements streaks and badges based on quiz participation and performance, with real-time updates and celebratory animations.

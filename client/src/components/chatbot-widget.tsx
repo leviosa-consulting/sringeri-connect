@@ -114,7 +114,12 @@ function renderMarkdown(text: string) {
   return <div className="space-y-0">{elements}</div>;
 }
 
-export default function ChatbotWidget() {
+/**
+ * `botOnly` turns the widget into the quick-answers assistant that floats over
+ * the dedicated chat screen: it never offers the team hand-off, because
+ * reaching the team there means starting a proper conversation with a subject.
+ */
+export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean } = {}) {
   const { profile, devoteeData, getToken } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -249,7 +254,12 @@ export default function ChatbotWidget() {
       const res = await fetch("/api/live-chat/session", {
         method: "POST",
         headers: await authHeaders(),
-        body: JSON.stringify({ visitorId: visitorIdRef.current, source: "app", mode: requestedMode, ...extra }),
+        body: JSON.stringify({
+          visitorId: visitorIdRef.current,
+          source: "app",
+          mode: botOnly ? "bot" : requestedMode,
+          ...extra,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -279,7 +289,7 @@ export default function ChatbotWidget() {
     } finally {
       setStarting(false);
     }
-  }, [authHeaders, mergeLines]);
+  }, [authHeaders, mergeLines, botOnly]);
 
   useEffect(() => {
     if (isOpen && !conversation && !starting && !needsChoice) void startSession();
@@ -672,7 +682,7 @@ export default function ChatbotWidget() {
                 </Button>
               ) : (
                 <>
-                  {status !== "live" && status !== "waiting" && !showHandoffForm && (
+                  {!botOnly && status !== "live" && status !== "waiting" && !showHandoffForm && (
                     <button
                       onClick={requestAgent}
                       disabled={sending || !conversation}
