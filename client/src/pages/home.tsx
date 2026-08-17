@@ -183,8 +183,8 @@ export default function Home() {
 
         {/* Occasion of the Day — decorated section, only when present */}
         {todayDetails && (todayDetails.occasion || todayDetails.occasionK) && (
-          <div className="mx-4 mb-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-amber-50 to-primary/5 px-4 py-3" data-testid="section-home-occasion">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-primary mb-1">
+          <div className="mx-4 mb-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-amber-50 to-primary/5 px-5 py-5 text-center" data-testid="section-home-occasion">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary mb-2">
               <Sparkles className="w-3.5 h-3.5" />
               Occasion Today
             </div>
@@ -198,7 +198,7 @@ export default function Home() {
               </div>
             )}
             {todayDetails.occasion && (
-              <div className="text-sm text-foreground/70 leading-relaxed mt-0.5" data-testid="text-home-occasion-english">{todayDetails.occasion}</div>
+              <div className="text-sm text-foreground/70 leading-relaxed mt-1" data-testid="text-home-occasion-english">{todayDetails.occasion}</div>
             )}
           </div>
         )}
