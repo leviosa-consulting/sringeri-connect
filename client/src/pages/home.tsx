@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import ServiceIcon from "@/components/service-icon";
 import { ONLINE_SERVICES, RESOURCES } from "@/lib/constants";
-import { Info, Globe, BookOpen, ChevronDown, AlertTriangle, X, Loader2, Bell, ChevronRight } from "lucide-react";
+import { Info, Globe, BookOpen, ChevronDown, AlertTriangle, X, Loader2, Bell, ChevronRight, Languages, Sparkles } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -35,6 +35,7 @@ export default function Home() {
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const [todayDetails, setTodayDetails] = useState<TodayDetails | null>(null);
   const [panchangaLang, setPanchangaLang] = useState<'en' | 'kn'>('en');
+  const [showKannada, setShowKannada] = useState(false);
   const [todaySheetOpen, setTodaySheetOpen] = useState(false);
   const displayName = profile?.name || user?.displayName || "Devotee";
   const initials = displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
@@ -134,20 +135,34 @@ export default function Home() {
                 <h1 className="text-xl font-serif font-bold text-foreground">{displayName}</h1>
               </div>
             </div>
-            <FontSizeToggle />
+            <div className="flex items-center gap-1.5">
+              {todayDetails?.todayWebsiteKannada && (
+                <button
+                  onClick={() => setShowKannada((v) => !v)}
+                  className={`flex items-center gap-1 px-2.5 h-8 rounded-full text-xs font-semibold transition-colors ${showKannada ? "bg-primary/10 text-primary" : "hover:bg-black/5 text-[#ff6600]"}`}
+                  aria-pressed={showKannada}
+                  aria-label={showKannada ? "Hide Kannada text" : "Show Kannada text"}
+                  data-testid="button-toggle-kannada"
+                >
+                  <Languages className="w-3.5 h-3.5" />
+                  ಕನ್ನಡ
+                </button>
+              )}
+              <FontSizeToggle />
+            </div>
           </div>
         </div>
 
         {/* Hindu Calendar Strip */}
         {todayDetails && (
-          <div className="py-5 px-6 text-center space-y-3" data-testid="card-today-calendar">
+          <div className="py-4 px-6 text-center space-y-2.5" data-testid="card-today-calendar">
           <div className="flex items-center justify-center gap-2">
             <div className="flex-1">
-              {todayDetails.todayWebsiteKannada && (
+              {showKannada && todayDetails.todayWebsiteKannada && (
                 <div className="text-lg font-serif text-foreground leading-relaxed" style={{ fontFamily: "'Noto Serif Kannada', 'Merriweather', serif" }} data-testid="text-calendar-kannada">{todayDetails.todayWebsiteKannada}</div>
               )}
               {todayDetails.todayWebsiteEnglish && (
-                <div className="mt-1 text-[#443b31] font-semibold text-[16px]" data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
+                <div className={`text-[#443b31] font-semibold text-[16px] ${showKannada ? "mt-1" : ""}`} data-testid="text-calendar-english">{todayDetails.todayWebsiteEnglish}</div>
               )}
             </div>
           </div>
@@ -165,6 +180,28 @@ export default function Home() {
 
         </div>
       )}
+
+        {/* Occasion of the Day — decorated section, only when present */}
+        {todayDetails && (todayDetails.occasion || todayDetails.occasionK) && (
+          <div className="mx-4 mb-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-amber-50 to-primary/5 px-4 py-3" data-testid="section-home-occasion">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-primary mb-1">
+              <Sparkles className="w-3.5 h-3.5" />
+              Occasion Today
+            </div>
+            {todayDetails.occasionK && (
+              <div
+                className="text-base font-serif text-foreground leading-relaxed"
+                style={{ fontFamily: "'Noto Serif Kannada', 'Merriweather', serif" }}
+                data-testid="text-home-occasion-kannada"
+              >
+                {todayDetails.occasionK}
+              </div>
+            )}
+            {todayDetails.occasion && (
+              <div className="text-sm text-foreground/70 leading-relaxed mt-0.5" data-testid="text-home-occasion-english">{todayDetails.occasion}</div>
+            )}
+          </div>
+        )}
 
         {/* Today Button — always visible */}
         <div className="py-3 flex justify-center">
