@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import DesktopNav from "./desktop-nav";
 import ServicesDesktopNav from "./services-desktop-nav";
 import ChatLauncher from "./chat-launcher";
+import ChatbotWidget from "./chatbot-widget";
 import SiteFooter from "./site-footer";
 import { useMedia } from "react-use";
 import { useSubdomainMode, SERVICE_ROUTES, type ServiceMode } from "@/contexts/subdomain-mode-context";
@@ -120,8 +121,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
       )}
 
-      {/* Chat is available on both views; the button opens the full screen. */}
-      <ChatLauncher />
+      {/* Chat is available on all pages. On Home, the icon opens the assistant
+          in place with a prominent switch to live chat; everywhere else it
+          jumps straight to the full chat screen. */}
+      {location === "/home" ? <ChatbotWidget botOnly enableLiveChat /> : <ChatLauncher />}
     </div>
   );
 }

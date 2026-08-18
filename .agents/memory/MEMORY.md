@@ -1,3 +1,4 @@
 - [Admin Corrections tool extension pattern](admin-corrections-pattern.md) — how to add a new record type (yatri/fastline/seva style) to the corrections tool and its admin-role testing limitation.
 - [Daily practice & Dharma Points](daily-practice-ledger.md) — points are an append-only ledger, grading is server-side, and scheduled content freezes once answered.
 - [Live chat session mode routing](live-chat-session-modes.md) — team-first default with a `needsChoice` gate when offline; keep in-app widget and website embed in sync.
+- [ChatbotWidget mode props](chatbot-widget-modes.md) — `botOnly` (conversation mode) and `enableLiveChat` (human-handoff button) are independent props; compose per usage.

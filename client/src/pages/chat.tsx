@@ -277,6 +277,22 @@ export default function ChatPage() {
     if (Number.isFinite(id)) void openConversation(id);
   }, [visitorReady, openConversation]);
 
+  // A `?new=1` link (from the Home assistant's "Switch to Live Chat" button)
+  // jumps straight into a pre-filled new-conversation form.
+  const newConvoHandledRef = useRef(false);
+  useEffect(() => {
+    if (!visitorReady || newConvoHandledRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      newConvoHandledRef.current = true;
+      setSubject(s => s || "Chat with our team");
+      setComposing(true);
+      params.delete("new");
+      const rest = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (rest ? `?${rest}` : ""));
+    }
+  }, [visitorReady]);
+
   useEffect(() => {
     // `nearest` keeps the scroll inside the transcript instead of dragging the
     // whole page down past the header.

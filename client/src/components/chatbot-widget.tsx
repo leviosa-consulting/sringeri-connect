@@ -121,11 +121,13 @@ function renderMarkdown(text: string) {
 }
 
 /**
- * `botOnly` turns the widget into the quick-answers assistant that floats over
- * the dedicated chat screen: it never offers the team hand-off, because
- * reaching the team there means starting a proper conversation with a subject.
+ * `botOnly` keeps the widget as the quick-answers assistant: it always starts
+ * a bot conversation and skips the team-first offline gate, because reaching
+ * the team means starting a proper conversation with a subject elsewhere.
+ * `enableLiveChat` adds a prominent "Switch to Live Chat" button that sends
+ * the devotee to the dedicated chat page to do exactly that.
  */
-export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean } = {}) {
+export default function ChatbotWidget({ botOnly = false, enableLiveChat = false }: { botOnly?: boolean; enableLiveChat?: boolean } = {}) {
   const { profile, devoteeData, getToken } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -148,13 +150,12 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
   const [needsChoice, setNeedsChoice] = useState(false);
   const [preEmailMode, setPreEmailMode] = useState(false);
 
-  // Offline hand-off form
-  const [showHandoffForm, setShowHandoffForm] = useState(false);
+  // Pre-chat "email us instead" form (only reachable when the team-first
+  // needsChoice gate is active — see startSession below).
   const [hName, setHName] = useState("");
   const [hEmail, setHEmail] = useState("");
   const [hPhone, setHPhone] = useState("");
   const [hConcern, setHConcern] = useState("");
-  const [handoffSubmitting, setHandoffSubmitting] = useState(false);
 
   const visitorIdRef = useRef<string>("");
   const lastIdRef = useRef(0);
@@ -370,10 +371,35 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
     if (isOpen) setUnread(0);
   }, [isOpen, lines.length]);
 
+  // As the primary app-wide launcher (Home), no single conversation is loaded
+  // into state until the popup is opened once, so the closed-state badge
+  // above needs its own visitor-wide check in the meantime — mirrors
+  // ChatLauncher's behavior of surfacing unread replies without opening.
+  useEffect(() => {
+    if (!enableLiveChat || isOpen || conversation) return;
+    let cancelled = false;
+    const refreshBadge = async () => {
+      try {
+        const res = await fetch("/api/live-chat/conversations", {
+          method: "POST",
+          headers: await authHeaders(),
+          body: JSON.stringify({ visitorId: visitorIdRef.current }),
+        });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        setAgentOnline(!!data.agentOnline);
+        setUnread((data.conversations || []).reduce((sum: number, c: { unreadForVisitor?: number }) => sum + (c.unreadForVisitor || 0), 0));
+      } catch { /* transient blips are ignored */ }
+    };
+    void refreshBadge();
+    const interval = setInterval(refreshBadge, 60000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [enableLiveChat, isOpen, conversation, authHeaders]);
+
   useEffect(() => {
     const el = scrollRef.current?.querySelector("[data-radix-scroll-area-viewport]");
     if (el) el.scrollTop = el.scrollHeight;
-  }, [lines, showHandoffForm]);
+  }, [lines]);
 
   const sendMessage = async (text: string) => {
     const body = text.trim();
@@ -413,71 +439,15 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
     void sendMessage(action);
   };
 
-  const requestAgent = async () => {
-    if (!conversation) return;
-    if (!agentOnline) {
-      setShowHandoffForm(true);
-      return;
-    }
-    setSending(true);
-    try {
-      const res = await fetch("/api/live-chat/request-agent", {
-        method: "POST",
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          visitorId: visitorIdRef.current,
-          conversationId: conversation.id,
-          name: hName || profile?.name || "",
-          email: hEmail || profile?.email || "",
-          phone: hPhone || "",
-        }),
-      });
-      if (!res.ok) {
-        setShowHandoffForm(true);
-        return;
-      }
-      const data = await res.json();
-      if (data.conversation) setConversation(data.conversation);
-      lastIdRef.current = Math.max(0, lastIdRef.current);
-    } catch {
-      setError("Could not reach our team. Please try again.");
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const submitHandoff = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!conversation || !hEmail.trim() || !hConcern.trim()) return;
-    setHandoffSubmitting(true);
-    setError("");
-    try {
-      const res = await fetch("/api/live-chat/request-agent", {
-        method: "POST",
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          visitorId: visitorIdRef.current,
-          conversationId: conversation.id,
-          name: hName.trim(),
-          email: hEmail.trim(),
-          phone: hPhone.trim(),
-          concern: hConcern.trim(),
-        }),
-      });
-      if (!res.ok) {
-        setError("We could not record your concern. Please try again.");
-        return;
-      }
-      const data = await res.json();
-      if (data.conversation) setConversation(data.conversation);
-      setShowHandoffForm(false);
-      setHConcern("");
-    } catch {
-      setError("We could not record your concern. Please try again.");
-    } finally {
-      setHandoffSubmitting(false);
-    }
-  };
+  /**
+   * Sends the devotee to the dedicated chat page to reach the team, instead
+   * of handling the hand-off inline — that page opens straight into a
+   * pre-filled "start a new conversation" form so nothing extra is needed.
+   */
+  const switchToLiveChat = useCallback(() => {
+    setIsOpen(false);
+    setLocation("/chat?new=1");
+  }, [setLocation]);
 
   const restartChat = useCallback(() => {
     setConversation(null);
@@ -485,7 +455,6 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
     lastIdRef.current = 0;
     setUnread(0);
     setError("");
-    setShowHandoffForm(false);
     setNeedsChoice(false);
     setPreEmailMode(false);
     setSuggestedActions([]);
@@ -697,7 +666,7 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
                     );
                   })}
 
-                  {!needsChoice && status === "bot" && !sending && !showHandoffForm && suggestedActions.length > 0 && (
+                  {!needsChoice && status === "bot" && !sending && suggestedActions.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-1 ml-1" data-testid="chat-suggested-actions">
                       {suggestedActions.map((a, j) => (
                         <button
@@ -720,26 +689,6 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
                         <span className="text-muted-foreground text-xs">Typing…</span>
                       </div>
                     </div>
-                  )}
-
-                  {!needsChoice && showHandoffForm && (
-                    <form onSubmit={submitHandoff} className="border rounded-xl p-3 space-y-2 bg-white" data-testid="form-offline-handoff">
-                      <p className="text-xs text-muted-foreground">
-                        Our team is offline right now. Leave your concern and we will reply within <strong>2–4 hours</strong>.
-                      </p>
-                      <Input value={hName} onChange={(e) => setHName(e.target.value)} placeholder="Your name" className="h-8 text-sm" data-testid="input-handoff-name" />
-                      <Input type="email" value={hEmail} onChange={(e) => setHEmail(e.target.value)} placeholder="Email *" className="h-8 text-sm" required data-testid="input-handoff-email" />
-                      <Input value={hPhone} onChange={(e) => setHPhone(e.target.value)} placeholder="Phone (optional)" className="h-8 text-sm" data-testid="input-handoff-phone" />
-                      <Textarea value={hConcern} onChange={(e) => setHConcern(e.target.value)} placeholder="Describe your concern *" className="text-sm min-h-[64px] resize-none" required data-testid="input-handoff-concern" />
-                      <div className="flex gap-2">
-                        <Button type="submit" size="sm" className="flex-1" disabled={handoffSubmitting || !hEmail.trim() || !hConcern.trim()} data-testid="button-submit-handoff">
-                          {handoffSubmitting ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending…</> : "Send to our team"}
-                        </Button>
-                        <Button type="button" size="sm" variant="ghost" onClick={() => setShowHandoffForm(false)} data-testid="button-cancel-handoff">
-                          Cancel
-                        </Button>
-                      </div>
-                    </form>
                   )}
 
                   {!needsChoice && error && (
@@ -765,17 +714,17 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
                 </Button>
               ) : (
                 <>
-                  {!botOnly && status !== "live" && status !== "waiting" && !showHandoffForm && (
-                    <button
-                      onClick={requestAgent}
-                      disabled={sending || !conversation}
-                      className="text-xs text-primary hover:underline flex items-center justify-center gap-1.5 disabled:opacity-50"
-                      data-testid="button-talk-to-person"
+                  {enableLiveChat && status !== "live" && status !== "waiting" && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full gap-1.5"
+                      onClick={switchToLiveChat}
+                      data-testid="button-switch-live-chat"
                     >
                       <Headset className="h-3.5 w-3.5" />
-                      Talk to a person
-                      {!agentOnline && <span className="text-muted-foreground">· team offline</span>}
-                    </button>
+                      Switch to Live Chat
+                    </Button>
                   )}
 
                   {status === "offline_pending" && (
