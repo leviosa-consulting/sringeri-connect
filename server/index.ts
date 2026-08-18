@@ -124,7 +124,10 @@ app.use((req, res, next) => {
 // yatri.* / yatra.* → /accommodation[/rest-of-path]
 app.use((req, res, next) => {
   const host = req.hostname || req.headers.host || "";
-  const skipPaths = ["/api", "/fastline", "/payment-result", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules", "/privacy", "/terms"];
+  // Auth completion links (password reset) are emailed with whatever host the
+  // devotee happened to be on, including a seva/donate/yatri shortcut — those
+  // must always resolve to the real screen, never get rewritten to the shortcut's page.
+  const skipPaths = ["/api", "/fastline", "/payment-result", "/assets", "/src", "/@", "/favicon", "/manifest", "/node_modules", "/privacy", "/terms", "/reset-password", "/aslaunch"];
 
   if (host.startsWith("fastline.") && req.path.startsWith("/kiosk")) {
     const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
