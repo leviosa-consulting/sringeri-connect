@@ -6578,18 +6578,61 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/daily/history", async (req, res) => {
+  const MONTH_RE = /^\d{4}-\d{2}$/;
+  // Streak lookback window: bounds the completion-dates query to a constant
+  // size regardless of how long a devotee has been practicing. Comfortably
+  // longer than any realistic unbroken streak.
+  const STREAK_LOOKBACK_DAYS = 400;
+
+  function dateDaysAgo(dateStr: string, days: number): string {
+    const d = new Date(dateStr + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() - days);
+    return d.toISOString().split("T")[0];
+  }
+
+  // Lightweight per-date totals for one calendar month — powers the history
+  // calendar digest without pulling full submission content for every day.
+  app.get("/api/daily/history/summary", async (req, res) => {
     try {
       const uid = await getFirebaseUid(req);
       if (!uid) return res.status(401).json({ error: "Authentication required" });
-      const [history, summary, completionDates] = await Promise.all([
-        storage.listDailyHistory(uid, 30),
-        storage.getDharmaPointsSummary(uid, getISTDate()),
-        storage.getDailyPracticeCompletionDates(uid),
+
+      const month = typeof req.query.month === "string" ? req.query.month : getISTDate().slice(0, 7);
+      if (!MONTH_RE.test(month)) return res.status(400).json({ error: "Invalid month, expected YYYY-MM" });
+
+      const [year, monthNum] = month.split("-").map(Number);
+      const startDate = `${month}-01`;
+      // Last calendar day of the month, computed via day 0 of the next month.
+      const lastDay = new Date(Date.UTC(year, monthNum, 0)).getUTCDate();
+      const endDate = `${month}-${String(lastDay).padStart(2, "0")}`;
+
+      const todayStr = getISTDate();
+      const [days, summary, completionDates] = await Promise.all([
+        storage.getDailyPracticeMonthSummary(uid, startDate, endDate),
+        storage.getDharmaPointsSummary(uid, todayStr),
+        storage.getDailyPracticeCompletionDates(uid, dateDaysAgo(todayStr, STREAK_LOOKBACK_DAYS)),
       ]);
-      res.json({ ...history, dharmaPoints: summary, streak: computeStreak(completionDates) });
+      res.json({ month, days, dharmaPoints: summary, streak: computeStreak(completionDates) });
     } catch (error) {
-      console.error("Error getting daily history:", error);
+      console.error("Error getting daily history summary:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Full reflection/question/activity content for exactly one date — fetched
+  // on demand when a devotee opens that day in the calendar digest.
+  app.get("/api/daily/history/day", async (req, res) => {
+    try {
+      const uid = await getFirebaseUid(req);
+      if (!uid) return res.status(401).json({ error: "Authentication required" });
+
+      const date = typeof req.query.date === "string" ? req.query.date : "";
+      if (!DATE_RE.test(date)) return res.status(400).json({ error: "Invalid date, expected YYYY-MM-DD" });
+
+      const detail = await storage.getDailyPracticeDayDetail(uid, date);
+      res.json(detail);
+    } catch (error) {
+      console.error("Error getting daily history day detail:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

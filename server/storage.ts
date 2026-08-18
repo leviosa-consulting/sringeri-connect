@@ -100,12 +100,15 @@ export interface IStorage {
   // --- Dharma Points ledger ---
   getDharmaPointsSummary(odUserId: string, dateStr: string): Promise<{ total: number; today: number }>;
   listDharmaAwards(odUserId: string, limit?: number): Promise<DharmaPointsEntry[]>;
-  listDailyHistory(odUserId: string, limit?: number): Promise<DailyHistory>;
+  // Lightweight per-date totals for a date range — powers the calendar digest grid.
+  getDailyPracticeMonthSummary(odUserId: string, startDate: string, endDate: string): Promise<DailyPracticeDaySummary[]>;
+  // Full submission content for exactly one date — fetched on demand when a day is opened.
+  getDailyPracticeDayDetail(odUserId: string, dateStr: string): Promise<DailyPracticeDayDetail>;
   listDailySubmissionsForDate(dateStr: string): Promise<DailyHistory>;
   // Dates on which a devotee completed all three of Guruvani reflection,
   // Question of the Day and Activity of the Day — the unit the Daily
   // Practice streak counts, deliberately separate from the older quiz streak.
-  getDailyPracticeCompletionDates(odUserId: string): Promise<string[]>;
+  getDailyPracticeCompletionDates(odUserId: string, sinceDate: string): Promise<string[]>;
 }
 
 /**
@@ -138,6 +141,25 @@ export interface DailyHistory {
   reflections: (DailyReflection & { quote: string | null })[];
   questions: (DailyQuestionResponse & { questionText: string; options: string[]; correctIndex: number })[];
   activities: (DailyActivityResponse & { prompt: string; correctAnswer: string | null })[];
+}
+
+// One row per date that has any activity — used to render the calendar digest
+// without pulling full submission content for every day.
+export interface DailyPracticeDaySummary {
+  date: string;
+  points: number;
+  reflected: boolean;
+  questionAnswered: boolean;
+  activityAnswered: boolean;
+}
+
+// Full content for exactly one date, fetched only when a devotee opens that
+// day in the calendar digest.
+export interface DailyPracticeDayDetail {
+  date: string;
+  reflection: (DailyReflection & { quote: string | null }) | null;
+  question: (DailyQuestionResponse & { questionText: string; options: string[]; correctIndex: number }) | null;
+  activity: (DailyActivityResponse & { prompt: string; correctAnswer: string | null }) | null;
 }
 
 export class MemStorage implements IStorage {
@@ -397,9 +419,10 @@ export class MemStorage implements IStorage {
   async gradeDailyActivity(_odUserId: string, _dateStr: string, _input: DailyAnswerInput): Promise<DailyGradeResult<DailyActivityResponse, DailyActivity>> { return { status: "missing" }; }
   async getDharmaPointsSummary(_odUserId: string, _dateStr: string): Promise<{ total: number; today: number }> { return { total: 0, today: 0 }; }
   async listDharmaAwards(_odUserId: string, _limit?: number): Promise<DharmaPointsEntry[]> { return []; }
-  async listDailyHistory(_odUserId: string, _limit?: number): Promise<DailyHistory> { return { reflections: [], questions: [], activities: [] }; }
+  async getDailyPracticeMonthSummary(_odUserId: string, _startDate: string, _endDate: string): Promise<DailyPracticeDaySummary[]> { return []; }
+  async getDailyPracticeDayDetail(_odUserId: string, dateStr: string): Promise<DailyPracticeDayDetail> { return { date: dateStr, reflection: null, question: null, activity: null }; }
   async listDailySubmissionsForDate(_dateStr: string): Promise<DailyHistory> { return { reflections: [], questions: [], activities: [] }; }
-  async getDailyPracticeCompletionDates(_odUserId: string): Promise<string[]> { return []; }
+  async getDailyPracticeCompletionDates(_odUserId: string, _sinceDate: string): Promise<string[]> { return []; }
 }
 
 let storage: IStorage;
@@ -1318,8 +1341,60 @@ if (process.env.DATABASE_URL) {
         .limit(limitNum);
     }
 
-    async listDailyHistory(odUserId: string, limitNum: number = 30): Promise<DailyHistory> {
+    async getDailyPracticeMonthSummary(odUserId: string, startDate: string, endDate: string): Promise<DailyPracticeDaySummary[]> {
       const [reflections, questions, activities] = await Promise.all([
+        db.select({ contentDate: dailyReflections.contentDate, pointsAwarded: dailyReflections.pointsAwarded })
+          .from(dailyReflections)
+          .where(and(
+            eq(dailyReflections.odUserId, odUserId),
+            gte(dailyReflections.contentDate, startDate),
+            lte(dailyReflections.contentDate, endDate),
+          )),
+        db.select({ contentDate: dailyQuestionResponses.contentDate, pointsAwarded: dailyQuestionResponses.pointsAwarded })
+          .from(dailyQuestionResponses)
+          .where(and(
+            eq(dailyQuestionResponses.odUserId, odUserId),
+            gte(dailyQuestionResponses.contentDate, startDate),
+            lte(dailyQuestionResponses.contentDate, endDate),
+          )),
+        db.select({ contentDate: dailyActivityResponses.contentDate, pointsAwarded: dailyActivityResponses.pointsAwarded })
+          .from(dailyActivityResponses)
+          .where(and(
+            eq(dailyActivityResponses.odUserId, odUserId),
+            gte(dailyActivityResponses.contentDate, startDate),
+            lte(dailyActivityResponses.contentDate, endDate),
+          )),
+      ]);
+
+      const byDate = new Map<string, DailyPracticeDaySummary>();
+      const ensure = (date: string) => {
+        let entry = byDate.get(date);
+        if (!entry) {
+          entry = { date, points: 0, reflected: false, questionAnswered: false, activityAnswered: false };
+          byDate.set(date, entry);
+        }
+        return entry;
+      };
+      for (const r of reflections) {
+        const e = ensure(r.contentDate);
+        e.points += r.pointsAwarded;
+        e.reflected = true;
+      }
+      for (const q of questions) {
+        const e = ensure(q.contentDate);
+        e.points += q.pointsAwarded;
+        e.questionAnswered = true;
+      }
+      for (const a of activities) {
+        const e = ensure(a.contentDate);
+        e.points += a.pointsAwarded;
+        e.activityAnswered = true;
+      }
+      return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    async getDailyPracticeDayDetail(odUserId: string, dateStr: string): Promise<DailyPracticeDayDetail> {
+      const [reflectionRows, questionRows, activityRows] = await Promise.all([
         db.select({
           id: dailyReflections.id,
           odUserId: dailyReflections.odUserId,
@@ -1331,8 +1406,8 @@ if (process.env.DATABASE_URL) {
           quote: dailyGuruvani.quote,
         }).from(dailyReflections)
           .leftJoin(dailyGuruvani, eq(dailyReflections.guruvaniId, dailyGuruvani.id))
-          .where(eq(dailyReflections.odUserId, odUserId))
-          .orderBy(desc(dailyReflections.contentDate)).limit(limitNum)
+          .where(and(eq(dailyReflections.odUserId, odUserId), eq(dailyReflections.contentDate, dateStr)))
+          .limit(1)
           .then(rows => rows.map(r => ({ ...r, quote: r.quote ?? getGuruvaniForDate(r.contentDate) }))),
         db.select({
           id: dailyQuestionResponses.id,
@@ -1348,8 +1423,8 @@ if (process.env.DATABASE_URL) {
           correctIndex: dailyQuestions.correctIndex,
         }).from(dailyQuestionResponses)
           .innerJoin(dailyQuestions, eq(dailyQuestionResponses.questionId, dailyQuestions.id))
-          .where(eq(dailyQuestionResponses.odUserId, odUserId))
-          .orderBy(desc(dailyQuestionResponses.contentDate)).limit(limitNum),
+          .where(and(eq(dailyQuestionResponses.odUserId, odUserId), eq(dailyQuestionResponses.contentDate, dateStr)))
+          .limit(1),
         db.select({
           id: dailyActivityResponses.id,
           odUserId: dailyActivityResponses.odUserId,
@@ -1363,10 +1438,16 @@ if (process.env.DATABASE_URL) {
           correctAnswer: dailyActivities.correctAnswer,
         }).from(dailyActivityResponses)
           .innerJoin(dailyActivities, eq(dailyActivityResponses.activityId, dailyActivities.id))
-          .where(eq(dailyActivityResponses.odUserId, odUserId))
-          .orderBy(desc(dailyActivityResponses.contentDate)).limit(limitNum),
+          .where(and(eq(dailyActivityResponses.odUserId, odUserId), eq(dailyActivityResponses.contentDate, dateStr)))
+          .limit(1),
       ]);
-      return { reflections, questions, activities } as DailyHistory;
+
+      return {
+        date: dateStr,
+        reflection: reflectionRows[0] ?? null,
+        question: questionRows[0] ?? null,
+        activity: activityRows[0] ?? null,
+      };
     }
 
     async listDailySubmissionsForDate(dateStr: string): Promise<DailyHistory> {
@@ -1420,7 +1501,11 @@ if (process.env.DATABASE_URL) {
       return { reflections, questions, activities } as DailyHistory;
     }
 
-    async getDailyPracticeCompletionDates(odUserId: string): Promise<string[]> {
+    async getDailyPracticeCompletionDates(odUserId: string, sinceDate: string): Promise<string[]> {
+      // Bounded by sinceDate (a lookback window, not the account's full
+      // history) so this stays cheap no matter how long a devotee has been
+      // practicing — the contentDate index makes the range filter an index
+      // scan rather than a full-table join.
       const rows = await db.select({ contentDate: dailyReflections.contentDate })
         .from(dailyReflections)
         .innerJoin(dailyQuestionResponses, and(
@@ -1431,7 +1516,10 @@ if (process.env.DATABASE_URL) {
           eq(dailyActivityResponses.odUserId, dailyReflections.odUserId),
           eq(dailyActivityResponses.contentDate, dailyReflections.contentDate),
         ))
-        .where(eq(dailyReflections.odUserId, odUserId));
+        .where(and(
+          eq(dailyReflections.odUserId, odUserId),
+          gte(dailyReflections.contentDate, sinceDate),
+        ));
       return rows.map(r => r.contentDate);
     }
   }

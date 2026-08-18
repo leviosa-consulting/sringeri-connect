@@ -59,14 +59,30 @@ export interface DailyHistoryEntry {
   createdAt: string;
 }
 
-export interface DailyHistory {
-  reflections: (DailyHistoryEntry & { reflectionText: string; quote: string | null })[];
-  questions: (DailyHistoryEntry & { questionText: string; options: string[]; selectedIndex: number; correctIndex: number; isCorrect: boolean })[];
-  activities: (DailyHistoryEntry & { prompt: string; submittedAnswer: string; correctAnswer: string | null; isCorrect: boolean })[];
+/** One calendar day's totals — the unit the history calendar digest renders per cell. */
+export interface DailyPracticeDaySummary {
+  date: string;
+  points: number;
+  reflected: boolean;
+  questionAnswered: boolean;
+  activityAnswered: boolean;
+}
+
+export interface DailyHistorySummary {
+  month: string;
+  days: DailyPracticeDaySummary[];
   dharmaPoints: DharmaSummary;
   /** Consecutive days (ending today or yesterday) with all three of a
    * reflection, a question answer and an activity answer. */
   streak: number;
+}
+
+/** Full submission content for one date — fetched only once a devotee opens that day. */
+export interface DailyHistoryDayDetail {
+  date: string;
+  reflection: (DailyHistoryEntry & { reflectionText: string; quote: string | null }) | null;
+  question: (DailyHistoryEntry & { questionText: string; options: string[]; selectedIndex: number; correctIndex: number; isCorrect: boolean }) | null;
+  activity: (DailyHistoryEntry & { prompt: string; submittedAnswer: string; correctAnswer: string | null; isCorrect: boolean }) | null;
 }
 
 type TokenGetter = () => Promise<string | null | undefined>;
@@ -88,7 +104,12 @@ export const dailyPointsQuery = (getToken: TokenGetter) => ({
   queryFn: () => authedGet<DharmaSummary>("/api/daily/points", getToken),
 });
 
-export const dailyHistoryQuery = (getToken: TokenGetter) => ({
-  queryKey: ["daily", "history"] as const,
-  queryFn: () => authedGet<DailyHistory>("/api/daily/history", getToken),
+export const dailyHistorySummaryQuery = (getToken: TokenGetter, month: string) => ({
+  queryKey: ["daily", "history", "summary", month] as const,
+  queryFn: () => authedGet<DailyHistorySummary>(`/api/daily/history/summary?month=${encodeURIComponent(month)}`, getToken),
+});
+
+export const dailyHistoryDayQuery = (getToken: TokenGetter, date: string) => ({
+  queryKey: ["daily", "history", "day", date] as const,
+  queryFn: () => authedGet<DailyHistoryDayDetail>(`/api/daily/history/day?date=${encodeURIComponent(date)}`, getToken),
 });
