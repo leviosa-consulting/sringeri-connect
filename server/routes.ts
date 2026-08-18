@@ -5044,6 +5044,28 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/live-chat/close", liveChatLimiter, async (req, res) => {
+    try {
+      const { visitorId, conversationId } = req.body || {};
+      const convo = await loadVisitorConversation(req, parseInt(String(conversationId), 10), String(visitorId || ""));
+      if (!convo) return res.status(404).json({ error: "Conversation not found" });
+      // Already closed: nothing to do, just hand back the current state.
+      if (convo.status !== "closed") {
+        await storage.appendChatMessage({
+          conversationId: convo.id,
+          author: "system",
+          content: "You closed this chat. Start a new one anytime.",
+        });
+        await storage.updateChatConversation(convo.id, { status: "closed", closedAt: new Date() });
+        await storage.bumpChatUnread(convo.id, "agent");
+      }
+      res.json(await storage.getChatConversation(convo.id));
+    } catch (error) {
+      console.error("Live chat close error:", error);
+      res.status(500).json({ error: "Could not close the chat" });
+    }
+  });
+
   app.post("/api/live-chat/request-agent", liveChatLimiter, async (req, res) => {
     try {
       const { visitorId, conversationId, name, email, phone, concern } = req.body || {};

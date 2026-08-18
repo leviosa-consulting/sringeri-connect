@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { X, Send, Bot, Loader2, Headset, MessageCircle, Mail } from "lucide-react";
+import { X, Send, Bot, Loader2, Headset, MessageCircle, Mail, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -141,6 +141,7 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
   // Quick-topic chips offered alongside the assistant's latest reply — the
   // restored intro-bubble UI from the original rule-based chat (Task #170).
   const [suggestedActions, setSuggestedActions] = useState<SuggestedAction[]>([]);
+  const [closingChat, setClosingChat] = useState(false);
 
   // Team is offline and no conversation exists yet: let the visitor choose
   // between quick AI answers and leaving an email for the team.
@@ -491,6 +492,29 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
     void startSession();
   }, [startSession]);
 
+  /**
+   * Lets a devotee leave a stuck or already-answered thread (e.g. a stale
+   * offline/ticket conversation) and get straight to a fresh chat, instead of
+   * always resuming whatever conversation is still open for this visitor.
+   */
+  const closeCurrentAndStartNew = useCallback(async () => {
+    if (!conversation || closingChat) return;
+    setClosingChat(true);
+    try {
+      await fetch("/api/live-chat/close", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({ visitorId: visitorIdRef.current, conversationId: conversation.id }),
+      });
+    } catch {
+      // Best-effort — start a new chat locally either way so the devotee is
+      // never stuck on the old thread.
+    } finally {
+      setClosingChat(false);
+    }
+    restartChat();
+  }, [conversation, closingChat, authHeaders, restartChat]);
+
   const status = conversation?.status ?? "bot";
   const headerTitle = !conversation && needsChoice
     ? "Sringeri Team"
@@ -551,15 +575,31 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
                     </p>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsOpen(false)}
-                  className="text-white hover:bg-white/20 h-7 w-7"
-                  data-testid="button-close-chat"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex items-center gap-0.5">
+                  {conversation && status !== "closed" && !needsChoice && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => void closeCurrentAndStartNew()}
+                      disabled={closingChat || starting}
+                      className="text-white hover:bg-white/20 h-7 w-7"
+                      aria-label="Close this chat and start a new one"
+                      title="Close this chat and start a new one"
+                      data-testid="button-close-and-restart-chat"
+                    >
+                      {closingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsOpen(false)}
+                    className="text-white hover:bg-white/20 h-7 w-7"
+                    data-testid="button-close-chat"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 
