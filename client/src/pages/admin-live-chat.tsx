@@ -99,7 +99,7 @@ export default function AdminLiveChat() {
   const [lines, setLines] = useState<ChatLine[]>([]);
   const [reply, setReply] = useState("");
   const [replySending, setReplySending] = useState(false);
-  const [alsoEmail, setAlsoEmail] = useState(true);
+  const [alsoEmail, setAlsoEmail] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"" | ChatStatus>("");
   const [sourceFilter, setSourceFilter] = useState<"" | "app" | "website">("");

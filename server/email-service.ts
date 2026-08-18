@@ -109,20 +109,13 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Shared cream/maroon shell used by every live-chat email. */
-function wrap(bodyHtml: string, logoHtml: string): string {
+/** Plain, lightweight shell used by every live-chat email — no logo, no colored template. */
+function wrap(bodyHtml: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
-<body style="margin:0;padding:0;background:#F7F2EC;font-family:Georgia,serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F2EC;padding:32px 16px;">
-    <tr><td align="center">
-      <table width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-        <tr><td style="background:#FFF8F0;border-bottom:1px solid #f0e0cc;padding:20px 32px;text-align:center;">${logoHtml}</td></tr>
-        <tr><td style="padding:32px;color:#3D2B1F;font-size:15px;line-height:1.6;">${bodyHtml}</td></tr>
-      </table>
-    </td></tr>
-  </table>
+<body style="margin:0;padding:16px;font-family:Arial,Helvetica,sans-serif;color:#222;font-size:14px;line-height:1.6;">
+${bodyHtml}
 </body>
 </html>`;
 }
@@ -132,10 +125,10 @@ function transcriptHtml(transcript: { author: string; content: string }[]): stri
   const rows = transcript
     .map((line) => {
       const who = line.author === "user" ? "Devotee" : line.author === "agent" ? "Team" : line.author === "bot" ? "Sahayak" : "System";
-      return `<p style="margin:0 0 8px;"><strong style="color:#7A2E1E;">${who}:</strong> ${escapeHtml(line.content).replace(/\n/g, "<br/>")}</p>`;
+      return `<p style="margin:0 0 8px;"><strong>${who}:</strong> ${escapeHtml(line.content).replace(/\n/g, "<br/>")}</p>`;
     })
     .join("");
-  return `<div style="background:#FAF6F0;border:1px solid #f0e0cc;border-radius:8px;padding:16px;margin:16px 0;font-size:14px;">${rows}</div>`;
+  return rows;
 }
 
 interface ChatEmailPayload {
@@ -153,19 +146,15 @@ interface ChatEmailPayload {
  */
 export async function sendChatOfflineAcknowledgement(payload: ChatEmailPayload): Promise<void> {
   const transporter = createTransporter();
-  const logoAttachment = getLogoAttachment();
-  const logoHtml = logoAttachment
-    ? `<img src="cid:sringeri-logo" alt="Online Services, Sringeri Sharada Peetham" style="height:44px;width:auto;display:block;margin:0 auto;"/>`
-    : `<p style="margin:0;color:#FF6600;font-size:14px;font-weight:bold;">Online Services, Sringeri Sharada Peetham</p>`;
 
   const body = `
-    <p style="margin:0 0 12px;">Namaste ${escapeHtml(payload.name)} 🙏</p>
-    <p style="margin:0 0 12px;">Thank you for writing to us. Our team is offline at the moment, so we have recorded your concern and a member of the team will reply within <strong>2–4 hours</strong>.</p>
-    <p style="margin:0 0 4px;font-size:13px;color:#7A6152;">Your message</p>
-    <div style="background:#FAF6F0;border-left:3px solid #FF6600;padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 20px;">${escapeHtml(payload.concern).replace(/\n/g, "<br/>")}</div>
+    <p style="margin:0 0 12px;">Namaste ${escapeHtml(payload.name)},</p>
+    <p style="margin:0 0 12px;">Thank you for writing to us. Our team is offline at the moment, so we have recorded your concern and a member of the team will reply within 2–4 hours.</p>
+    <p style="margin:0 0 4px;">Your message:</p>
+    <p style="margin:0 0 16px;">${escapeHtml(payload.concern).replace(/\n/g, "<br/>")}</p>
     <p style="margin:0 0 4px;">Regards,</p>
-    <p style="margin:0;font-weight:bold;">Online Services Team</p>
-    <p style="margin:0;color:#7A6152;font-size:13px;">Sringeri Sharada Peetham</p>`;
+    <p style="margin:0;">Online Services Team</p>
+    <p style="margin:0;">Sringeri Sharada Peetham</p>`;
 
   await transporter.sendMail({
     from: `"Online Services, Sringeri Sharada Peetham" <${GMAIL_USER}>`,
@@ -173,29 +162,24 @@ export async function sendChatOfflineAcknowledgement(payload: ChatEmailPayload):
     replyTo: SUPPORT_MAILBOX,
     subject: `We have received your message — Sringeri Online Services (#${payload.conversationId})`,
     text: `Namaste ${payload.name},\n\nThank you for writing to us. Our team is offline at the moment, so we have recorded your concern and a member of the team will reply within 2-4 hours.\n\nYour message:\n${payload.concern}\n\nRegards,\nOnline Services Team\nSringeri Sharada Peetham`,
-    html: wrap(body, logoHtml),
-    attachments: logoAttachment ? [logoAttachment] : [],
+    html: wrap(body),
   });
 }
 
 /** Sent to the support mailbox so the team can pick the concern up. */
 export async function sendChatConcernToSupport(payload: ChatEmailPayload): Promise<void> {
   const transporter = createTransporter();
-  const logoAttachment = getLogoAttachment();
-  const logoHtml = logoAttachment
-    ? `<img src="cid:sringeri-logo" alt="Online Services" style="height:40px;width:auto;display:block;margin:0 auto;"/>`
-    : `<p style="margin:0;color:#FF6600;font-size:14px;font-weight:bold;">Online Services</p>`;
 
   const body = `
-    <p style="margin:0 0 12px;font-size:16px;"><strong>Live Chat concern #${payload.conversationId}</strong></p>
+    <p style="margin:0 0 12px;"><strong>Live Chat concern #${payload.conversationId}</strong></p>
     <p style="margin:0 0 4px;"><strong>Name:</strong> ${escapeHtml(payload.name)}</p>
     <p style="margin:0 0 4px;"><strong>Email:</strong> ${escapeHtml(payload.email)}</p>
     ${payload.phone ? `<p style="margin:0 0 4px;"><strong>Phone:</strong> ${escapeHtml(payload.phone)}</p>` : ""}
-    <p style="margin:12px 0 4px;font-size:13px;color:#7A6152;">Concern</p>
-    <div style="background:#FAF6F0;border-left:3px solid #FF6600;padding:12px 16px;border-radius:0 8px 8px 0;">${escapeHtml(payload.concern).replace(/\n/g, "<br/>")}</div>
-    <p style="margin:16px 0 4px;font-size:13px;color:#7A6152;">Transcript</p>
+    <p style="margin:12px 0 4px;">Concern:</p>
+    <p style="margin:0 0 12px;">${escapeHtml(payload.concern).replace(/\n/g, "<br/>")}</p>
+    <p style="margin:12px 0 4px;">Transcript:</p>
     ${transcriptHtml(payload.transcript)}
-    <p style="margin:16px 0 0;font-size:13px;color:#7A6152;">Reply from the Live Chat console in the admin area, or answer this email directly.</p>`;
+    <p style="margin:16px 0 0;">Reply from the Live Chat console in the admin area, or answer this email directly.</p>`;
 
   await transporter.sendMail({
     from: `"Sringeri Live Chat" <${GMAIL_USER}>`,
@@ -203,8 +187,7 @@ export async function sendChatConcernToSupport(payload: ChatEmailPayload): Promi
     replyTo: payload.email,
     subject: `[Live Chat #${payload.conversationId}] ${payload.name} — offline concern`,
     text: `Live Chat concern #${payload.conversationId}\n\nName: ${payload.name}\nEmail: ${payload.email}\nPhone: ${payload.phone || "-"}\n\nConcern:\n${payload.concern}\n\nTranscript:\n${payload.transcript.map(l => `${l.author}: ${l.content}`).join("\n")}`,
-    html: wrap(body, logoHtml),
-    attachments: logoAttachment ? [logoAttachment] : [],
+    html: wrap(body),
   });
 }
 
@@ -214,29 +197,32 @@ export async function sendChatAgentReplyEmail(
   name: string,
   conversationId: number,
   reply: string,
+  lastDevoteeMessage?: string,
 ): Promise<void> {
   const transporter = createTransporter();
-  const logoAttachment = getLogoAttachment();
-  const logoHtml = logoAttachment
-    ? `<img src="cid:sringeri-logo" alt="Online Services, Sringeri Sharada Peetham" style="height:44px;width:auto;display:block;margin:0 auto;"/>`
-    : `<p style="margin:0;color:#FF6600;font-size:14px;font-weight:bold;">Online Services, Sringeri Sharada Peetham</p>`;
+
+  const quoteText = lastDevoteeMessage ? `You wrote:\n> ${lastDevoteeMessage.replace(/\n/g, "\n> ")}\n\n` : "";
+  const quoteHtml = lastDevoteeMessage
+    ? `<p style="margin:0 0 4px;">You wrote:</p>
+    <blockquote style="margin:0 0 12px;padding-left:12px;border-left:2px solid #ccc;color:#555;">${escapeHtml(lastDevoteeMessage).replace(/\n/g, "<br/>")}</blockquote>`
+    : "";
 
   const body = `
-    <p style="margin:0 0 12px;">Namaste ${escapeHtml(name)} 🙏</p>
-    <p style="margin:0 0 12px;">Here is our reply to the message you sent us through Live Chat:</p>
-    <div style="background:#FAF6F0;border-left:3px solid #FF6600;padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 20px;">${escapeHtml(reply).replace(/\n/g, "<br/>")}</div>
-    <p style="margin:0 0 12px;font-size:13px;color:#7A6152;">You can continue the conversation by replying to this email or by reopening Live Chat in the app.</p>
+    <p style="margin:0 0 12px;">Namaste ${escapeHtml(name)},</p>
+    ${quoteHtml}
+    <p style="margin:0 0 4px;">Our reply:</p>
+    <p style="margin:0 0 16px;">${escapeHtml(reply).replace(/\n/g, "<br/>")}</p>
+    <p style="margin:0 0 12px;">You can continue the conversation by replying to this email or by reopening Live Chat in the app.</p>
     <p style="margin:0 0 4px;">Regards,</p>
-    <p style="margin:0;font-weight:bold;">Online Services Team</p>
-    <p style="margin:0;color:#7A6152;font-size:13px;">Sringeri Sharada Peetham</p>`;
+    <p style="margin:0;">Online Services Team</p>
+    <p style="margin:0;">Sringeri Sharada Peetham</p>`;
 
   await transporter.sendMail({
     from: `"Online Services, Sringeri Sharada Peetham" <${GMAIL_USER}>`,
     to: toEmail,
     replyTo: SUPPORT_MAILBOX,
     subject: `Reply from Sringeri Online Services (#${conversationId})`,
-    text: `Namaste ${name},\n\nHere is our reply to the message you sent us through Live Chat:\n\n${reply}\n\nRegards,\nOnline Services Team\nSringeri Sharada Peetham`,
-    html: wrap(body, logoHtml),
-    attachments: logoAttachment ? [logoAttachment] : [],
+    text: `Namaste ${name},\n\n${quoteText}Our reply:\n${reply}\n\nYou can continue the conversation by replying to this email or by reopening Live Chat in the app.\n\nRegards,\nOnline Services Team\nSringeri Sharada Peetham`,
+    html: wrap(body),
   });
 }

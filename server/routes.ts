@@ -5626,6 +5626,11 @@ export async function registerRoutes(
       const agentName = presence.agentName || "Sringeri Team";
       const text = content.trim().slice(0, 4000);
 
+      // Grab the devotee's last message before we append our own reply, so the
+      // notification email can quote it for context.
+      const priorMessages = await storage.listChatMessages(id, 0);
+      const lastDevoteeMessage = [...priorMessages].reverse().find(m => m.author === "user")?.content;
+
       const msg = await storage.appendChatMessage({
         conversationId: id,
         author: "agent",
@@ -5648,7 +5653,7 @@ export async function registerRoutes(
       let emailed = false;
       if ((sendEmail || notifyByDefault) && convo.email && isEmailServiceConfigured()) {
         try {
-          await sendChatAgentReplyEmail(convo.email, convo.name || "Devotee", id, text);
+          await sendChatAgentReplyEmail(convo.email, convo.name || "Devotee", id, text, lastDevoteeMessage);
           emailed = true;
         } catch (err) {
           console.error("Live chat agent reply email failed:", err);
