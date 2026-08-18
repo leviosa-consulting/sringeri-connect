@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { X, Send, Bot, Loader2, Headset, MessageCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -31,6 +32,11 @@ interface Conversation {
   email: string | null;
   phone: string | null;
   assignedAgentName: string | null;
+}
+
+interface SuggestedAction {
+  label: string;
+  action: string;
 }
 
 const VISITOR_KEY = "sringeri_chat_visitor_id";
@@ -121,6 +127,7 @@ function renderMarkdown(text: string) {
  */
 export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean } = {}) {
   const { profile, devoteeData, getToken } = useAuth();
+  const [, setLocation] = useLocation();
 
   const [isOpen, setIsOpen] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -131,6 +138,9 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
   const [agentOnline, setAgentOnline] = useState(false);
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState("");
+  // Quick-topic chips offered alongside the assistant's latest reply — the
+  // restored intro-bubble UI from the original rule-based chat (Task #170).
+  const [suggestedActions, setSuggestedActions] = useState<SuggestedAction[]>([]);
 
   // Team is offline and no conversation exists yet: let the visitor choose
   // between quick AI answers and leaving an email for the team.
@@ -283,6 +293,7 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
       mergeLines(data.messages || []);
       setAgentOnline(!!data.agentOnline);
       setUnread(0);
+      setSuggestedActions(data.suggestedActions || []);
       if (requestedMode === "email") setHConcern("");
     } catch {
       setError("We could not open the chat just now. Please try again.");
@@ -379,11 +390,26 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
       mergeLines(data.messages || []);
       setAgentOnline(!!data.agentOnline);
       if (data.conversation) setConversation(data.conversation);
+      setSuggestedActions(data.suggestedActions || []);
     } catch {
       setError("Message not sent. Please check your connection and try again.");
     } finally {
       setSending(false);
     }
+  };
+
+  /**
+   * Topic chips either send their topic as a message (so the rule-based
+   * assistant answers it) or, for `navigate:<path>` actions, take the
+   * devotee straight to that section of the app.
+   */
+  const handleAction = (action: string) => {
+    if (action.startsWith("navigate:")) {
+      setLocation(action.slice("navigate:".length));
+      setIsOpen(false);
+      return;
+    }
+    void sendMessage(action);
   };
 
   const requestAgent = async () => {
@@ -461,6 +487,7 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
     setShowHandoffForm(false);
     setNeedsChoice(false);
     setPreEmailMode(false);
+    setSuggestedActions([]);
     void startSession();
   }, [startSession]);
 
@@ -629,6 +656,22 @@ export default function ChatbotWidget({ botOnly = false }: { botOnly?: boolean }
                       </div>
                     );
                   })}
+
+                  {!needsChoice && status === "bot" && !sending && !showHandoffForm && suggestedActions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-1 ml-1" data-testid="chat-suggested-actions">
+                      {suggestedActions.map((a, j) => (
+                        <button
+                          key={`${a.action}-${j}`}
+                          type="button"
+                          onClick={() => handleAction(a.action)}
+                          className="text-xs px-3 py-1.5 rounded-full border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors disabled:opacity-50"
+                          data-testid={`button-action-${a.action}-${j}`}
+                        >
+                          {a.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {!needsChoice && sending && (
                     <div className="flex justify-start">

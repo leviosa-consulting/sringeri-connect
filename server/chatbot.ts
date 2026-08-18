@@ -518,7 +518,18 @@ export async function buildGroundingContext(): Promise<string> {
 
 let lastIntent: Intent = "unknown";
 
-export async function handleChatMessage(message: string): Promise<{ reply: string; intent: Intent; suggestedActions?: { label: string; action: string }[] }> {
+export type SuggestedAction = { label: string; action: string };
+
+/** Topic chips shown with the assistant's greeting, restoring the original
+ * rule-based chat's topic-picker intro. */
+export const GREETING_SUGGESTED_ACTIONS: SuggestedAction[] = [
+  { label: "Donations", action: "donation" },
+  { label: "Accommodation", action: "accommodation" },
+  { label: "Today's Panchanga", action: "panchanga" },
+  { label: "Events", action: "events" },
+];
+
+export async function handleChatMessage(message: string): Promise<{ reply: string; intent: Intent; suggestedActions?: SuggestedAction[] }> {
   let intent = detectIntent(message);
 
   if (intent === "unknown") {
@@ -534,12 +545,7 @@ export async function handleChatMessage(message: string): Promise<{ reply: strin
   switch (intent) {
     case "greeting":
       reply = await buildGreetingResponse();
-      suggestedActions = [
-        { label: "Donations", action: "donation" },
-        { label: "Accommodation", action: "accommodation" },
-        { label: "Today's Panchanga", action: "panchanga" },
-        { label: "Events", action: "events" },
-      ];
+      suggestedActions = GREETING_SUGGESTED_ACTIONS;
       break;
     case "donation":
       reply = await buildDonationResponse();

@@ -5,7 +5,7 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { initializeApp as initializeFirebaseApp, getApps } from "firebase/app";
 import { getFirestore, collection, getDocs, query, orderBy, limit, where, Timestamp } from "firebase/firestore";
-import { handleChatMessage, setEventsCache, setAnnouncementsCache } from "./chatbot";
+import { handleChatMessage, setEventsCache, setAnnouncementsCache, GREETING_SUGGESTED_ACTIONS } from "./chatbot";
 import { generateBotReply } from "./ai-chat";
 import {
   isEmailServiceConfigured,
@@ -4956,7 +4956,10 @@ export async function registerRoutes(
 
       const messages = await storage.listChatMessages(convo.id);
       await storage.clearChatUnread(convo.id, "visitor");
-      res.json({ conversation: { ...convo, unreadForVisitor: 0 }, messages, agentOnline: presence.online });
+      // Bot greeting is paired with topic chips, restoring the original
+      // rule-based chat's quick-topic intro (Task #170).
+      const suggestedActions = requestedMode === "bot" ? GREETING_SUGGESTED_ACTIONS : undefined;
+      res.json({ conversation: { ...convo, unreadForVisitor: 0 }, messages, agentOnline: presence.online, suggestedActions });
     } catch (error) {
       console.error("Live chat session error:", error);
       res.status(500).json({ error: "Could not start the chat" });
@@ -5010,6 +5013,8 @@ export async function registerRoutes(
 
       const presence = await getAgentPresence();
       const newMessages: any[] = [userMsg];
+      // Quick-reply topic chips to offer with the bot's latest reply, if any.
+      let suggestedActions: { label: string; action: string }[] | undefined;
 
       // Once a human is involved the bot stays quiet.
       if (convo.status === "bot") {
@@ -5021,6 +5026,7 @@ export async function registerRoutes(
         const ai = await generateBotReply(history);
         const botMsg = await storage.appendChatMessage({ conversationId: convo.id, author: "bot", content: ai.reply });
         newMessages.push(botMsg);
+        suggestedActions = ai.suggestedActions;
 
         if (ai.suggestHandoff) {
           const notice = presence.online
@@ -5031,7 +5037,7 @@ export async function registerRoutes(
       }
 
       const updated = await storage.getChatConversation(convo.id);
-      res.json({ conversation: updated, messages: withAttachments(newMessages), agentOnline: presence.online });
+      res.json({ conversation: updated, messages: withAttachments(newMessages), agentOnline: presence.online, suggestedActions });
     } catch (error) {
       console.error("Live chat message error:", error);
       res.status(500).json({ error: "Could not send the message" });
