@@ -36,6 +36,9 @@ export default defineConfig({
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
+  // envDir defaults to `root` (client/), so without this the repo-root .env
+  // would never supply VITE_* vars to the client bundle.
+  envDir: path.resolve(import.meta.dirname),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,

@@ -1,3 +1,5 @@
+// Must stay first: modules imported below read process.env at module scope.
+import "./load-env";
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import cron from "node-cron";
@@ -205,7 +207,8 @@ httpServer.listen(
   {
     port,
     host: "0.0.0.0",
-    reusePort: true,
+    // reusePort is unsupported on Windows (listen ENOTSUP); keep it on Linux/Replit.
+    ...(process.platform === "win32" ? {} : { reusePort: true }),
   },
   () => {
     log(`serving on port ${port}`);
