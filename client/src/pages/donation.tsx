@@ -88,6 +88,11 @@ interface DonationHeading {
   shortDescription?: string;
   about?: string;
   slug?: string;
+  image?: string;
+  subtitle?: string;
+  isActive?: number;
+  isExclusive?: number;
+  preset?: string;
 }
 
 interface DonationCategory {
@@ -425,6 +430,57 @@ function getIconForName(name: string): LucideIcon {
   return Landmark;
 }
 
+// Distinct hero/landing header for an exclusive donation heading (reached via
+// /donation/{preset}). Reuses the heading's own content fields rather than a
+// bespoke design per heading.
+function ExclusiveHeadingHero({
+  heading,
+  onBack,
+  showBack,
+}: {
+  heading: DonationHeading;
+  onBack: () => void;
+  showBack: boolean;
+}) {
+  const hasImage = !!heading.image;
+  return (
+    <div className="relative overflow-hidden">
+      {hasImage ? (
+        <div className="relative h-56 w-full">
+          <img
+            src={heading.image}
+            alt={heading.name}
+            className="absolute inset-0 h-full w-full object-cover"
+            data-testid="img-exclusive-heading"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
+        </div>
+      ) : (
+        <div className="h-40 w-full bg-primary" />
+      )}
+      <div className="absolute inset-x-0 top-0 px-4 pt-6">
+        {showBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1 text-white/90 hover:text-white text-sm"
+            data-testid="button-back-home"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Home
+          </button>
+        )}
+      </div>
+      <div className={hasImage ? "absolute inset-x-0 bottom-0 px-4 pb-5" : "px-4 pb-5 pt-2"}>
+        <h1 className="text-2xl font-serif font-bold text-white drop-shadow" data-testid="text-page-title">
+          {heading.name}
+        </h1>
+        {heading.subtitle && (
+          <p className="text-sm text-white/90 mt-1" data-testid="text-exclusive-subtitle">{heading.subtitle}</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Donation() {
   const { user, devoteeData, loading: authLoading, login, signInWithGoogle, signInWithApple, signInAsGuest } = useAuth();
@@ -529,6 +585,12 @@ export default function Donation() {
   });
 
   const donationDataLoading = headingsLoading || categoriesLoading || featuredLoading;
+
+  // Only show active, non-exclusive headings in the main "Choose Donation Center"
+  // picker. Exclusive headings get their own dedicated landing page instead.
+  const visibleHeadings = headings.filter(
+    (h) => Number(h.isActive ?? 1) === 1 && Number(h.isExclusive) !== 1
+  );
 
   const filteredCategories = categories.filter(
     (c) => c.donationHeadingId === selectedHeading?.id
@@ -658,6 +720,31 @@ export default function Donation() {
     }
   }, [subcategories]);
 
+  // Exclusive donation heading landing page — resolved from a heading's own
+  // `preset` field (only among headings flagged isExclusive). Distinct from
+  // the subcategory-level presets below (gkvb, annadanam, etc).
+  const { data: exclusiveHeadingData, isLoading: exclusiveHeadingLoading } = useQuery<{
+    heading: DonationHeading;
+    categories: DonationCategory[];
+  } | null>({
+    queryKey: ["donationHeadingPreset", preset],
+    queryFn: async () => {
+      const res = await fetch(`/api/donationHeadingPreset/${encodeURIComponent(preset)}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!preset,
+  });
+
+  const isExclusiveMode = !!exclusiveHeadingData?.heading;
+
+  // When an exclusive heading resolves, auto-select it — the picker step for
+  // "Choose Donation Center" is skipped for exclusive landing pages.
+  useEffect(() => {
+    if (!isExclusiveMode || !exclusiveHeadingData || selectedHeading) return;
+    setSelectedHeading(exclusiveHeadingData.heading);
+  }, [isExclusiveMode, exclusiveHeadingData, selectedHeading]);
+
   const { data: presetData } = useQuery<{
     subcategory: DonationSubCategory;
     category: { id: number; name: string; donationHeadingId: number };
@@ -672,15 +759,20 @@ export default function Donation() {
     enabled: !!preset,
   });
 
-  // Step A — when preset data resolves, auto-select the heading + category
+  // Step A — when preset data resolves, auto-select the heading + category.
+  // Wait for the exclusive-heading lookup to settle first so an exclusive
+  // landing page always takes precedence over a same-named subcategory preset.
   useEffect(() => {
+    if (!preset || exclusiveHeadingLoading || isExclusiveMode) return;
     if (!presetData || selectedCategory) return;
     if (presetData.heading) setSelectedHeading(presetData.heading);
     setSelectedCategory(presetData.category as DonationCategory);
-  }, [presetData, selectedCategory]);
+  }, [presetData, selectedCategory, exclusiveHeadingLoading, isExclusiveMode, preset]);
 
-  // Step B — once the per-category subcategory list loads, auto-select by preset field
+  // Step B — once the per-category subcategory list loads, auto-select by preset field.
+  // Skipped in exclusive mode: the preset there identifies the heading, not a single cause.
   useEffect(() => {
+    if (isExclusiveMode) return;
     if (!preset || subcategories.length === 0 || selectedSubCategory) return;
     const match = subcategories.find((s: any) => s.preset === preset);
     if (match) {
@@ -691,7 +783,7 @@ export default function Donation() {
       setExpandedDescs(prev => new Set([...prev, match.id]));
       setTimeout(() => { subCategoryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
     }
-  }, [subcategories, preset]);
+  }, [subcategories, preset, isExclusiveMode]);
 
   function getDaysInMonth(mId: string): number {
     const m = parseInt(mId);
@@ -747,14 +839,14 @@ export default function Donation() {
   };
 
   const handleSelectHeading = (heading: DonationHeading) => {
-    if (preset) navigate("/donation");
+    if (preset && !isExclusiveMode) navigate("/donation");
     setSelectedHeading(heading);
     setSelectedCategory(null);
     resetSelection();
   };
 
   const handleSelectCategory = (category: DonationCategory) => {
-    if (preset) navigate("/donation");
+    if (preset && !isExclusiveMode) navigate("/donation");
     setSelectedCategory(category);
     resetSelection();
     setTimeout(() => {
@@ -769,7 +861,7 @@ export default function Donation() {
       setShow80GWarning(true);
       return;
     }
-    if (preset) navigate("/donation");
+    if (preset && !isExclusiveMode) navigate("/donation");
     setSelectedSubCategory(sub);
     setSelectedAmount(0);
     setCustomAmount("");
@@ -1473,28 +1565,36 @@ export default function Donation() {
 
   return (
     <div className="min-h-screen bg-[#F7F2EC] pb-24">
-      <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/10" />
-        <div className="relative z-10">
-          {!isServicesMode && (
-            <button
-              onClick={() => navigate(homeRoute)}
-              className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
-              data-testid="button-back-home"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Home
-            </button>
-          )}
-          <div className="flex items-center gap-3">
-            <HandHeart className="h-7 w-7" />
-            <div>
-              <h1 className="text-xl font-serif font-bold" data-testid="text-page-title">Make a Donation</h1>
-              <p className="text-sm opacity-80">Sri Sringeri Sharada Peetham</p>
+      {isExclusiveMode && exclusiveHeadingData ? (
+        <ExclusiveHeadingHero
+          heading={exclusiveHeadingData.heading}
+          onBack={() => navigate(homeRoute)}
+          showBack={!isServicesMode}
+        />
+      ) : (
+        <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/10" />
+          <div className="relative z-10">
+            {!isServicesMode && (
+              <button
+                onClick={() => navigate(homeRoute)}
+                className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
+                data-testid="button-back-home"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Home
+              </button>
+            )}
+            <div className="flex items-center gap-3">
+              <HandHeart className="h-7 w-7" />
+              <div>
+                <h1 className="text-xl font-serif font-bold" data-testid="text-page-title">Make a Donation</h1>
+                <p className="text-sm opacity-80">Sri Sringeri Sharada Peetham</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <PendingTransactionBanner
         typeKeywords={["donation", "donate", "daan"]}
@@ -1519,13 +1619,28 @@ export default function Donation() {
       )}
 
       <div className="px-4 mt-4 space-y-4">
+        {isExclusiveMode && exclusiveHeadingData && (exclusiveHeadingData.heading.about || exclusiveHeadingData.heading.shortDescription) && (
+          <Card data-testid="card-exclusive-about">
+            <CardContent className="p-4">
+              {exclusiveHeadingData.heading.about ? (
+                <div
+                  className="text-sm text-muted-foreground leading-relaxed [&_a]:text-primary [&_a]:underline"
+                  dangerouslySetInnerHTML={{ __html: exclusiveHeadingData.heading.about }}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">{exclusiveHeadingData.heading.shortDescription}</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {donationDataLoading && (
           <div className="flex flex-col items-center justify-center py-20" data-testid="loading-donation-data">
             <RangoliLoader size={56} />
             <p className="text-sm text-muted-foreground mt-4">Loading donation options…</p>
           </div>
         )}
-        {!donationDataLoading && featuredDonations.length > 0 && (
+        {!isExclusiveMode && !donationDataLoading && featuredDonations.length > 0 && (
           <div>
             <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-donations-in-focus">
               <Star className="h-4 w-4 inline-block mr-1 text-amber-500" />
@@ -1571,11 +1686,11 @@ export default function Donation() {
           </div>
         )}
 
-        {!donationDataLoading && (
+        {!isExclusiveMode && !donationDataLoading && (
         <div>
           <h3 className="text-sm font-semibold mb-3 px-1" data-testid="text-choose-center">Choose Donation Center</h3>
           <div className="grid grid-cols-3 gap-3">
-            {headings.map((heading) => {
+            {visibleHeadings.map((heading) => {
               const isSelected = selectedHeading?.id === heading.id;
               return (
                 <button

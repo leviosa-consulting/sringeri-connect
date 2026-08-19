@@ -1910,6 +1910,49 @@ export async function registerRoutes(
     }
   });
 
+  // Resolves an "exclusive" donation heading landing page by the heading's own
+  // `preset` field. Only matches headings flagged isExclusive — distinct from
+  // /api/donationPreset/:preset, which matches subcategory-level presets.
+  app.get("/api/donationHeadingPreset/:preset", async (req, res) => {
+    try {
+      const { preset } = req.params;
+      if (!preset) return res.status(400).json({ error: "preset required" });
+
+      const hRes = await fetch(`${SRINGERI_API_URL}/api/donationHeading`, {
+        headers: { "Content-Type": "application/json", ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }) },
+      });
+      if (!hRes.ok) return res.status(hRes.status).json({ error: "Failed to fetch donation headings" });
+      let headings: any[] = [];
+      try {
+        const t = await hRes.text();
+        const s = t.indexOf('[');
+        headings = s !== -1 ? JSON.parse(t.substring(s)) : JSON.parse(t);
+      } catch { return res.status(500).json({ error: "Invalid API response" }); }
+
+      const heading = headings.find((h: any) => Number(h.isExclusive) === 1 && h.preset === preset);
+      if (!heading) return res.status(404).json({ error: "Exclusive preset not found" });
+
+      let categories: any[] = [];
+      const catRes = await fetch(`${SRINGERI_API_URL}/api/donationCategory`, {
+        headers: { "Content-Type": "application/json", ...(SRINGERI_API_KEY && { "X-API-Key": SRINGERI_API_KEY }) },
+      });
+      if (catRes.ok) {
+        try {
+          const t = await catRes.text();
+          const s = t.indexOf('[');
+          categories = s !== -1 ? JSON.parse(t.substring(s)) : JSON.parse(t);
+        } catch {}
+      }
+
+      const headingCategories = categories.filter((c: any) => String(c.donationHeadingId) === String(heading.id));
+
+      res.json({ heading, categories: headingCategories });
+    } catch (error) {
+      console.error("Error fetching exclusive donation heading preset:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/postageOptionsDonation", async (req, res) => {
     try {
       const response = await fetch(`${SRINGERI_API_URL}/api/postageOptionsDonation`, {
