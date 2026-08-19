@@ -63,20 +63,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       
       {/* Conditionally Render Navigation */}
       {isDonationPresetPage ? (
-        user && (
-          <div className="sticky top-0 z-40 w-full border-b bg-white/95 backdrop-blur flex items-center justify-end gap-2 px-4 h-14">
-            <Link href="/profile" data-testid="link-donation-preset-account">
-              <Button variant="ghost" size="sm" className="text-muted-foreground">
-                <User className="h-4 w-4 mr-2" />
-                My Account
+        <div className="sticky top-0 z-40 w-full border-b bg-white/95 backdrop-blur flex items-center justify-between px-4 h-16">
+          <img src="/assets/logo.webp" alt="Sringeri Logo" className="h-11 w-auto object-contain" />
+          {user && (
+            <div className="flex items-center gap-2">
+              <Link href="/profile" data-testid="link-donation-preset-account">
+                <Button variant="ghost" size="sm" className="text-muted-foreground">
+                  <User className="h-4 w-4 mr-2" />
+                  My Account
+                </Button>
+              </Link>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleLogout} data-testid="button-donation-preset-signout">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
               </Button>
-            </Link>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleLogout} data-testid="button-donation-preset-signout">
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        )
+            </div>
+          )}
+        </div>
       ) : isDesktop ? (
         isServicesMode ? <ServicesDesktopNav /> : <DesktopNav />
       ) : (
