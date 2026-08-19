@@ -1,14 +1,22 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Bell, User, BookOpenCheck, Flame, Heart, Hotel } from "lucide-react";
+import { Home, Bell, User, BookOpenCheck, Flame, Heart, Hotel, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DesktopNav from "./desktop-nav";
 import ServicesDesktopNav from "./services-desktop-nav";
 import ChatLauncher from "./chat-launcher";
 import ChatbotWidget from "./chatbot-widget";
 import SiteFooter from "./site-footer";
+import { Button } from "@/components/ui/button";
 import { useMedia } from "react-use";
+import { useAuth } from "@/contexts/auth-context";
 import { useSubdomainMode, SERVICE_ROUTES, type ServiceMode } from "@/contexts/subdomain-mode-context";
+
+// Matches only /donation/{preset} deep links (e.g. /donation/gkvb), not the
+// plain /donation picker. These are focused, single-purpose landing pages
+// reached via marketing links, so they get a stripped-down header instead of
+// the full site nav/chat chrome.
+const DONATION_PRESET_PAGE = /^\/donation\/[^/]+$/;
 
 const SERVICES_NAV_ITEMS: { mode: ServiceMode; icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; label: string }[] = [
   { mode: "seva", icon: Flame, label: "Seva" },
@@ -18,9 +26,16 @@ const SERVICES_NAV_ITEMS: { mode: ServiceMode; icon: React.ComponentType<{ class
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const isDesktop = useMedia('(min-width: 1024px)', false);
   const { isServicesMode, homeRoute } = useSubdomainMode();
+  const { user, logout } = useAuth();
+  const isDonationPresetPage = DONATION_PRESET_PAGE.test(location);
+
+  const handleLogout = async () => {
+    await logout();
+    setLocation("/");
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -47,7 +62,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background flex flex-col relative w-full overflow-x-hidden">
       
       {/* Conditionally Render Navigation */}
-      {isDesktop ? (
+      {isDonationPresetPage ? (
+        user && (
+          <div className="sticky top-0 z-40 w-full border-b bg-white/95 backdrop-blur flex items-center justify-end gap-2 px-4 h-14">
+            <Link href="/profile" data-testid="link-donation-preset-account">
+              <Button variant="ghost" size="sm" className="text-muted-foreground">
+                <User className="h-4 w-4 mr-2" />
+                My Account
+              </Button>
+            </Link>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleLogout} data-testid="button-donation-preset-signout">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
+        )
+      ) : isDesktop ? (
         isServicesMode ? <ServicesDesktopNav /> : <DesktopNav />
       ) : (
         /* Mobile Top Bar (Logo Only) - since Nav is at bottom */
@@ -73,7 +103,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Social Footer - visible on all pages */}
       <footer className={cn(
         "bg-[#fcfbf7] border-t border-border/50",
-        !isDesktop && "mb-16"
+        !isDesktop && !isDonationPresetPage && "mb-16"
       )}>
         <div className="flex justify-center items-center gap-4 py-3 max-w-md sm:max-w-2xl mx-auto lg:max-w-7xl">
           <a href="https://www.youtube.com/@SharadaPeetham" target="_blank" rel="noopener noreferrer" aria-label="YouTube" data-testid="link-social-youtube">
@@ -102,7 +132,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </footer>
 
       {/* Mobile Bottom Navigation */}
-      {!isDesktop && (
+      {!isDesktop && !isDonationPresetPage && (
         <nav className="fixed bottom-0 w-full bg-white/90 backdrop-blur-lg border-t border-border z-40 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
           <div className="flex justify-around items-center h-16 max-w-md sm:max-w-2xl mx-auto">
             {navItems.map((item) => {
@@ -121,10 +151,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
       )}
 
-      {/* Chat is available on all pages. On Home, the icon opens the assistant
-          in place with a prominent switch to live chat; everywhere else it
-          jumps straight to the full chat screen. */}
-      {location === "/home" ? <ChatbotWidget botOnly enableLiveChat /> : <ChatLauncher />}
+      {/* Chat is available on all pages except focused donation preset landing
+          pages (/donation/{preset}), which intentionally hide all site chrome
+          including the chat icon. On Home, the icon opens the assistant in
+          place with a prominent switch to live chat; everywhere else it jumps
+          straight to the full chat screen. */}
+      {isDonationPresetPage ? null : location === "/home" ? <ChatbotWidget botOnly enableLiveChat /> : <ChatLauncher />}
     </div>
   );
 }

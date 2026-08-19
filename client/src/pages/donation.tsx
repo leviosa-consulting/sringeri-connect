@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import DOMPurify from "dompurify";
 import CountryStateCityFields from "@/components/country-state-city-fields";
 import { RangoliLoader } from "@/components/rangoli-loader";
 import { useQuery } from "@tanstack/react-query";
@@ -35,7 +36,6 @@ import {
   Plus,
   ShoppingCart,
   Trash2,
-  X,
   Info,
   User,
   Mail,
@@ -432,20 +432,14 @@ function getIconForName(name: string): LucideIcon {
 
 // Distinct hero/landing header for an exclusive donation heading (reached via
 // /donation/{preset}). Reuses the heading's own content fields rather than a
-// bespoke design per heading.
-function ExclusiveHeadingHero({
-  heading,
-  onBack,
-  showBack,
-}: {
-  heading: DonationHeading;
-  onBack: () => void;
-  showBack: boolean;
-}) {
+// bespoke design per heading. This page is a focused, single-purpose landing
+// page (no back-to-home link, no colored banner fallback — the surrounding
+// Layout already strips the site nav/chat chrome for this route).
+function ExclusiveHeadingHero({ heading }: { heading: DonationHeading }) {
   const hasImage = !!heading.image;
-  return (
-    <div className="relative overflow-hidden">
-      {hasImage ? (
+  if (hasImage) {
+    return (
+      <div className="relative overflow-hidden">
         <div className="relative h-56 w-full">
           <img
             src={heading.image}
@@ -455,29 +449,25 @@ function ExclusiveHeadingHero({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
         </div>
-      ) : (
-        <div className="h-40 w-full bg-primary" />
+        <div className="absolute inset-x-0 bottom-0 px-4 pb-5">
+          <h1 className="text-2xl font-serif font-bold text-white drop-shadow" data-testid="text-page-title">
+            {heading.name}
+          </h1>
+          {heading.subtitle && (
+            <p className="text-sm text-white/90 mt-1" data-testid="text-exclusive-subtitle">{heading.subtitle}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="px-4 pt-6 pb-5">
+      <h1 className="text-2xl font-serif font-bold text-foreground" data-testid="text-page-title">
+        {heading.name}
+      </h1>
+      {heading.subtitle && (
+        <p className="text-sm text-muted-foreground mt-1" data-testid="text-exclusive-subtitle">{heading.subtitle}</p>
       )}
-      <div className="absolute inset-x-0 top-0 px-4 pt-6">
-        {showBack && (
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1 text-white/90 hover:text-white text-sm"
-            data-testid="button-back-home"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Home
-          </button>
-        )}
-      </div>
-      <div className={hasImage ? "absolute inset-x-0 bottom-0 px-4 pb-5" : "px-4 pb-5 pt-2"}>
-        <h1 className="text-2xl font-serif font-bold text-white drop-shadow" data-testid="text-page-title">
-          {heading.name}
-        </h1>
-        {heading.subtitle && (
-          <p className="text-sm text-white/90 mt-1" data-testid="text-exclusive-subtitle">{heading.subtitle}</p>
-        )}
-      </div>
     </div>
   );
 }
@@ -493,7 +483,6 @@ export default function Donation() {
   const [selectedHeading, setSelectedHeading] = useState<DonationHeading | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<DonationCategory | null>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<DonationSubCategory | null>(null);
-  const [presetBannerDismissed, setPresetBannerDismissed] = useState(false);
   const [overlayAppleLoading, setOverlayAppleLoading] = useState(false);
   const [overlayGoogleLoading, setOverlayGoogleLoading] = useState(false);
   const [overlayEmailLoading, setOverlayEmailLoading] = useState(false);
@@ -1566,16 +1555,12 @@ export default function Donation() {
   return (
     <div className="min-h-screen bg-[#F7F2EC] pb-24">
       {isExclusiveMode && exclusiveHeadingData ? (
-        <ExclusiveHeadingHero
-          heading={exclusiveHeadingData.heading}
-          onBack={() => navigate(homeRoute)}
-          showBack={!isServicesMode}
-        />
+        <ExclusiveHeadingHero heading={exclusiveHeadingData.heading} />
       ) : (
         <div className="bg-primary text-primary-foreground px-4 pt-6 pb-5 shadow-md relative overflow-hidden">
           <div className="absolute inset-0 bg-black/10" />
           <div className="relative z-10">
-            {!isServicesMode && (
+            {!isServicesMode && !preset && (
               <button
                 onClick={() => navigate(homeRoute)}
                 className="flex items-center gap-1 text-white/80 hover:text-white text-sm mb-3"
@@ -1602,22 +1587,6 @@ export default function Donation() {
         label="donation"
       />
 
-      {preset && !presetBannerDismissed && selectedCategory && (
-        <div className="mx-4 mt-3 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 shadow-sm" data-testid="banner-preset-deeplink">
-          <span className="text-amber-700 text-sm flex-1">
-            Quick link: <span className="font-semibold">{selectedSubCategory ? selectedSubCategory.name : selectedCategory.name}</span> selected for you
-          </span>
-          <button
-            onClick={() => setPresetBannerDismissed(true)}
-            className="shrink-0 p-1 rounded-full hover:bg-amber-100 transition-colors"
-            aria-label="Dismiss"
-            data-testid="button-dismiss-preset-banner"
-          >
-            <X className="h-4 w-4 text-amber-600" />
-          </button>
-        </div>
-      )}
-
       <div className="px-4 mt-4 space-y-4">
         {isExclusiveMode && exclusiveHeadingData && (exclusiveHeadingData.heading.about || exclusiveHeadingData.heading.shortDescription) && (
           <Card data-testid="card-exclusive-about">
@@ -1625,7 +1594,12 @@ export default function Donation() {
               {exclusiveHeadingData.heading.about ? (
                 <div
                   className="text-sm text-muted-foreground leading-relaxed [&_a]:text-primary [&_a]:underline"
-                  dangerouslySetInnerHTML={{ __html: exclusiveHeadingData.heading.about }}
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(exclusiveHeadingData.heading.about, {
+                      ALLOWED_TAGS: ["a", "b", "strong", "i", "em", "u", "br", "p", "span", "ul", "ol", "li"],
+                      ALLOWED_ATTR: ["href", "target", "rel"],
+                    }),
+                  }}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">{exclusiveHeadingData.heading.shortDescription}</p>
