@@ -25,7 +25,21 @@
     return null;
   })();
 
-  var API = script ? new URL(script.src, location.href).origin : location.origin;
+  // Keep this in sync with shared/public-origin.ts. The embed is a static
+  // script and cannot import the TypeScript helper from the app bundle.
+  function normalizePublicOrigin(origin) {
+    var url = new URL(origin);
+    var hostname = url.hostname.toLowerCase();
+    var isReplitHost = hostname.endsWith(".replit.dev") ||
+      hostname.endsWith(".replit.app") ||
+      hostname.endsWith(".repl.co");
+    if (isReplitHost && url.port === "5000") url.port = "";
+    return url.origin;
+  }
+
+  var API = normalizePublicOrigin(script
+    ? new URL(script.src, location.href).origin
+    : location.origin);
   var VISITOR_KEY = "sringeri_chat_visitor_id";
   var CONVO_KEY = "sringeri_chat_conversation_id";
   var OPEN_POLL_MS = 3000;

@@ -1,5 +1,6 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { getGuruvaniForDate, GURU_VANI_ATTRIBUTION } from "@shared/guruvani";
+import { getPublicUrl, normalizePublicOrigin } from "@shared/public-origin";
 import { createServer, type Server } from "http";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
@@ -34,6 +35,14 @@ import { fileURLToPath } from "url";
 const _filename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
 const _require = createRequire(_filename);
 const PaytmChecksum = _require("paytmchecksum");
+
+function getRequestPublicOrigin(req: Request): string {
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  const proto = (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto?.split(",")[0])?.trim()
+    || req.protocol;
+  const host = req.get("host") || req.hostname || "localhost:5000";
+  return normalizePublicOrigin(`${proto}://${host}`);
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -219,9 +228,10 @@ export async function registerRoutes(
           throw err;
         }
         const oobCode = new URL(firebaseLink).searchParams.get("oobCode") || "";
-        const host = req.headers.host || "sringeri.app";
-        const proto = (req.headers["x-forwarded-proto"] as string) || (host.includes("localhost") ? "http" : "https");
-        const resetLink = `${proto}://${host}/reset-password?oobCode=${encodeURIComponent(oobCode)}`;
+        const resetLink = getPublicUrl(
+          getRequestPublicOrigin(req),
+          `/reset-password?oobCode=${encodeURIComponent(oobCode)}`,
+        );
         await sendResetEmail(normalizedEmail, resetLink);
         passwordResetEmailCooldown.set(normalizedEmail, Date.now());
         return res.json({ success: true });
@@ -1624,7 +1634,7 @@ export async function registerRoutes(
           userInfo: {
             custId: verifiedUid,
           },
-          callbackUrl: `${req.protocol}://${req.get("host")}/api/paytm-callback`,
+          callbackUrl: getPublicUrl(getRequestPublicOrigin(req), "/api/paytm-callback"),
         },
       };
 
@@ -2482,7 +2492,7 @@ export async function registerRoutes(
           userInfo: {
             custId: uid || mobileNumber || "GUEST",
           },
-          callbackUrl: `${req.protocol}://${req.get("host")}/api/paytm-callback`,
+          callbackUrl: getPublicUrl(getRequestPublicOrigin(req), "/api/paytm-callback"),
         },
       };
 
@@ -3221,7 +3231,7 @@ export async function registerRoutes(
           userInfo: {
             custId: mobile || "GUEST",
           },
-          callbackUrl: `${req.protocol}://${req.get("host")}/api/paytm-callback`,
+          callbackUrl: getPublicUrl(getRequestPublicOrigin(req), "/api/paytm-callback"),
         },
       };
 
@@ -4706,7 +4716,7 @@ export async function registerRoutes(
       const origin = String(req.headers.origin || "").replace(/\/$/, "");
       if (origin) {
         const allowed = await allowedEmbedOrigins();
-        const selfOrigin = `${(req.headers["x-forwarded-proto"] as string) || req.protocol}://${req.headers.host}`;
+        const selfOrigin = getRequestPublicOrigin(req);
         if (allowed.includes(origin) || origin === selfOrigin) {
           res.setHeader("Access-Control-Allow-Origin", origin);
           res.setHeader("Vary", "Origin");

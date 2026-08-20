@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Loader2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { getPublicUrl } from "@shared/public-origin";
 
 /**
  * Remote control for the widget embedded on sringeri.net. The website team
@@ -57,7 +58,8 @@ export default function EmbedSettingsPanel({ authFetch }: { authFetch: (url: str
     }
   };
 
-  const snippet = `<script src="${window.location.origin}/embed/live-chat.js" defer></script>`;
+  const scriptUrl = getPublicUrl(window.location.origin, "/embed/live-chat.js");
+  const snippet = `<script src="${scriptUrl}" defer></script>`;
 
   return (
     <div className="bg-white border border-border rounded-xl" data-testid="panel-embed-settings">

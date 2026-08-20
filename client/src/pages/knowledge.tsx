@@ -7,6 +7,7 @@ import { BookOpenCheck, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Troph
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
+import { getPublicUrl } from "@shared/public-origin";
 
 interface BadgeData {
   id: string;
@@ -547,7 +548,7 @@ export default function Knowledge() {
                   </div>
                   <button
                     onClick={() => {
-                      const shareUrl = `${window.location.origin}/knowledge/${quiz.id}`;
+                      const shareUrl = getPublicUrl(window.location.origin, `/knowledge/${quiz.id}`);
                       if (navigator.share) {
                         navigator.share({ title: quiz.title, text: quiz.subtitle || "Take this quiz!", url: shareUrl });
                       } else {

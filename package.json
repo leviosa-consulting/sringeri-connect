@@ -9,6 +9,7 @@
     "build": "tsx script/build.ts",
     "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "check:public-url": "tsx script/check-public-origin.ts",
     "db:push": "drizzle-kit push",
     "db:setup": "tsx script/db-setup.ts",
     "db:refresh": "tsx script/db-refresh.ts"
