@@ -24,7 +24,7 @@ working — do not "fix" one by breaking the other.
 | Secrets | Injected as real env vars; `.replit [userenv.shared]` holds the non-secret ones | Read from `.env` via [server/load-env.ts](server/load-env.ts) |
 | Database | Neon Postgres 16.14, schema auto-pushed on deploy | Dedicated Postgres 16 cluster on port **5544**, restored from a prod dump |
 | `reusePort` | Supported | **Not supported** — Windows throws `listen ENOTSUP`, so it is platform-guarded in [server/index.ts](server/index.ts) |
-| Shell | POSIX | cmd.exe — npm scripts use `cross-env` so `NODE_ENV=...` prefixes work in both |
+| Shell | POSIX | cmd.exe or PowerShell — the launch scripts set `NODE_ENV` through Node, so no shell-specific prefix syntax is required |
 
 ## First-time local setup
 
@@ -58,10 +58,10 @@ sign-in work without that.
 
 | Command | Notes |
 |---|---|
-| `npm run dev` | **The entry point.** Express + Vite middleware on port 5001 (from `PORT` in `.env`, default 5000) |
+| `npm run dev` | **The entry point.** Express + Vite middleware on the `PORT` in `.env` (default 5000) |
 | `npm run check` | TypeScript typecheck (`tsc`). **Currently fails with 15 pre-existing errors** — see Gotchas |
 | `npm run build` | Vite client → `dist/public`, esbuild server → `dist/index.cjs` |
-| `npm start` | Runs the production bundle |
+| `npm start` | Sets production mode through the cross-platform launcher, then runs `dist/index.cjs` |
 | `npm run db:push` | Drizzle push. **Check what `DATABASE_URL` points at first** |
 | `npm run db:setup` | Create the local PostgreSQL cluster, start it, create the database. Idempotent — also how you restart the cluster after a reboot |
 | `npm run db:refresh` | Re-dump prod and restore it into the local database. Read-only against prod; refuses to run if `DATABASE_URL` is not local. Add `-- --reuse-dump` to restore the existing snapshot without re-downloading |
