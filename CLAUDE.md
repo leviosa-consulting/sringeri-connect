@@ -28,13 +28,31 @@ working — do not "fix" one by breaking the other.
 
 ## First-time local setup
 
-1. `npm install`
-2. Ensure `.env` exists at the repo root with the keys listed below. It is git-ignored;
-   copy `.env.example` and fill it in.
-3. Start the local database cluster (see [The local database](#the-local-database)), then
-   restore a prod snapshot into it — see
-   [Refreshing local data](#refreshing-local-data-from-prod).
-4. `npm run dev` → http://localhost:5001
+**Prerequisite:** install **PostgreSQL 16**. It supplies `initdb`, `pg_ctl`, `psql`,
+`pg_dump` and `pg_restore`. Production runs 16.14, and a version-matched client is what keeps
+dump/restore free of skew. On Windows the binaries are not added to `PATH`; the scripts look
+in `C:/Program Files/PostgreSQL/16/bin` and honour `PG_BIN` if yours lives elsewhere.
+
+Then:
+
+1. **`.env`** — copy `.env.example` to `.env` and fill it in. It is git-ignored and the values
+   are secrets, so get them from the team; they are not in the repo.
+2. **`npm install`**
+3. **`npm run db:setup`** — creates the local PostgreSQL cluster, starts it, and creates the
+   database. Safe to re-run.
+4. **`npm run db:refresh`** — dumps production (read-only) and loads a copy locally.
+5. **`npm run dev`**
+
+Two entries in `.env.example` are specific to one machine rather than to the project:
+
+- `PORT` — only set here because another app already occupies 5000. Leave it unset and the
+  server uses 5000.
+- `DATABASE_URL` uses port 5544 purely to stay clear of existing PostgreSQL services. Any free
+  port works; `db:setup` reads the port from that URL.
+
+If you need Google or Apple sign-in locally, the host you serve from must also be listed under
+Firebase Console → Authentication → Settings → Authorized domains. Email/password and guest
+sign-in work without that.
 
 ## Commands
 
@@ -45,6 +63,7 @@ working — do not "fix" one by breaking the other.
 | `npm run build` | Vite client → `dist/public`, esbuild server → `dist/index.cjs` |
 | `npm start` | Runs the production bundle |
 | `npm run db:push` | Drizzle push. **Check what `DATABASE_URL` points at first** |
+| `npm run db:setup` | Create the local PostgreSQL cluster, start it, create the database. Idempotent — also how you restart the cluster after a reboot |
 | `npm run db:refresh` | Re-dump prod and restore it into the local database. Read-only against prod; refuses to run if `DATABASE_URL` is not local. Add `-- --reuse-dump` to restore the existing snapshot without re-downloading |
 | `npm run dev:client` | Vestigial. Its hardcoded `--port 5000` is now stale too, and it is redundant since [server/vite.ts](server/vite.ts) already mounts Vite as Express middleware. Use `npm run dev`. |
 
@@ -135,22 +154,31 @@ Windows Postgres services:
 
 | | |
 |---|---|
-| Data directory | `C:/Users/levio/pgdata-sringeri` |
-| Port | **5544** (the PG 16 and PG 18 Windows services keep 5432 and 5433) |
-| Auth | `trust` — **no password**, local connections only |
-| Database | `sringeri_local` |
+| Data directory | `$PGDATA_DIR`, or `<your home>/pgdata-sringeri` by default |
+| Port, role, database | taken from `DATABASE_URL` — that URL is the single source of truth |
+| Auth | `trust` — **no password**, loopback connections only |
 
-It was created with `initdb --auth=trust`, which needs no administrator rights and leaves
-the existing installations untouched. `trust` is acceptable here because the cluster is
-local-only and holds nothing but a disposable copy of prod.
+`npm run db:setup` creates it with `initdb --auth=trust`, which needs no administrator rights
+and leaves any system-wide PostgreSQL installation untouched. `trust` is acceptable here
+because the cluster only accepts loopback connections and holds nothing but a disposable copy
+of prod.
 
-It is **not** a Windows service, so it does not start with the machine:
+It is **not** a system service, so it does not start with the machine. `db:setup` is
+idempotent — re-running it is how you start the cluster again after a reboot:
+
+```
+npm run db:setup
+```
+
+It skips `initdb` when a cluster already exists, skips the start when the server is already
+listening, and skips the CREATE when the database exists, so it never touches existing data.
+
+To drive the cluster directly:
 
 ```bash
 PGBIN="/c/Program Files/PostgreSQL/16/bin"
-DATA="C:/Users/levio/pgdata-sringeri"
+DATA="$PGDATA_DIR"   # or ~/pgdata-sringeri
 
-"$PGBIN/pg_ctl.exe" -D "$DATA" -o "-p 5544" -l "$DATA/server.log" start   # start
 "$PGBIN/pg_ctl.exe" -D "$DATA" status                                     # check
 "$PGBIN/pg_ctl.exe" -D "$DATA" stop                                       # stop
 ```
@@ -172,6 +200,14 @@ Add `-- --reuse-dump` to restore the snapshot already on disk without re-downloa
 ```
 npm run db:refresh -- --reuse-dump
 ```
+
+**`analytics_events` row data is excluded by default.** That one table is ~4.1M rows and
+~815 MB of the ~835 MB database, and pulling it from Neon reliably died partway through with
+`PQgetCopyData() failed: server closed the connection unexpectedly`. Excluding its rows takes
+the snapshot from 835 MB to **3 MB** and turns a failing transfer into a ~2 minute one. The
+table and its indexes are still created, so the app and the admin dashboard work — the
+dashboard simply shows no historical events. Pass `-- --with-analytics` when you genuinely
+need that history, and expect it to be slow and failure-prone.
 
 Before doing anything, the script **refuses to run unless `DATABASE_URL` names a loopback
 host**. It drops and replaces the target database, so this gate is what stops a mispointed
@@ -210,9 +246,9 @@ why `script/db-refresh.ts` exists:
   v17 writes a banner to stdout that ends up inside the captured value. Read `.env` directly,
   as above.
 
-The dump is large — `analytics_events` alone is ~815 MB of the ~835 MB total. Snapshots are
-git-ignored via `db-snapshots/` and `*.dump`, and could not be committed anyway (GitHub
-rejects files over 100 MB).
+Snapshots are git-ignored via `db-snapshots/` and `*.dump`. Keep it that way — a full dump
+including `analytics_events` is ~835 MB and could not be committed regardless, since GitHub
+rejects files over 100 MB.
 
 ## Code conventions
 

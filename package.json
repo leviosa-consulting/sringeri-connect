@@ -10,6 +10,7 @@
     "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push",
+    "db:setup": "tsx script/db-setup.ts",
     "db:refresh": "tsx script/db-refresh.ts"
   },
   "dependencies": {
